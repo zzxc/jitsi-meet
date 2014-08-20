@@ -2,6 +2,8 @@ var Toolbar = (function (my) {
     var INITIAL_TOOLBAR_TIMEOUT = 20000;
     var TOOLBAR_TIMEOUT = INITIAL_TOOLBAR_TIMEOUT;
 
+    var toolbarTimeout = null;
+
     /**
      * Opens the lock room dialog.
      */

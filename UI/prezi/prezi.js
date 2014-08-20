@@ -1,3 +1,5 @@
+var PreziPlayer = require("./PreziPlayer.js");
+
 var Prezi = (function (my) {
     var preziPlayer = null;
 
@@ -350,3 +352,5 @@ var Prezi = (function (my) {
 
     return my;
 }(Prezi || {}));
+
+module.exports = Prezi;

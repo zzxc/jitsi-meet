@@ -1,4 +1,6 @@
 /* global $, Util, connection, nickname:true, getVideoSize, getVideoPosition, showToolbar, processReplacements */
+
+var Replacement = require("./Replacement.js");
 /**
  * Chat related user interface.
  */
@@ -25,7 +27,7 @@ var Chat = (function (my) {
                 if (!nickname) {
                     nickname = val;
                     window.localStorage.displayname = nickname;
-
+                    //this should be changed
                     connection.emuc.addDisplayNameToPresence(nickname);
                     connection.emuc.sendPresence();
 
@@ -49,6 +51,7 @@ var Chat = (function (my) {
                 }
                 else
                 {
+                    //this should be changed
                     var message = Util.escapeHtml(value);
                     connection.emuc.sendMessage(message, nickname);
                 }
@@ -90,7 +93,7 @@ var Chat = (function (my) {
         //replace links and smileys
         var escMessage = Util.escapeHtml(message);
         var escDisplayName = Util.escapeHtml(displayName);
-        message = processReplacements(escMessage);
+        message = Replacement.processReplacements(escMessage);
 
         $('#chatconversation').append('<div class="' + divClassName + '"><b>' +
                                       escDisplayName + ': </b>' +
@@ -125,7 +128,7 @@ var Chat = (function (my) {
     {
         if(subject)
             subject = subject.trim();
-        $('#subject').html(linkify(Util.escapeHtml(subject)));
+        $('#subject').html(Replacement.linkify(Util.escapeHtml(subject)));
         if(subject == "")
         {
             $("#subject").css({display: "none"});
@@ -204,7 +207,7 @@ var Chat = (function (my) {
                                             duration: 500});
         }
         else {
-            // Undock the toolbar when the chat is shown and if we're in a 
+            // Undock the toolbar when the chat is shown and if we're in a
             // video mode.
             if (VideoLayout.isLargeVideoVisible())
                 Toolbar.dockToolbar(false);
@@ -375,3 +378,5 @@ var Chat = (function (my) {
 
     return my;
 }(Chat || {}));
+
+module.exports = Chat;

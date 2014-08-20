@@ -9,17 +9,6 @@ var sharedKey = '';
 var recordingToken ='';
 var roomUrl = null;
 var ssrc2jid = {};
-/**
- * The stats collector that process stats data and triggers updates to app.js.
- * @type {StatsCollector}
- */
-var statsCollector = null;
-
-/**
- * The stats collector for the local stream.
- * @type {LocalStatsCollector}
- */
-var localStatsCollector = null;
 
 /**
  * Indicates whether ssrc is camera video or desktop stream.
@@ -37,7 +26,6 @@ var mutedAudios = {};
 var localVideoSrc = null;
 var flipXLocalVideo = true;
 var isFullScreen = false;
-var toolbarTimeout = null;
 var currentVideoWidth = null;
 var currentVideoHeight = null;
 /**
@@ -130,7 +118,7 @@ function audioStreamReady(stream) {
 
     VideoLayout.changeLocalAudio(stream);
 
-    startLocalRtpStatsCollector(stream);
+    StatisticsActivator.startLocalStats(stream);
 
     if (RTC.browser !== 'firefox') {
         getUserMediaWithConstraints(['video'],
@@ -308,7 +296,7 @@ $(document).bind('remotestreamadded.jingle', function (event, data, sid) {
             VideoLayout.resizeThumbnails();
         }
 
-        VideoLayout.checkChangeLargeVideo(vid.src);
+        UIActivator.getUIService().checkChangeLargeVideo(vid.src);
     };
 
     // Add click handler.
@@ -377,6 +365,7 @@ function getJidFromVideoSrc(videoSrc)
     return ssrc2jid[ssrc];
 }
 
+
 // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
 function sendKeyframe(pc) {
     console.log('sendkeyframe', pc.iceConnectionState);
@@ -407,6 +396,7 @@ function sendKeyframe(pc) {
     );
 }
 
+//not used
 // Really mute video, i.e. dont even send black frames
 function muteVideo(pc, unmute) {
     // FIXME: this probably needs another of those lovely state safeguards...
@@ -444,86 +434,13 @@ function muteVideo(pc, unmute) {
     );
 }
 
-/**
- * Callback for audio levels changed.
- * @param jid JID of the user
- * @param audioLevel the audio level value
- */
-function audioLevelUpdated(jid, audioLevel)
-{
-    var resourceJid;
-    if(jid === LocalStatsCollector.LOCAL_JID)
-    {
-        resourceJid = AudioLevels.LOCAL_LEVEL;
-        if(isAudioMuted())
-            return;
-    }
-    else
-    {
-        resourceJid = Strophe.getResourceFromJid(jid);
-    }
-
-    AudioLevels.updateAudioLevel(resourceJid, audioLevel);
-}
-
-/**
- * Starts the {@link StatsCollector} if the feature is enabled in config.js.
- */
-function startRtpStatsCollector()
-{
-    stopRTPStatsCollector();
-    if (config.enableRtpStats)
-    {
-        statsCollector = new StatsCollector(
-            getConferenceHandler().peerconnection, 200, audioLevelUpdated);
-        statsCollector.start();
-    }
-}
-
-/**
- * Stops the {@link StatsCollector}.
- */
-function stopRTPStatsCollector()
-{
-    if (statsCollector)
-    {
-        statsCollector.stop();
-        statsCollector = null;
-    }
-}
-
-/**
- * Starts the {@link LocalStatsCollector} if the feature is enabled in config.js
- * @param stream the stream that will be used for collecting statistics.
- */
-function startLocalRtpStatsCollector(stream)
-{
-    if(config.enableRtpStats)
-    {
-        localStatsCollector = new LocalStatsCollector(stream, 100, audioLevelUpdated);
-        localStatsCollector.start();
-    }
-}
-
-/**
- * Stops the {@link LocalStatsCollector}.
- */
-function stopLocalRtpStatsCollector()
-{
-    if(localStatsCollector)
-    {
-        localStatsCollector.stop();
-        localStatsCollector = null;
-    }
-}
-
 $(document).bind('callincoming.jingle', function (event, sid) {
     var sess = connection.jingle.sessions[sid];
 
     // TODO: do we check activecall == null?
     activecall = sess;
 
-    startRtpStatsCollector();
+    StatisticsActivator.startRemoteStats(getConferenceHandler().peerconnection);
 
     // Bind data channel listener in case we're a regular participant
     if (config.openSctp)
@@ -541,7 +458,7 @@ $(document).bind('callincoming.jingle', function (event, sid) {
 
 $(document).bind('conferenceCreated.jingle', function (event, focus)
 {
-    startRtpStatsCollector();
+    StatisticsActivator.startRemoteStats(getConferenceHandler().peerconnection);
 });
 
 $(document).bind('conferenceCreated.jingle', function (event, focus)
@@ -553,20 +470,7 @@ $(document).bind('conferenceCreated.jingle', function (event, focus)
     }
 });
 
-$(document).bind('callactive.jingle', function (event, videoelem, sid) {
-    if (videoelem.attr('id').indexOf('mixedmslabel') === -1) {
-        // ignore mixedmslabela0 and v0
-        videoelem.show();
-        VideoLayout.resizeThumbnails();
 
-        // Update the large video to the last added video only if there's no
-        // current active or focused speaker.
-        if (!focusedVideoSrc && !VideoLayout.getDominantSpeakerResourceJid())
-            VideoLayout.updateLargeVideo(videoelem.attr('src'), 1);
-
-        VideoLayout.showFocusIndicator();
-    }
-});
 
 $(document).bind('callterminated.jingle', function (event, sid, jid, reason) {
     // Leave the room if my call has been remotely terminated.
@@ -635,7 +539,7 @@ $(document).bind('joined.muc', function (event, jid, info) {
     }
 
     if (focus && config.etherpad_base) {
-        Etherpad.init();
+        UIActivator.getUIService().initEtherpad();
     }
 
     VideoLayout.showFocusIndicator();
@@ -768,7 +672,6 @@ $(document).bind('presence.muc', function (event, jid, info, pres) {
             case 'recvonly':
                 el.hide();
                 // FIXME: Check if we have to change large video
-                //VideoLayout.checkChangeLargeVideo(el);
                 break;
             }
         }
@@ -812,37 +715,6 @@ $(document).bind('passwordrequired.muc', function (event, jid) {
         }
     });
 });
-
-/**
- * Checks if video identified by given src is desktop stream.
- * @param videoSrc eg.
- * blob:https%3A//pawel.jitsi.net/9a46e0bd-131e-4d18-9c14-a9264e8db395
- * @returns {boolean}
- */
-function isVideoSrcDesktop(videoSrc) {
-    // FIXME: fix this mapping mess...
-    // figure out if large video is desktop stream or just a camera
-    var isDesktop = false;
-    if (localVideoSrc === videoSrc) {
-        // local video
-        isDesktop = isUsingScreenStream;
-    } else {
-        // Do we have associations...
-        var videoSsrc = videoSrcToSsrc[videoSrc];
-        if (videoSsrc) {
-            var videoType = ssrc2videoType[videoSsrc];
-            if (videoType) {
-                // Finally there...
-                isDesktop = videoType === 'screen';
-            } else {
-                console.error("No video type for ssrc: " + videoSsrc);
-            }
-        } else {
-            console.error("No ssrc for src: " + videoSrc);
-        }
-    }
-    return isDesktop;
-}
 
 function getConferenceHandler() {
     return focus ? focus : activecall;
@@ -968,89 +840,8 @@ function toggleRecording() {
 
 }
 
-/**
- * Returns an array of the video horizontal and vertical indents,
- * so that if fits its parent.
- *
- * @return an array with 2 elements, the horizontal indent and the vertical
- * indent
- */
-function getCameraVideoPosition(videoWidth,
-                                videoHeight,
-                                videoSpaceWidth,
-                                videoSpaceHeight) {
-    // Parent height isn't completely calculated when we position the video in
-    // full screen mode and this is why we use the screen height in this case.
-    // Need to think it further at some point and implement it properly.
-    var isFullScreen = document.fullScreen ||
-            document.mozFullScreen ||
-            document.webkitIsFullScreen;
-    if (isFullScreen)
-        videoSpaceHeight = window.innerHeight;
-
-    var horizontalIndent = (videoSpaceWidth - videoWidth) / 2;
-    var verticalIndent = (videoSpaceHeight - videoHeight) / 2;
-
-    return [horizontalIndent, verticalIndent];
-}
-
-/**
- * Returns an array of the video horizontal and vertical indents.
- * Centers horizontally and top aligns vertically.
- *
- * @return an array with 2 elements, the horizontal indent and the vertical
- * indent
- */
-function getDesktopVideoPosition(videoWidth,
-                                 videoHeight,
-                                 videoSpaceWidth,
-                                 videoSpaceHeight) {
-
-    var horizontalIndent = (videoSpaceWidth - videoWidth) / 2;
-
-    var verticalIndent = 0;// Top aligned
-
-    return [horizontalIndent, verticalIndent];
-}
-
-/**
- * Returns an array of the video dimensions, so that it covers the screen.
- * It leaves no empty areas, but some parts of the video might not be visible.
- *
- * @return an array with 2 elements, the video width and the video height
- */
-function getCameraVideoSize(videoWidth,
-                           videoHeight,
-                           videoSpaceWidth,
-                           videoSpaceHeight) {
-    if (!videoWidth)
-        videoWidth = currentVideoWidth;
-    if (!videoHeight)
-        videoHeight = currentVideoHeight;
-
-    var aspectRatio = videoWidth / videoHeight;
-
-    var availableWidth = Math.max(videoWidth, videoSpaceWidth);
-    var availableHeight = Math.max(videoHeight, videoSpaceHeight);
-
-    if (availableWidth / aspectRatio < videoSpaceHeight) {
-        availableHeight = videoSpaceHeight;
-        availableWidth = availableHeight * aspectRatio;
-    }
-
-    if (availableHeight * aspectRatio < videoSpaceWidth) {
-        availableWidth = videoSpaceWidth;
-        availableHeight = availableWidth / aspectRatio;
-    }
-
-    return [availableWidth, availableHeight];
-}
-
 $(document).ready(function () {
-    Chat.init();
-
-    $('body').popover({ selector: '[data-toggle=popover]',
-                        trigger: 'click hover'});
+    UIActivator.start();
 
     // Set the defaults for prompt dialogs.
     jQuery.prompt.setDefaults({persistent: false});
@@ -1061,23 +852,6 @@ $(document).ready(function () {
     if (config.chromeExtensionId) {
         initInlineInstalls();
     }
-
-    // By default we use camera
-    getVideoSize = getCameraVideoSize;
-    getVideoPosition = getCameraVideoPosition;
-
-    VideoLayout.resizeLargeVideoContainer();
-    $(window).resize(function () {
-        VideoLayout.resizeLargeVideoContainer();
-        VideoLayout.positionLarge();
-    });
-    // Listen for large video size updates
-    document.getElementById('largeVideo')
-        .addEventListener('loadedmetadata', function (e) {
-            currentVideoWidth = this.videoWidth;
-            currentVideoHeight = this.videoHeight;
-            VideoLayout.positionLarge(currentVideoWidth, currentVideoHeight);
-        });
 
     if (!$('#settings').is(':visible')) {
         console.log('init');
@@ -1125,9 +899,9 @@ function disposeConference(onUnload) {
         }
         handler.peerconnection.close();
     }
-    stopRTPStatsCollector();
+    StatisticsActivator.stopRemote();
     if(onUnload) {
-        stopLocalRtpStatsCollector();
+        StatisticsActivator.stopLocal();
     }
     focus = null;
     activecall = null;

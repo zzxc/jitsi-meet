@@ -42,7 +42,7 @@
     <script src="videolayout.js?v=7"></script><!-- video ui -->
     <script src="toolbar.js?v=3"></script><!-- toolbar ui -->
     <script src="canvas_util.js?v=1"></script><!-- canvas drawing utils -->
-    <script src="audio_levels.js?v=1"></script><!-- audio levels plugin -->
+    <script src="UI/audio_levels.js?v=1"></script><!-- audio levels plugin -->
     <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
     <link rel="stylesheet" href="css/font.css"/>
     <link rel="stylesheet" type="text/css" media="screen" href="css/main.css?v=22"/>
@@ -80,14 +80,14 @@
                 <a class="button" data-toggle="popover" data-placement="bottom" data-content="Invite others" onclick="Toolbar.openLinkDialog();"><i class="icon-link"></i></a>
                 <div class="header_button_separator"></div>
                 <span class="toolbar_span">
-                    <a class="button" data-toggle="popover" data-placement="bottom" data-content="Open / close chat" onclick='Chat.toggleChat();'><i id="chatButton" class="icon-chat"></i></a>
+                    <a class="button" data-toggle="popover" data-placement="bottom" data-content="Open / close chat" id="toolbar_chat"><i id="chatButton" class="icon-chat"></i></a>
                     <span id="unreadMessages"></span>
                 </span>
                 <div class="header_button_separator"></div>
-                <a class="button" data-toggle="popover" data-placement="bottom" data-content="Share Prezi" onclick='Prezi.openPreziDialog();'><i class="icon-prezi"></i></a>
+                <a class="button" data-toggle="popover" data-placement="bottom" data-content="Share Prezi" id="toolbar_prezi"><i class="icon-prezi"></i></a>
                 <span id="etherpadButton">
                     <div class="header_button_separator"></div>
-                    <a class="button" data-toggle="popover" data-placement="bottom" data-content="Shared document" onclick='Etherpad.toggleEtherpad(0);'><i class="icon-share-doc"></i></a>
+                    <a class="button" data-toggle="popover" data-placement="bottom" data-content="Shared document" id="toolbar_etherpad"><i class="icon-share-doc"></i></a>
                 </span>
                 <div class="header_button_separator"></div>
                 <span id="desktopsharing" style="display: none">
@@ -109,7 +109,7 @@
         <input id="connect" type="submit" value="Connect" />
       </form>
     </div>
-    <div id="reloadPresentation"><a onclick='Prezi.reloadPresentation();'><i title="Reload Prezi" class="fa fa-repeat fa-lg"></i></a></div>
+    <div id="reloadPresentation"><a id="reloadPresentationLink"><i title="Reload Prezi" class="fa fa-repeat fa-lg"></i></a></div>
     <div id="videospace" onmousemove="Toolbar.showToolbar();">
         <div id="largeVideoContainer" class="videocontainer">
             <div id="presentation"></div>

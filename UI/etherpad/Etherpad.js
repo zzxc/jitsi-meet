@@ -1,4 +1,6 @@
 /* global $, config, Prezi, Util, connection, setLargeVideoVisible, dockToolbar */
+var Prezi = require("../prezi/Prezi.js");
+
 var Etherpad = (function (my) {
     var etherpadName = null;
     var etherpadIFrame = null;
@@ -157,3 +159,5 @@ var Etherpad = (function (my) {
 
     return my;
 }(Etherpad || {}));
+
+module.exports = Etherpad;

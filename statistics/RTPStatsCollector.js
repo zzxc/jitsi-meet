@@ -99,7 +99,7 @@ PeerStats.prototype.getAvgLoss = function ()
  *                                   update.
  * @constructor
  */
-function StatsCollector(peerconnection, interval, updateCallback)
+function StatsCollector(peerconnection, interval, eventEmmiter)
 {
     this.peerconnection = peerconnection;
     this.baselineReport = null;
@@ -112,8 +112,10 @@ function StatsCollector(peerconnection, interval, updateCallback)
     // Map of jids to PeerStats
     this.jid2stats = {};
 
-    this.updateCallback = updateCallback;
+    this.eventEmmiter = eventEmmiter;
 }
+
+module.exports = StatsCollector;
 
 /**
  * Stops stats updates.
@@ -213,8 +215,9 @@ StatsCollector.prototype.processReport = function ()
             // but it seems to vary between 0 and around 32k.
             audioLevel = audioLevel / 32767;
             jidStats.setSsrcAudioLevel(ssrc, audioLevel);
+            //my roomjid shouldn't be global
             if(jid != connection.emuc.myroomjid)
-                this.updateCallback(jid, audioLevel);
+                this.eventEmmiter("statistics.audioLevel", jid, audioLevel);
         }
 
         var key = 'packetsReceived';

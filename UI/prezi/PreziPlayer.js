@@ -1,8 +1,8 @@
-(function() {
+module.exports = (function() {
     "use strict";
     var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
-    window.PreziPlayer = (function() {
+    var PreziPlayer = (function() {
 
         PreziPlayer.API_VERSION = 1;
         PreziPlayer.CURRENT_STEP = 'currentStep';
@@ -288,4 +288,5 @@
 
     })();
 
+    return PreziPlayer;
 })();

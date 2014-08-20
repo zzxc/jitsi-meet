@@ -1,3 +1,9 @@
+/**
+ * Created by hristo on 8/19/14.
+ */
+
+var AudioLevels = require("./audiolevels/AudioLevels.js");
+
 var VideoLayout = (function (my) {
     var preMuted = false;
     var currentDominantSpeaker = null;
@@ -14,9 +20,8 @@ var VideoLayout = (function (my) {
         }
     };
 
-    my.changeLocalVideo = function(stream, flipX) {
-        connection.jingle.localVideo = stream;
-
+    function createLocalVideoContainer(stream)
+    {
         var localVideo = document.createElement('video');
         localVideo.id = 'localVideo_' + stream.id;
         localVideo.autoplay = true;
@@ -25,8 +30,6 @@ var VideoLayout = (function (my) {
 
         var localVideoContainer = document.getElementById('localVideoWrapper');
         localVideoContainer.appendChild(localVideo);
-
-        UIActivator.getUIService().updateAudioLevelCanvas();
 
         var localVideoSelector = $('#' + localVideo.id);
         // Add click handler to both video and video wrapper elements in case
@@ -45,20 +48,36 @@ var VideoLayout = (function (my) {
             },
             function() {
                 if (!VideoLayout.isLargeVideoVisible()
-                        || localVideo.src !== $('#largeVideo').attr('src'))
+                    || localVideo.src !== $('#largeVideo').attr('src'))
                     VideoLayout.showDisplayName('localVideoContainer', false);
             }
         );
-        // Add stream ended handler
-        stream.onended = function () {
-            localVideoContainer.removeChild(localVideo);
-            VideoLayout.checkChangeLargeVideo(localVideo.src);
-        };
+
         // Flip video x axis if needed
         flipXLocalVideo = flipX;
         if (flipX) {
             localVideoSelector.addClass("flipVideoX");
         }
+    }
+
+    my.changeLocalVideo = function(stream, flipX) {
+
+        //tiq raboti da ne sa tuk
+
+        connection.jingle.localVideo = stream;
+
+        createLocalVideoContainer();
+
+
+        AudioLevels.updateAudioLevelCanvas();
+
+
+        // Add stream ended handler
+        stream.onended = function () {
+            localVideoContainer.removeChild(localVideo);
+            VideoLayout.checkChangeLargeVideo(localVideo.src);
+        };
+
         // Attach WebRTC stream
         RTC.attachMediaStream(localVideoSelector, stream);
 
@@ -78,7 +97,7 @@ var VideoLayout = (function (my) {
             // if nobody else is left, this picks the local video
             var pick
                 = $('#remoteVideos>span[id!="mixedstream"]:visible:last>video')
-                    .get(0);
+                .get(0);
 
             if (!pick) {
                 console.info("Last visible video no longer exists");
@@ -119,7 +138,7 @@ var VideoLayout = (function (my) {
                 var flipX = (newSrc === localVideoSrc) && flipXLocalVideo;
 
                 var videoTransform = document.getElementById('largeVideo')
-                                        .style.webkitTransform;
+                    .style.webkitTransform;
 
                 if (flipX && videoTransform !== 'scaleX(-1)') {
                     document.getElementById('largeVideo').style.webkitTransform
@@ -133,11 +152,11 @@ var VideoLayout = (function (my) {
                 // Change the way we'll be measuring and positioning large video
                 var isDesktop = isVideoSrcDesktop(newSrc);
                 getVideoSize = isDesktop
-                                ? getDesktopVideoSize
-                                : getCameraVideoSize;
+                    ? getDesktopVideoSize
+                    : VideoLayout.getCameraVideoSize;
                 getVideoPosition = isDesktop
-                                    ? getDesktopVideoPosition
-                                    : getCameraVideoPosition;
+                    ? getDesktopVideoPosition
+                    : VideoLayout.getCameraVideoPosition;
 
                 if (isVisible) {
                     // Only if the large video is currently visible.
@@ -162,6 +181,57 @@ var VideoLayout = (function (my) {
         }
     };
 
+    /**
+     * Returns an array of the video horizontal and vertical indents.
+     * Centers horizontally and top aligns vertically.
+     *
+     * @return an array with 2 elements, the horizontal indent and the vertical
+     * indent
+     */
+    function getDesktopVideoPosition(videoWidth,
+                                     videoHeight,
+                                     videoSpaceWidth,
+                                     videoSpaceHeight) {
+
+        var horizontalIndent = (videoSpaceWidth - videoWidth) / 2;
+
+        var verticalIndent = 0;// Top aligned
+
+        return [horizontalIndent, verticalIndent];
+    }
+
+    /**
+     * Checks if video identified by given src is desktop stream.
+     * @param videoSrc eg.
+     * blob:https%3A//pawel.jitsi.net/9a46e0bd-131e-4d18-9c14-a9264e8db395
+     * @returns {boolean}
+     */
+    function isVideoSrcDesktop(videoSrc) {
+        // FIXME: fix this mapping mess...
+        // figure out if large video is desktop stream or just a camera
+        var isDesktop = false;
+        if (localVideoSrc === videoSrc) {
+            // local video
+            isDesktop = isUsingScreenStream;
+        } else {
+            // Do we have associations...
+            var videoSsrc = videoSrcToSsrc[videoSrc];
+            if (videoSsrc) {
+                var videoType = ssrc2videoType[videoSsrc];
+                if (videoType) {
+                    // Finally there...
+                    isDesktop = videoType === 'screen';
+                } else {
+                    console.error("No video type for ssrc: " + videoSsrc);
+                }
+            } else {
+                console.error("No ssrc for src: " + videoSrc);
+            }
+        }
+        return isDesktop;
+    }
+
+
     my.handleVideoThumbClicked = function(videoSrc) {
         // Restore style for previously focused video
         var focusJid = getJidFromVideoSrc(focusedVideoSrc);
@@ -171,33 +241,33 @@ var VideoLayout = (function (my) {
             oldContainer.removeClass("videoContainerFocused");
         }
 
-        // Unlock current focused. 
+        // Unlock current focused.
         if (focusedVideoSrc === videoSrc)
         {
             focusedVideoSrc = null;
             var dominantSpeakerVideo = null;
             // Enable the currently set dominant speaker.
-            if (currentDominantSpeaker) {
-                dominantSpeakerVideo
-                    = $('#participant_' + currentDominantSpeaker + '>video')
-                        .get(0);
-
-                if (dominantSpeakerVideo)
-                    VideoLayout.updateLargeVideo(dominantSpeakerVideo.src, 1);
-            }
-
             return;
-        }
 
+        }
         // Lock new video
         focusedVideoSrc = videoSrc;
 
         // Update focused/pinned interface.
         var userJid = getJidFromVideoSrc(videoSrc);
+
         if (userJid)
         {
             var container = getParticipantContainer(userJid);
             container.addClass("videoContainerFocused");
+        }
+        if (currentDominantSpeaker) {
+            dominantSpeakerVideo
+                = $('#participant_' + currentDominantSpeaker + '>video')
+                .get(0);
+
+            if (dominantSpeakerVideo)
+                VideoLayout.updateLargeVideo(dominantSpeakerVideo.src, 1);
         }
 
         // Triggers a "video.selected" event. The "false" parameter indicates
@@ -225,25 +295,25 @@ var VideoLayout = (function (my) {
         var videoSpaceHeight = window.innerHeight;
 
         var videoSize = getVideoSize(videoWidth,
-                                     videoHeight,
-                                     videoSpaceWidth,
-                                     videoSpaceHeight);
+            videoHeight,
+            videoSpaceWidth,
+            videoSpaceHeight);
 
         var largeVideoWidth = videoSize[0];
         var largeVideoHeight = videoSize[1];
 
         var videoPosition = getVideoPosition(largeVideoWidth,
-                                             largeVideoHeight,
-                                             videoSpaceWidth,
-                                             videoSpaceHeight);
+            largeVideoHeight,
+            videoSpaceWidth,
+            videoSpaceHeight);
 
         var horizontalIndent = videoPosition[0];
         var verticalIndent = videoPosition[1];
 
         positionVideo($('#largeVideo'),
-                      largeVideoWidth,
-                      largeVideoHeight,
-                      horizontalIndent, verticalIndent);
+            largeVideoWidth,
+            largeVideoHeight,
+            horizontalIndent, verticalIndent);
     };
 
     /**
@@ -277,7 +347,7 @@ var VideoLayout = (function (my) {
     /**
      * Checks if container for participant identified by given peerJid exists
      * in the document and creates it eventually.
-     * 
+     *
      * @param peerJid peer Jid to check.
      */
     my.ensurePeerContainerExists = function(peerJid) {
@@ -289,7 +359,7 @@ var VideoLayout = (function (my) {
             // interface!!
             if (focus && $('#remote_popupmenu_' + peerResource).length <= 0)
                 addRemoteVideoMenu( peerJid,
-                                    document.getElementById(videoSpanId));
+                    document.getElementById(videoSpanId));
             return;
         }
 
@@ -385,45 +455,45 @@ var VideoLayout = (function (my) {
                 $('#localVideoContainer .displayname')
                     .bind("click", function (e) {
 
-                    e.preventDefault();
-                    $('#localDisplayName').hide();
-                    $('#editDisplayName').show();
-                    $('#editDisplayName').focus();
-                    $('#editDisplayName').select();
+                        e.preventDefault();
+                        $('#localDisplayName').hide();
+                        $('#editDisplayName').show();
+                        $('#editDisplayName').focus();
+                        $('#editDisplayName').select();
 
-                    var inputDisplayNameHandler = function (name) {
-                        if (nickname !== name) {
-                            nickname = name;
-                            window.localStorage.displayname = nickname;
-                            connection.emuc.addDisplayNameToPresence(nickname);
-                            connection.emuc.sendPresence();
+                        var inputDisplayNameHandler = function (name) {
+                            if (nickname !== name) {
+                                nickname = name;
+                                window.localStorage.displayname = nickname;
+                                connection.emuc.addDisplayNameToPresence(nickname);
+                                connection.emuc.sendPresence();
 
-                            Chat.setChatConversationMode(true);
-                        }
+                                Chat.setChatConversationMode(true);
+                            }
 
-                        if (!$('#localDisplayName').is(":visible")) {
-                            if (nickname)
-                                $('#localDisplayName').text(nickname + " (me)");
-                            else
-                                $('#localDisplayName')
-                                    .text(defaultLocalDisplayName);
-                            $('#localDisplayName').show();
-                        }
+                            if (!$('#localDisplayName').is(":visible")) {
+                                if (nickname)
+                                    $('#localDisplayName').text(nickname + " (me)");
+                                else
+                                    $('#localDisplayName')
+                                        .text(defaultLocalDisplayName);
+                                $('#localDisplayName').show();
+                            }
 
-                        $('#editDisplayName').hide();
-                    };
+                            $('#editDisplayName').hide();
+                        };
 
-                    $('#editDisplayName').one("focusout", function (e) {
-                        inputDisplayNameHandler(this.value);
-                    });
-
-                    $('#editDisplayName').on('keydown', function (e) {
-                        if (e.keyCode === 13) {
-                            e.preventDefault();
+                        $('#editDisplayName').one("focusout", function (e) {
                             inputDisplayNameHandler(this.value);
-                        }
+                        });
+
+                        $('#editDisplayName').on('keydown', function (e) {
+                            if (e.keyCode === 13) {
+                                e.preventDefault();
+                                inputDisplayNameHandler(this.value);
+                            }
+                        });
                     });
-                });
             }
         }
     };
@@ -440,7 +510,7 @@ var VideoLayout = (function (my) {
         // http://api.jquery.com/jQuery.noConflict/
         var nameSpan = jQuery('#' + videoSpanId + '>span.displayname').get(0);
         if (isShow) {
-            if (nameSpan && nameSpan.innerHTML && nameSpan.innerHTML.length) 
+            if (nameSpan && nameSpan.innerHTML && nameSpan.innerHTML.length)
                 nameSpan.setAttribute("style", "display:inline-block;");
         }
         else {
@@ -467,7 +537,7 @@ var VideoLayout = (function (my) {
             // If we're only a participant the focus will be the only session we have.
             var session
                 = connection.jingle.sessions
-                    [Object.keys(connection.jingle.sessions)[0]];
+                [Object.keys(connection.jingle.sessions)[0]];
             var focusId
                 = 'participant_' + Strophe.getResourceFromJid(session.peerjid);
 
@@ -513,8 +583,8 @@ var VideoLayout = (function (my) {
             var mutedIndicator = document.createElement('i');
             mutedIndicator.className = 'icon-camera-disabled';
             Util.setTooltip(mutedIndicator,
-                    "Participant has<br/>stopped the camera.",
-                    "top");
+                "Participant has<br/>stopped the camera.",
+                "top");
             videoMutedSpan.appendChild(mutedIndicator);
         }
     };
@@ -536,8 +606,8 @@ var VideoLayout = (function (my) {
             audioMutedSpan = document.createElement('span');
             audioMutedSpan.className = 'audioMuted';
             Util.setTooltip(audioMutedSpan,
-                    "Participant is muted",
-                    "top");
+                "Participant is muted",
+                "top");
 
             if (videoMutedSpan) {
                 audioMutedSpan.right = '30px';
@@ -602,14 +672,14 @@ var VideoLayout = (function (my) {
             displayName = nameSpan.text();
 
         console.log("UI enable dominant speaker",
-                    displayName,
-                    resourceJid,
-                    isEnable);
+            displayName,
+            resourceJid,
+            isEnable);
 
         var videoSpanId = null;
         var videoContainerId = null;
         if (resourceJid
-                === Strophe.getResourceFromJid(connection.emuc.myroomjid)) {
+            === Strophe.getResourceFromJid(connection.emuc.myroomjid)) {
             videoSpanId = 'localVideoWrapper';
             videoContainerId = 'localVideoContainer';
         }
@@ -680,9 +750,9 @@ var VideoLayout = (function (my) {
         video.width(width);
         video.height(height);
         video.css({  top: verticalIndent + 'px',
-                     bottom: verticalIndent + 'px',
-                     left: horizontalIndent + 'px',
-                     right: horizontalIndent + 'px'});
+            bottom: verticalIndent + 'px',
+            left: horizontalIndent + 'px',
+            right: horizontalIndent + 'px'});
     }
 
     /**
@@ -690,77 +760,137 @@ var VideoLayout = (function (my) {
      */
     my.calculateThumbnailSize = function (videoSpaceWidth) {
         // Calculate the available height, which is the inner window height minus
-       // 39px for the header minus 2px for the delimiter lines on the top and
-       // bottom of the large video, minus the 36px space inside the remoteVideos
-       // container used for highlighting shadow.
-       var availableHeight = 100;
+        // 39px for the header minus 2px for the delimiter lines on the top and
+        // bottom of the large video, minus the 36px space inside the remoteVideos
+        // container used for highlighting shadow.
+        var availableHeight = 100;
 
-       var numvids = $('#remoteVideos>span:visible').length;
+        var numvids = $('#remoteVideos>span:visible').length;
 
-       // Remove the 3px borders arround videos and border around the remote
-       // videos area
-       var availableWinWidth = videoSpaceWidth - 2 * 3 * numvids - 50;
+        // Remove the 3px borders arround videos and border around the remote
+        // videos area
+        var availableWinWidth = videoSpaceWidth - 2 * 3 * numvids - 50;
 
-       var availableWidth = availableWinWidth / numvids;
-       var aspectRatio = 16.0 / 9.0;
-       var maxHeight = Math.min(160, availableHeight);
-       availableHeight = Math.min(maxHeight, availableWidth / aspectRatio);
-       if (availableHeight < availableWidth / aspectRatio) {
-           availableWidth = Math.floor(availableHeight * aspectRatio);
-       }
+        var availableWidth = availableWinWidth / numvids;
+        var aspectRatio = 16.0 / 9.0;
+        var maxHeight = Math.min(160, availableHeight);
+        availableHeight = Math.min(maxHeight, availableWidth / aspectRatio);
+        if (availableHeight < availableWidth / aspectRatio) {
+            availableWidth = Math.floor(availableHeight * aspectRatio);
+        }
 
-       return [availableWidth, availableHeight];
-   };
+        return [availableWidth, availableHeight];
+    };
 
-   /**
-    * Returns an array of the video dimensions, so that it keeps it's aspect
-    * ratio and fits available area with it's larger dimension. This method
-    * ensures that whole video will be visible and can leave empty areas.
-    *
-    * @return an array with 2 elements, the video width and the video height
-    */
-   function getDesktopVideoSize(videoWidth,
+    /**
+     * Returns an array of the video dimensions, so that it keeps it's aspect
+     * ratio and fits available area with it's larger dimension. This method
+     * ensures that whole video will be visible and can leave empty areas.
+     *
+     * @return an array with 2 elements, the video width and the video height
+     */
+    function getDesktopVideoSize(videoWidth,
+                                 videoHeight,
+                                 videoSpaceWidth,
+                                 videoSpaceHeight) {
+        if (!videoWidth)
+            videoWidth = currentVideoWidth;
+        if (!videoHeight)
+            videoHeight = currentVideoHeight;
+
+        var aspectRatio = videoWidth / videoHeight;
+
+        var availableWidth = Math.max(videoWidth, videoSpaceWidth);
+        var availableHeight = Math.max(videoHeight, videoSpaceHeight);
+
+        videoSpaceHeight -= $('#remoteVideos').outerHeight();
+
+        if (availableWidth / aspectRatio >= videoSpaceHeight)
+        {
+            availableHeight = videoSpaceHeight;
+            availableWidth = availableHeight * aspectRatio;
+        }
+
+        if (availableHeight * aspectRatio >= videoSpaceWidth)
+        {
+            availableWidth = videoSpaceWidth;
+            availableHeight = availableWidth / aspectRatio;
+        }
+
+        return [availableWidth, availableHeight];
+    }
+
+    /**
+     * Returns an array of the video dimensions, so that it covers the screen.
+     * It leaves no empty areas, but some parts of the video might not be visible.
+     *
+     * @return an array with 2 elements, the video width and the video height
+     */
+    my.getCameraVideoSize = function(videoWidth,
                                 videoHeight,
                                 videoSpaceWidth,
                                 videoSpaceHeight) {
-       if (!videoWidth)
-           videoWidth = currentVideoWidth;
-       if (!videoHeight)
-           videoHeight = currentVideoHeight;
+        if (!videoWidth)
+            videoWidth = currentVideoWidth;
+        if (!videoHeight)
+            videoHeight = currentVideoHeight;
 
-       var aspectRatio = videoWidth / videoHeight;
+        var aspectRatio = videoWidth / videoHeight;
 
-       var availableWidth = Math.max(videoWidth, videoSpaceWidth);
-       var availableHeight = Math.max(videoHeight, videoSpaceHeight);
+        var availableWidth = Math.max(videoWidth, videoSpaceWidth);
+        var availableHeight = Math.max(videoHeight, videoSpaceHeight);
 
-       videoSpaceHeight -= $('#remoteVideos').outerHeight();
+        if (availableWidth / aspectRatio < videoSpaceHeight) {
+            availableHeight = videoSpaceHeight;
+            availableWidth = availableHeight * aspectRatio;
+        }
 
-       if (availableWidth / aspectRatio >= videoSpaceHeight)
-       {
-           availableHeight = videoSpaceHeight;
-           availableWidth = availableHeight * aspectRatio;
-       }
+        if (availableHeight * aspectRatio < videoSpaceWidth) {
+            availableWidth = videoSpaceWidth;
+            availableHeight = availableWidth / aspectRatio;
+        }
 
-       if (availableHeight * aspectRatio >= videoSpaceWidth)
-       {
-           availableWidth = videoSpaceWidth;
-           availableHeight = availableWidth / aspectRatio;
-       }
+        return [availableWidth, availableHeight];
+    }
 
-       return [availableWidth, availableHeight];
-   }
 
-   /**
-    * Creates the edit display name button.
-    * 
-    * @returns the edit button
-    */
+    /**
+     * Returns an array of the video horizontal and vertical indents,
+     * so that if fits its parent.
+     *
+     * @return an array with 2 elements, the horizontal indent and the vertical
+     * indent
+     */
+    my.getCameraVideoPosition = function(videoWidth,
+                                    videoHeight,
+                                    videoSpaceWidth,
+                                    videoSpaceHeight) {
+        // Parent height isn't completely calculated when we position the video in
+        // full screen mode and this is why we use the screen height in this case.
+        // Need to think it further at some point and implement it properly.
+        var isFullScreen = document.fullScreen ||
+            document.mozFullScreen ||
+            document.webkitIsFullScreen;
+        if (isFullScreen)
+            videoSpaceHeight = window.innerHeight;
+
+        var horizontalIndent = (videoSpaceWidth - videoWidth) / 2;
+        var verticalIndent = (videoSpaceHeight - videoHeight) / 2;
+
+        return [horizontalIndent, verticalIndent];
+    }
+
+    /**
+     * Creates the edit display name button.
+     *
+     * @returns the edit button
+     */
     function createEditDisplayNameButton() {
         var editButton = document.createElement('a');
         editButton.className = 'displayname';
         Util.setTooltip(editButton,
-                        'Click to edit your<br/>display name',
-                        "top");
+            'Click to edit your<br/>display name',
+            "top");
         editButton.innerHTML = '<i class="fa fa-pencil"></i>';
 
         return editButton;
@@ -778,8 +908,8 @@ var VideoLayout = (function (my) {
         parentElement.appendChild(focusIndicator);
 
         Util.setTooltip(parentElement,
-                "The owner of<br/>this conference",
-                "top");
+            "The owner of<br/>this conference",
+            "top");
     }
 
     /**
@@ -791,8 +921,8 @@ var VideoLayout = (function (my) {
     my.updateRemoteVideoMenu = function(jid, isMuted) {
         var muteMenuItem
             = $('#remote_popupmenu_'
-                    + Strophe.getResourceFromJid(jid)
-                    + '>li>a.mutelink');
+            + Strophe.getResourceFromJid(jid)
+            + '>li>a.mutelink');
 
         var mutedIndicator = "<i class='icon-mic-disabled'></i>";
 
@@ -937,7 +1067,7 @@ var VideoLayout = (function (my) {
     $(document).bind('dominantspeakerchanged', function (event, resourceJid) {
         // We ignore local user events.
         if (resourceJid
-                === Strophe.getResourceFromJid(connection.emuc.myroomjid))
+            === Strophe.getResourceFromJid(connection.emuc.myroomjid))
             return;
 
         // Obtain container for new dominant speaker.
@@ -965,4 +1095,4 @@ var VideoLayout = (function (my) {
     return my;
 }(VideoLayout || {}));
 
-    
+module.exports = VideoLayout;

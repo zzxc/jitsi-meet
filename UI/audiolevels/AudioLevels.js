@@ -1,3 +1,5 @@
+var CanvasUtil = require("./CanvasUtil.js");
+
 /**
  * The audio Levels plugin.
  */
@@ -175,9 +177,7 @@ var AudioLevels = (function(my) {
      */
     function getVideoSpanId(resourceJid) {
         var videoSpanId = null;
-        if (resourceJid === AudioLevels.LOCAL_LEVEL
-                || (connection.emuc.myroomjid && resourceJid
-                    === Strophe.getResourceFromJid(connection.emuc.myroomjid)))
+        if (resourceJid === StatisticsActivator.LOCAL_JID)
             videoSpanId = 'localVideoContainer';
         else
             videoSpanId = 'participant_' + resourceJid;
