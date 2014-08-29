@@ -23,15 +23,13 @@ set -e
 
 
 case "$1" in
-    purge|remove)
-        rm /etc/nginx/sites-enabled/jitsi-meet
-        rm /etc/nginx/sites-available/jitsi-meet
+    remove)
         if [ -x "/etc/init.d/nginx" ]; then
             invoke-rc.d nginx reload
         fi
     ;;
 
-    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+    purge|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
     ;;
 
     *)
