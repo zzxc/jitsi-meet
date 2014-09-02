@@ -838,7 +838,7 @@ $(document).ready(function () {
         (!window.localStorage.welcomePageDisabled || window.localStorage.welcomePageDisabled == "false"))
     {
         $("#videoconference_page").hide();
-        $("#domain_name").text(window.location.host + "/");
+        $("#domain_name").text(window.location.protocol + "//" + window.location.host + "/");
         $("span[name='appName']").text(brand.appName);
         $("#enter_room_button").click(function()
         {
