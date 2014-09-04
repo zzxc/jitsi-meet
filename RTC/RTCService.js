@@ -1,19 +1,29 @@
 var EventEmmiter = require("events");
 var RTC = require("./RTC.js");
-var SteamEventType = require("./StreamEventTypes.js");
+var SteamEventType = require("../service/RTC/StreamEventTypes.js");
 
 
 var RTCService = function()
 {
     var eventEmmiter = null;
 
-    var rtc = null;
-
-    function Stream(stream, eventEmmiter)
+    function Stream(stream, isVideoStream)
     {
+        this.isVideoStream = false;
+        if(isVideoStream)
+            this.isVideoStream = isVideoStream;
         this.stream = stream;
         this.eventEmmiter = eventEmmiter;
-        eventEmmiter.emit(StreamActivator.EVENT_TYPE_CREATED, this);
+        var type = null;
+        if(this.isVideoStream)
+        {
+            type = StreamEventType.types.EVENT_TYPE_VIDEO_CREATED;
+        }
+        else
+        {
+            type = StreamEventType.types.EVENT_TYPE_AUDIO_CREATED;
+        }
+        eventEmmiter.emit(type, this);
         var self = this;
         this.stream.onended = function()
         {
@@ -22,16 +32,26 @@ var RTCService = function()
     }
 
     Stream.prototype.streamEnded = function () {
-        this.eventEmmiter.emit(StreamActivator.EVENT_TYPE_ENDED, this);
+        var type = null;
+        if(this.isVideoStream)
+        {
+            type = StreamEventType.types.EVENT_TYPE_VIDEO_ENDED;
+        }
+        else
+        {
+            type = StreamEventType.types.EVENT_TYPE_AUDIO_ENDED;
+        }
+        eventEmmiter.emit(type, this);
+    }
+
+    Stream.prototype.getOriginalStream = function()
+    {
+        return this.stream;
     }
 
     function RTCServiceProto() {
-
-    }
-
-    RTCServiceProto.init()
-    {
-        rtc = new RTC();
+        this.rtc = new RTC();
+        this.rtc.obtainAudioAndVideoPermissions();
     }
 
 
@@ -55,32 +75,37 @@ var RTCService = function()
         eventEmmiter.removeListener(eventType, listener);
     };
 
-    RTCServiceProto.createStream = function (stream) {
-        return new Stream(stream);
+    RTCServiceProto.createStream = function (stream, isVideoStream) {
+        return new Stream(stream, isVideoStream);
     };
 
-    RTCServiceProto.attachMediaStream = function (element, stream) {
-        return rtc.attachMediaStream(element, stream);
+    RTCServiceProto.prototype.getBrowserType = function () {
+        return this.rtc.browser;
     };
 
-    RTCServiceProto.getUserMediaWithConstraints =
+    RTCServiceProto.prototype.getPCConstraints = function () {
+        return this.rtc.pc_constraints;
+    };
+
+    RTCServiceProto.prototype.getUserMediaWithConstraints =
         function(um, success_callback, failure_callback, resolution, bandwidth, fps, desktopStream)
         {
-            return rtc.getUserMediaWithConstraints(um, success_callback, failure_callback, resolution, bandwidth, fps, desktopStream);
+            return this.rtc.getUserMediaWithConstraints(um, success_callback, failure_callback, resolution, bandwidth, fps, desktopStream);
         };
 
-    RTCServiceProto.dispose = function() {
+    RTCServiceProto.prototype.dispose = function() {
         if (eventEmmiter) {
             eventEmmiter.removeAllListeners("statistics.audioLevel");
             eventEmmiter = null;
         }
 
-        if (rtc) {
-            rtc = null;
+        if (this.rtc) {
+            this.rtc = null;
         }
     }
 
-
+    RTCServiceProto.BROWSER_CHROME = "chrome";
+    RTCServiceProto.BROWSER_FIREFOX = "firefox";
 
     return RTCServiceProto;
 }();

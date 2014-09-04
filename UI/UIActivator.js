@@ -9,6 +9,8 @@ var Prezi = require("./prezi/Prezi.js");
 var Etherpad = require("./etherpad/Etherpad.js");
 var Chat = require("./chat/Chat.js");
 var VideoLayout = require("./VideoLayout.js");
+var RTCActivator = require("../RTC/RTCActivator.js");
+var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
 
 var UIActivator = function()
 {
@@ -75,12 +77,23 @@ var UIActivator = function()
         getVideoPosition = VideoLayout.getCameraVideoPosition;
         $('body').popover({ selector: '[data-toggle=popover]',
             trigger: 'click hover'});
-
         VideoLayout.resizeLargeVideoContainer();
-        $(window).resize(function () {
-            VideoLayout.resizeLargeVideoContainer();
-            VideoLayout.positionLarge();
-        });
+        registerListeners();
+        bindEvents();
+        setupAudioLevels();
+        setupPrezi();
+        setupEtherpad();
+
+
+    }
+
+    function registerListeners() {
+        RTCActivator.addStreamListener(function (stream) {
+            VideoLayout.changeLocalAudio(stream.getOriginalStream());
+        }, StreamEventTypes.types.EVENT_TYPE_AUDIO_CREATED);
+        RTCActivator.addStreamListener(function (stream) {
+            VideoLayout.changeLocalVideo(stream.getOriginalStream(), true);
+        }, StreamEventTypes.types.EVENT_TYPE_VIDEO_CREATED);
         // Listen for large video size updates
         document.getElementById('largeVideo')
             .addEventListener('loadedmetadata', function (e) {
@@ -88,10 +101,38 @@ var UIActivator = function()
                 currentVideoHeight = this.videoHeight;
                 VideoLayout.positionLarge(currentVideoWidth, currentVideoHeight);
             });
+    }
+    function bindEvents()
+    {
+        /**
+         * Resizes and repositions videos in full screen mode.
+         */
+        $(document).on('webkitfullscreenchange mozfullscreenchange fullscreenchange',
+            function () {
+                VideoLayout.resizeLargeVideoContainer();
+                VideoLayout.positionLarge();
+                isFullScreen = document.fullScreen ||
+                    document.mozFullScreen ||
+                    document.webkitIsFullScreen;
 
-        setupAudioLevels();
-        setupPrezi();
-        setupEtherpad();
+                if (isFullScreen) {
+                    setView("fullscreen");
+                }
+                else {
+                    setView("default");
+                }
+            }
+        );
+
+        $(window).resize(function () {
+            VideoLayout.resizeLargeVideoContainer();
+            VideoLayout.positionLarge();
+        });
+    }
+
+    UIActivator.getRTCService = function()
+    {
+        return RTCActivator.getRTCService();
     }
 
     UIActivator.getUIService = function()

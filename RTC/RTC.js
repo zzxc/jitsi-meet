@@ -1,3 +1,7 @@
+var RTCService = require("./RTCService.js");
+
+var RTCBrowserTypes = require("../service/RTC/RTCBrowserType.js");
+
 function RTC()
 {
     var RTC = null;
@@ -8,12 +12,8 @@ function RTC()
         if (version >= 22) {
             RTC = {
                 peerconnection: mozRTCPeerConnection,
-                browser: 'firefox',
+                browser: RTCBrowserTypes.RTC_BROWSER_FIREFOX,
                 getUserMedia: navigator.mozGetUserMedia.bind(navigator),
-                attachMediaStream: function (element, stream) {
-                    element[0].mozSrcObject = stream;
-                    element[0].play();
-                },
                 pc_constraints: {}
             };
             if (!MediaStream.prototype.getVideoTracks)
@@ -27,11 +27,8 @@ function RTC()
         console.log('This appears to be Chrome');
         RTC = {
             peerconnection: webkitRTCPeerConnection,
-            browser: 'chrome',
+            browser: RTCBrowserTypes.RTC_BROWSER_CHROME,
             getUserMedia: navigator.webkitGetUserMedia.bind(navigator),
-            attachMediaStream: function (element, stream) {
-                element.attr('src', webkitURL.createObjectURL(stream));
-            },
             // DTLS should now be enabled by default but..
             pc_constraints: {'optional': [{'DtlsSrtpKeyAgreement': 'true'}]}
         };
@@ -211,7 +208,7 @@ RTC.prototype.obtainAudioAndVideoPermissions = function () {
     this.getUserMediaWithConstraints(
         ['audio', 'video'],
         function (avStream) {
-            callback(avStream);
+            RTC.handleLocalStream(avStream);
         },
         function (error) {
             console.error('failed to obtain audio/video stream - stop', error);
@@ -220,7 +217,8 @@ RTC.prototype.obtainAudioAndVideoPermissions = function () {
 
 }
 
-RTC.prototype.handleLocalStream = function(stream) {
+RTC.handleLocalStream = function(stream) {
+
     var audioStream = new webkitMediaStream(stream);
     var videoStream = new webkitMediaStream(stream);
     var videoTracks = stream.getVideoTracks();
@@ -228,17 +226,11 @@ RTC.prototype.handleLocalStream = function(stream) {
     for (var i = 0; i < videoTracks.length; i++) {
         audioStream.removeTrack(videoTracks[i]);
     }
-
-
+    RTCService.createStream(audioStream, false);
     for (i = 0; i < audioTracks.length; i++) {
         videoStream.removeTrack(audioTracks[i]);
     }
-
-    //additional stuff. must be removed from here.
-    VideoLayout.changeLocalAudio(audioStream);
-    startLocalRtpStatsCollector(audioStream);
-    VideoLayout.changeLocalVideo(videoStream, true);
-    maybeDoJoin();
+    RTCService.createStream(videoStream, true);
 }
 
 module.exports = RTC;

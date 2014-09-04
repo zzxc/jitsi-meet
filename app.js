@@ -46,32 +46,9 @@ var getVideoPosition;
 var sessionTerminated = false;
 
 function init() {
-    RTC = setupRTC();
-    if (RTC === null) {
-        window.location.href = 'webrtcrequired.html';
-        return;
-    } else if (RTC.browser !== 'chrome') {
-        window.location.href = 'chromeonly.html';
-        return;
-    }
-
-    obtainAudioAndVideoPermissions(function (stream) {
-        var audioStream = new webkitMediaStream(stream);
-        var videoStream = new webkitMediaStream(stream);
-        var videoTracks = stream.getVideoTracks();
-        var audioTracks = stream.getAudioTracks();
-        for (var i = 0; i < videoTracks.length; i++) {
-            audioStream.removeTrack(videoTracks[i]);
-        }
-        VideoLayout.changeLocalAudio(audioStream);
-        startLocalRtpStatsCollector(audioStream);
-
-        for (i = 0; i < audioTracks.length; i++) {
-            videoStream.removeTrack(audioTracks[i]);
-        }
-        VideoLayout.changeLocalVideo(videoStream, true);
-        maybeDoJoin();
-    });
+    RTCActivator.start();
+    // maybeDoJoin must be in module
+    RTCActivator.addStreamListener(maybeDoJoin(), StreamEventTypes.types.EVENT_TYPE_VIDEO_CREATED);
 
     var jid = document.getElementById('jid').value || config.hosts.anonymousdomain || config.hosts.domain || window.location.hostname;
     connect(jid);
@@ -87,7 +64,7 @@ function connect(jid, password) {
     if (connection.disco) {
         // for chrome, add multistream cap
     }
-    connection.jingle.pc_constraints = RTC.pc_constraints;
+    connection.jingle.pc_constraints = RTCActivator.getRTCService().getPCConstraints();
     if (config.useIPv6) {
         // https://code.google.com/p/webrtc/issues/detail?id=2828
         if (!connection.jingle.pc_constraints.optional) connection.jingle.pc_constraints.optional = [];
@@ -129,22 +106,6 @@ function connect(jid, password) {
     });
 }
 
-/**
- * We ask for audio and video combined stream in order to get permissions and
- * not to ask twice.
- */
-function obtainAudioAndVideoPermissions(callback) {
-    // Get AV
-    getUserMediaWithConstraints(
-        ['audio', 'video'],
-        function (avStream) {
-            callback(avStream);
-        },
-        function (error) {
-            console.error('failed to obtain audio/video stream - stop', error);
-        },
-        config.resolution || '360');
-}
 
 function maybeDoJoin() {
     if (connection && connection.connected && Strophe.getResourceFromJid(connection.jid) // .connected is true while connecting?
@@ -205,33 +166,6 @@ function doJoin() {
         roomjid += '/' + tmpJid;
     }
     connection.emuc.doJoin(roomjid);
-}
-
-function waitForRemoteVideo(selector, ssrc, stream) {
-    if (selector.removed || !selector.parent().is(":visible")) {
-        console.warn("Media removed before had started", selector);
-        return;
-    }
-
-    if (stream.id === 'mixedmslabel') return;
-
-    if (selector[0].currentTime > 0) {
-        RTC.attachMediaStream(selector, stream); // FIXME: why do i have to do this for FF?
-
-        // FIXME: add a class that will associate peer Jid, video.src, it's ssrc and video type
-        //        in order to get rid of too many maps
-        if (ssrc && selector.attr('src')) {
-            videoSrcToSsrc[selector.attr('src')] = ssrc;
-        } else {
-            console.warn("No ssrc given for video", selector);
-        }
-
-        $(document).trigger('videoactive.jingle', [selector]);
-    } else {
-        setTimeout(function () {
-            waitForRemoteVideo(selector, ssrc, stream);
-            }, 250);
-    }
 }
 
 $(document).bind('remotestreamadded.jingle', function (event, data, sid) {
@@ -651,13 +585,6 @@ $(document).bind('presence.muc', function (event, jid, info, pres) {
     }
 });
 
-$(document).bind('presence.status.muc', function (event, jid, info, pres) {
-
-    VideoLayout.setPresenceStatus(
-        'participant_' + Strophe.getResourceFromJid(jid), info.status);
-
-});
-
 $(document).bind('passwordrequired.muc', function (event, jid) {
     console.log('on password required', jid);
 
@@ -1060,26 +987,6 @@ function closePageWarning() {
     else
         return "You are about to leave this conversation.";
 }
-
-/**
- * Resizes and repositions videos in full screen mode.
- */
-$(document).on('webkitfullscreenchange mozfullscreenchange fullscreenchange',
-    function () {
-        VideoLayout.resizeLargeVideoContainer();
-        VideoLayout.positionLarge();
-        isFullScreen = document.fullScreen ||
-            document.mozFullScreen ||
-            document.webkitIsFullScreen;
-
-        if (isFullScreen) {
-            setView("fullscreen");
-        }
-        else {
-            setView("default");
-        }
-    }
-);
 
 /**
  * Sets the current view.

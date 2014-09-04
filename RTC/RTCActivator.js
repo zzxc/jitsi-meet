@@ -21,10 +21,26 @@ var RTCActivator = (function()
 
         start: function () {
             rtcService = new RTCService();
-            rtcService.init();
+        },
 
+        getRTCService: function () {
+            return rtcService;
+        },
+
+        addStreamListener: function(listener, eventType)
+        {
+            return RTCService.addStreamListener(listener, eventType);
+        },
+
+        removeStreamListener: function(listener, eventType)
+        {
+            return RTCService.removeStreamListener(listener, eventType);
+        },
+
+        createStream: function(stream)
+        {
+            RTCService.createStream(stream);
         }
-
 };
 })();
 
