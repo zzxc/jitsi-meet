@@ -18,11 +18,7 @@ var ssrc2jid = {};
  */
 var ssrc2videoType = {};
 var videoSrcToSsrc = {};
-/**
- * Currently focused video "src"(displayed in large video).
- * @type {String}
- */
-var focusedVideoSrc = null;
+
 var mutedAudios = {};
 
 var localVideoSrc = null;
@@ -48,7 +44,7 @@ var sessionTerminated = false;
 function init() {
     RTCActivator.start();
     // maybeDoJoin must be in module
-    RTCActivator.addStreamListener(maybeDoJoin(), StreamEventTypes.types.EVENT_TYPE_VIDEO_CREATED);
+    RTCActivator.addStreamListener(maybeDoJoin(), StreamEventTypes.types.EVENT_TYPE_LOCAL_VIDEO_CREATED);
 
     var jid = document.getElementById('jid').value || config.hosts.anonymousdomain || config.hosts.domain || window.location.hostname;
     connect(jid);
@@ -188,42 +184,9 @@ $(document).bind('remotestreamadded.jingle', function (event, data, sid) {
             }
         }
     }
-
-    mediaStreams.push(new MediaStream(data, sid, thessrc));
-
-    var container;
-    var remotes = document.getElementById('remoteVideos');
-
-    if (data.peerjid) {
-        VideoLayout.ensurePeerContainerExists(data.peerjid);
-
-        container  = document.getElementById(
-                'participant_' + Strophe.getResourceFromJid(data.peerjid));
-    } else {
-        if (data.stream.id !== 'mixedmslabel') {
-            console.error(  'can not associate stream',
-                            data.stream.id,
-                            'with a participant');
-            // We don't want to add it here since it will cause troubles
-            return;
-        }
-        // FIXME: for the mixed ms we dont need a video -- currently
-        container = document.createElement('span');
-        container.id = 'mixedstream';
-        container.className = 'videocontainer';
-        remotes.appendChild(container);
-        Util.playSoundNotification('userJoined');
-    }
-
     var isVideo = data.stream.getVideoTracks().length > 0;
 
-    if (container) {
-        VideoLayout.addRemoteStreamElement( container,
-                                            sid,
-                                            data.stream,
-                                            data.peerjid,
-                                            thessrc);
-    }
+    RTCActivator.getRTCService().createRemoteStream(data, sid, thessrc);
 
     // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
     if (isVideo &&
@@ -236,26 +199,6 @@ $(document).bind('remotestreamadded.jingle', function (event, data, sid) {
         }, 3000);
     }
 });
-
-/**
- * Returns the JID of the user to whom given <tt>videoSrc</tt> belongs.
- * @param videoSrc the video "src" identifier.
- * @returns {null | String} the JID of the user to whom given <tt>videoSrc</tt>
- *                   belongs.
- */
-function getJidFromVideoSrc(videoSrc)
-{
-    if (videoSrc === localVideoSrc)
-        return connection.emuc.myroomjid;
-
-    var ssrc = videoSrcToSsrc[videoSrc];
-    if (!ssrc)
-    {
-        return null;
-    }
-    return ssrc2jid[ssrc];
-}
-
 
 // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
 function sendKeyframe(pc) {
@@ -287,42 +230,23 @@ function sendKeyframe(pc) {
     );
 }
 
-//not used
-// Really mute video, i.e. dont even send black frames
-function muteVideo(pc, unmute) {
-    // FIXME: this probably needs another of those lovely state safeguards...
-    // which checks for iceconn == connected and sigstate == stable
-    pc.setRemoteDescription(pc.remoteDescription,
-        function () {
-            pc.createAnswer(
-                function (answer) {
-                    var sdp = new SDP(answer.sdp);
-                    if (sdp.media.length > 1) {
-                        if (unmute)
-                            sdp.media[1] = sdp.media[1].replace('a=recvonly', 'a=sendrecv');
-                        else
-                            sdp.media[1] = sdp.media[1].replace('a=sendrecv', 'a=recvonly');
-                        sdp.raw = sdp.session + sdp.media.join('');
-                        answer.sdp = sdp.raw;
-                    }
-                    pc.setLocalDescription(answer,
-                        function () {
-                            console.log('mute SLD ok');
-                        },
-                        function (error) {
-                            console.log('mute SLD error');
-                        }
-                    );
-                },
-                function (error) {
-                    console.log(error);
-                }
-            );
-        },
-        function (error) {
-            console.log('muteVideo SRD error');
-        }
-    );
+/**
+ * Returns the JID of the user to whom given <tt>videoSrc</tt> belongs.
+ * @param videoSrc the video "src" identifier.
+ * @returns {null | String} the JID of the user to whom given <tt>videoSrc</tt>
+ *                   belongs.
+ */
+function getJidFromVideoSrc(videoSrc)
+{
+    if (videoSrc === localVideoSrc)
+        return connection.emuc.myroomjid;
+
+    var ssrc = videoSrcToSsrc[videoSrc];
+    if (!ssrc)
+    {
+        return null;
+    }
+    return ssrc2jid[ssrc];
 }
 
 $(document).bind('callincoming.jingle', function (event, sid) {
@@ -409,135 +333,6 @@ $(document).bind('setLocalDescription.jingle', function (event, sid) {
     });
     if (i > 0) {
         connection.emuc.sendPresence();
-    }
-});
-
-$(document).bind('joined.muc', function (event, jid, info) {
-    updateRoomUrl(window.location.href);
-    document.getElementById('localNick').appendChild(
-        document.createTextNode(Strophe.getResourceFromJid(jid) + ' (me)')
-    );
-
-    if (Object.keys(connection.emuc.members).length < 1) {
-        focus = new ColibriFocus(connection, config.hosts.bridge);
-        if (nickname !== null) {
-            focus.setEndpointDisplayName(connection.emuc.myroomjid,
-                                         nickname);
-        }
-        Toolbar.showSipCallButton(true);
-        Toolbar.showRecordingButton(false);
-    }
-
-    if (!focus)
-    {
-        Toolbar.showSipCallButton(false);
-    }
-
-    if (focus && config.etherpad_base) {
-        UIActivator.getUIService().initEtherpad();
-    }
-
-    VideoLayout.showFocusIndicator();
-
-    // Add myself to the contact list.
-    ContactList.addContact(jid);
-
-    // Once we've joined the muc show the toolbar
-    Toolbar.showToolbar();
-
-    if (info.displayName)
-        $(document).trigger('displaynamechanged',
-                            ['localVideoContainer', info.displayName + ' (me)']);
-});
-
-$(document).bind('entered.muc', function (event, jid, info, pres) {
-    console.log('entered', jid, info);
-
-    console.log('is focus?' + focus ? 'true' : 'false');
-
-    // Add Peer's container
-    VideoLayout.ensurePeerContainerExists(jid);
-
-    if (focus !== null) {
-        // FIXME: this should prepare the video
-        if (focus.confid === null) {
-            console.log('make new conference with', jid);
-            focus.makeConference(Object.keys(connection.emuc.members));
-            Toolbar.showRecordingButton(true);
-        } else {
-            console.log('invite', jid, 'into conference');
-            focus.addNewParticipant(jid);
-        }
-    }
-    else if (sharedKey) {
-        Toolbar.updateLockButton();
-    }
-});
-
-$(document).bind('left.muc', function (event, jid) {
-    console.log('left.muc', jid);
-    // Need to call this with a slight delay, otherwise the element couldn't be
-    // found for some reason.
-    window.setTimeout(function () {
-        var container = document.getElementById(
-                'participant_' + Strophe.getResourceFromJid(jid));
-        if (container) {
-            // hide here, wait for video to close before removing
-            $(container).hide();
-            VideoLayout.resizeThumbnails();
-        }
-    }, 10);
-
-    // Unlock large video
-    if (focusedVideoSrc)
-    {
-        if (getJidFromVideoSrc(focusedVideoSrc) === jid)
-        {
-            console.info("Focused video owner has left the conference");
-            focusedVideoSrc = null;
-        }
-    }
-
-    connection.jingle.terminateByJid(jid);
-
-    if (focus == null
-            // I shouldn't be the one that left to enter here.
-            && jid !== connection.emuc.myroomjid
-            && connection.emuc.myroomjid === connection.emuc.list_members[0]
-            // If our session has been terminated for some reason
-            // (kicked, hangup), don't try to become the focus
-            && !sessionTerminated) {
-        console.log('welcome to our new focus... myself');
-        focus = new ColibriFocus(connection, config.hosts.bridge);
-        if (nickname !== null) {
-            focus.setEndpointDisplayName(connection.emuc.myroomjid,
-                                         nickname);
-        }
-
-        Toolbar.showSipCallButton(true);
-
-        if (Object.keys(connection.emuc.members).length > 0) {
-            focus.makeConference(Object.keys(connection.emuc.members));
-            Toolbar.showRecordingButton(true);
-        }
-        $(document).trigger('focusechanged.muc', [focus]);
-    }
-    else if (focus && Object.keys(connection.emuc.members).length === 0) {
-        console.log('everyone left');
-        // FIXME: closing the connection is a hack to avoid some
-        // problems with reinit
-        disposeConference();
-        focus = new ColibriFocus(connection, config.hosts.bridge);
-        if (nickname !== null) {
-            focus.setEndpointDisplayName(connection.emuc.myroomjid,
-                                         nickname);
-        }
-        Toolbar.showSipCallButton(true);
-        Toolbar.showRecordingButton(false);
-    }
-    if (connection.emuc.getPrezi(jid)) {
-        $(document).trigger('presentationremoved.muc',
-                            [jid, connection.emuc.getPrezi(jid)]);
     }
 });
 
@@ -960,21 +755,6 @@ function setSharedKey(sKey) {
 
 function setRecordingToken(token) {
     recordingToken = token;
-}
-
-/**
- * Updates the room invite url.
- */
-function updateRoomUrl(newRoomUrl) {
-    roomUrl = newRoomUrl;
-
-    // If the invite dialog has been already opened we update the information.
-    var inviteLink = document.getElementById('inviteLinkRef');
-    if (inviteLink) {
-        inviteLink.value = roomUrl;
-        inviteLink.select();
-        document.getElementById('jqi_state0_buttonInvite').disabled = false;
-    }
 }
 
 /**

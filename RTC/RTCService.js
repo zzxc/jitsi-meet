@@ -1,29 +1,22 @@
 var EventEmmiter = require("events");
 var RTC = require("./RTC.js");
-var SteamEventType = require("../service/RTC/StreamEventTypes.js");
+var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
+var MediaStream = require("./MediaStream.js");
 
 
 var RTCService = function()
 {
     var eventEmmiter = null;
 
-    function Stream(stream, isVideoStream)
+    function Stream(stream, type)
     {
         this.isVideoStream = false;
         if(isVideoStream)
             this.isVideoStream = isVideoStream;
         this.stream = stream;
         this.eventEmmiter = eventEmmiter;
-        var type = null;
-        if(this.isVideoStream)
-        {
-            type = StreamEventType.types.EVENT_TYPE_VIDEO_CREATED;
-        }
-        else
-        {
-            type = StreamEventType.types.EVENT_TYPE_AUDIO_CREATED;
-        }
-        eventEmmiter.emit(type, this);
+        this.type = type;
+        eventEmmiter.emit(StreamEventTypes.types.EVENT_TYPE_LOCAL_CREATED, this);
         var self = this;
         this.stream.onended = function()
         {
@@ -35,11 +28,11 @@ var RTCService = function()
         var type = null;
         if(this.isVideoStream)
         {
-            type = StreamEventType.types.EVENT_TYPE_VIDEO_ENDED;
+            type = StreamEventTypes.types.EVENT_TYPE_LOCAL_VIDEO_ENDED;
         }
         else
         {
-            type = StreamEventType.types.EVENT_TYPE_AUDIO_ENDED;
+            type = StreamEventTypes.types.EVENT_TYPE_LOCAL_AUDIO_ENDED;
         }
         eventEmmiter.emit(type, this);
     }
@@ -52,6 +45,8 @@ var RTCService = function()
     function RTCServiceProto() {
         this.rtc = new RTC();
         this.rtc.obtainAudioAndVideoPermissions();
+        this.localStreams = new Array();
+        this.remoteStreams = new Array();
     }
 
 
@@ -75,9 +70,17 @@ var RTCService = function()
         eventEmmiter.removeListener(eventType, listener);
     };
 
-    RTCServiceProto.createStream = function (stream, isVideoStream) {
-        return new Stream(stream, isVideoStream);
+    RTCServiceProto.prototype.createLocalStream = function (stream, type) {
+        var localStream =  new Stream(stream, type);
+        this.localStreams.push(localStream);
+        return localStream;
     };
+    
+    RTCServiceProto.prototype.createRemoteStream = function (data, sid, thessrc) {
+        var remoteStream = new MediaStream(data, sid, thessrc, eventEmmiter);
+        this.remoteStreams.push(remoteStream);
+        return remoteStream;
+    }
 
     RTCServiceProto.prototype.getBrowserType = function () {
         return this.rtc.browser;
@@ -103,9 +106,6 @@ var RTCService = function()
             this.rtc = null;
         }
     }
-
-    RTCServiceProto.BROWSER_CHROME = "chrome";
-    RTCServiceProto.BROWSER_FIREFOX = "firefox";
 
     return RTCServiceProto;
 }();

@@ -35,12 +35,8 @@ var RTCActivator = (function()
         removeStreamListener: function(listener, eventType)
         {
             return RTCService.removeStreamListener(listener, eventType);
-        },
-
-        createStream: function(stream)
-        {
-            RTCService.createStream(stream);
         }
+
 };
 })();
 

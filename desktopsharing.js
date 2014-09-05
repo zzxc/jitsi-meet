@@ -252,8 +252,7 @@ function newStreamCreated(stream) {
     var oldStream = connection.jingle.localVideo;
 
     connection.jingle.localVideo = stream;
-
-    VideoLayout.changeLocalVideo(stream, !isUsingScreenStream);
+    RTCActivator.getRTCService().createLocalStream(stream, "desktop");
 
     var conferenceHandler = getConferenceHandler();
     if (conferenceHandler) {

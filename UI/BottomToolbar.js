@@ -1,3 +1,6 @@
+var ContactList = require("./ContactList.js");
+var Chat = require("./chat/chat.js");
+
 var BottomToolbar = (function (my) {
     my.toggleChat = function() {
         if (ContactList.isVisible()) {

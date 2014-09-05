@@ -1,18 +1,24 @@
 var AudioLevels = require("./audiolevels/AudioLevels.js");
 var RTCBrowserType = require("../service/RTC/RTCBrowserType.js");
-var UIActivator = require("./UIService.js");
+var UIService = require("./UIService.js");
+var UIActivator = require("./UIActivator.js");
 
 var VideoLayout = (function (my) {
     var preMuted = false;
     var currentDominantSpeaker = null;
     var lastNCount = config.channelLastN;
     var lastNEndpointsCache = [];
-    var browser = null
+    var browser = null;
+    /**
+     * Currently focused video "src"(displayed in large video).
+     * @type {String}
+     */
+    my.focusedVideoSrc = null;
 
     function attachMediaStream(element, stream) {
         if(browser == null)
         {
-            browser = UIActivator.getRTCService().getBrowserType();
+            browser = UIService.getBrowserType();
         }
         switch (browser)
         {
@@ -55,7 +61,7 @@ var VideoLayout = (function (my) {
         // Set default display name.
         setDisplayName('localVideoContainer');
 
-        UIActivator.getUIService().updateAudioLevelCanvas();
+        UIService.updateAudioLevelCanvas();
 
         var localVideoSelector = $('#' + localVideo.id);
         // Add click handler to both video and video wrapper elements in case
@@ -245,7 +251,7 @@ var VideoLayout = (function (my) {
 
     my.handleVideoThumbClicked = function(videoSrc) {
         // Restore style for previously focused video
-        var focusJid = getJidFromVideoSrc(focusedVideoSrc);
+        var focusJid = getJidFromVideoSrc(VideoLayout.focusedVideoSrc);
         var oldContainer = getParticipantContainer(focusJid);
 
         if (oldContainer) {
@@ -253,9 +259,9 @@ var VideoLayout = (function (my) {
         }
 
         // Unlock current focused. 
-        if (focusedVideoSrc === videoSrc)
+        if (VideoLayout.focusedVideoSrc === videoSrc)
         {
-            focusedVideoSrc = null;
+            VideoLayout.focusedVideoSrc = null;
             var dominantSpeakerVideo = null;
             // Enable the currently set dominant speaker.
             if (currentDominantSpeaker) {
@@ -272,7 +278,7 @@ var VideoLayout = (function (my) {
         }
 
         // Lock new video
-        focusedVideoSrc = videoSrc;
+        VideoLayout.focusedVideoSrc = videoSrc;
 
         // Update focused/pinned interface.
         var userJid = getJidFromVideoSrc(videoSrc);
@@ -414,7 +420,7 @@ var VideoLayout = (function (my) {
             addRemoteVideoMenu(peerJid, container);
 
         remotes.appendChild(container);
-        UIActivator.getUIService().updateAudioLevelCanvas(peerJid);
+        UIService.updateAudioLevelCanvas(peerJid);
 
         return container;
     };
@@ -1173,6 +1179,40 @@ var VideoLayout = (function (my) {
             return containerElement.id.substring(i + 12); 
     };
 
+    my.onRemoteStreamAdded = function (stream) {
+        var container;
+        var remotes = document.getElementById('remoteVideos');
+
+        if (stream.peerjid) {
+            VideoLayout.ensurePeerContainerExists(stream.peerjid);
+
+            container  = document.getElementById(
+                    'participant_' + Strophe.getResourceFromJid(stream.peerjid));
+        } else {
+            if (stream.stream.id !== 'mixedmslabel') {
+                console.error(  'can not associate stream',
+                    stream.stream.id,
+                    'with a participant');
+                // We don't want to add it here since it will cause troubles
+                return;
+            }
+            // FIXME: for the mixed ms we dont need a video -- currently
+            container = document.createElement('span');
+            container.id = 'mixedstream';
+            container.className = 'videocontainer';
+            remotes.appendChild(container);
+            Util.playSoundNotification('userJoined');
+        }
+
+        if (container) {
+            VideoLayout.addRemoteStreamElement( container,
+                stream.sid,
+                stream.stream,
+                stream.peerjid,
+                stream.ssrc);
+        }
+    }
+
     /**
      * Adds the remote video menu element for the given <tt>jid</tt> in the
      * given <tt>parentElement</tt>.
@@ -1327,7 +1367,7 @@ var VideoLayout = (function (my) {
 
         // Local video will not have container found, but that's ok
         // since we don't want to switch to local video.
-        if (container && !focusedVideoSrc)
+        if (container && !VideoLayout.focusedVideoSrc)
         {
             var video = container.getElementsByTagName("video");
 
@@ -1376,7 +1416,7 @@ var VideoLayout = (function (my) {
                     console.log("Add to last N", resourceJid);
                     showPeerContainer(resourceJid, true);
 
-                    mediaStreams.some(function (mediaStream) {
+                    UIActivator.getRTCService().remoteStreams.some(function (mediaStream) {
                         if (mediaStream.peerjid
                             && Strophe.getResourceFromJid(mediaStream.peerjid)
                                 === resourceJid
@@ -1439,7 +1479,7 @@ var VideoLayout = (function (my) {
             // Update the large video to the last added video only if there's no
             // current dominant or focused speaker or update it to the current
             // dominant speaker.
-            if ((!focusedVideoSrc && !VideoLayout.getDominantSpeakerResourceJid())
+            if ((!VideoLayout.focusedVideoSrc && !VideoLayout.getDominantSpeakerResourceJid())
                 || (parentResourceJid
                 && VideoLayout.getDominantSpeakerResourceJid()
                     === parentResourceJid)) {

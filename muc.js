@@ -119,14 +119,33 @@ Strophe.addConnectionPlugin('emuc', {
             if (member.affiliation == 'owner') this.isOwner = true;
             if (!this.joined) {
                 this.joined = true;
-                $(document).trigger('joined.muc', [from, member]);
+                var noMembers = false;
+                if (Object.keys(connection.emuc.members).length < 1) {
+                    noMembers = true;
+                    focus = new ColibriFocus(connection, config.hosts.bridge);
+                    if (nickname !== null) {
+                        focus.setEndpointDisplayName(connection.emuc.myroomjid,
+                            nickname);
+                    }
+                }
+                UIActivator.getUIService().onMucJoined(from, member, noMembers);
                 this.list_members.push(from);
             }
         } else if (this.members[from] === undefined) {
             // new participant
             this.members[from] = member;
             this.list_members.push(from);
-            $(document).trigger('entered.muc', [from, member, pres]);
+            UIActivator.getUIService().onMucEntered(from, member, pres);
+            if (focus !== null) {
+                // FIXME: this should prepare the video
+                if (focus.confid === null) {
+                    console.log('make new conference with', jid);
+                    focus.makeConference(Object.keys(connection.emuc.members));
+                } else {
+                    console.log('invite', jid, 'into conference');
+                    focus.addNewParticipant(jid);
+                }
+            }
         }
         // Always trigger presence to update bindings
         console.log('presence change from', from);
@@ -158,6 +177,51 @@ Strophe.addConnectionPlugin('emuc', {
             }
         }
         return true;
+    },
+    leftMuc:function (jid) {
+        console.log('left.muc', jid);
+        UIActivator.getUIService().onMucLeft(jid);
+        connection.jingle.terminateByJid(jid);
+
+        if (focus == null
+            // I shouldn't be the one that left to enter here.
+            && jid !== connection.emuc.myroomjid
+            && connection.emuc.myroomjid === connection.emuc.list_members[0]
+            // If our session has been terminated for some reason
+            // (kicked, hangup), don't try to become the focus
+            && !sessionTerminated) {
+            console.log('welcome to our new focus... myself');
+            focus = new ColibriFocus(connection, config.hosts.bridge);
+            if (nickname !== null) {
+                focus.setEndpointDisplayName(connection.emuc.myroomjid,
+                    nickname);
+            }
+
+            UIActivator.getUIService().updateButtons(null, true);
+
+            if (Object.keys(connection.emuc.members).length > 0) {
+                focus.makeConference(Object.keys(connection.emuc.members));
+                UIActivator.getUIService().updateButtons(true, null);
+            }
+            $(document).trigger('focusechanged.muc', [focus]);
+        }
+        else if (focus && Object.keys(connection.emuc.members).length === 0) {
+            console.log('everyone left');
+            // FIXME: closing the connection is a hack to avoid some
+            // problems with reinit
+            disposeConference();
+            focus = new ColibriFocus(connection, config.hosts.bridge);
+            if (nickname !== null) {
+                focus.setEndpointDisplayName(connection.emuc.myroomjid,
+                    nickname);
+            }
+            UIActivator.getUIService().updateButtons(true, false);
+        }
+
+        if (connection.emuc.getPrezi(jid)) {
+            $(document).trigger('presentationremoved.muc',
+                [jid, connection.emuc.getPrezi(jid)]);
+        }
     },
     onPresenceError: function (pres) {
         var from = pres.getAttribute('from');

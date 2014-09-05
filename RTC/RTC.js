@@ -1,4 +1,4 @@
-var RTCService = require("./RTCService.js");
+var RTCActivator = require("./RTCActivator.js");
 
 var RTCBrowserTypes = require("../service/RTC/RTCBrowserType.js");
 
@@ -16,10 +16,6 @@ function RTC()
                 getUserMedia: navigator.mozGetUserMedia.bind(navigator),
                 pc_constraints: {}
             };
-            if (!MediaStream.prototype.getVideoTracks)
-                MediaStream.prototype.getVideoTracks = function () { return []; };
-            if (!MediaStream.prototype.getAudioTracks)
-                MediaStream.prototype.getAudioTracks = function () { return []; };
             RTCSessionDescription = mozRTCSessionDescription;
             RTCIceCandidate = mozRTCIceCandidate;
         }
@@ -226,11 +222,11 @@ RTC.handleLocalStream = function(stream) {
     for (var i = 0; i < videoTracks.length; i++) {
         audioStream.removeTrack(videoTracks[i]);
     }
-    RTCService.createStream(audioStream, false);
+    RTCActivator.getRTCService().createLocalStream(audioStream, "audio");
     for (i = 0; i < audioTracks.length; i++) {
         videoStream.removeTrack(audioTracks[i]);
     }
-    RTCService.createStream(videoStream, true);
+    RTCActivator.getRTCService().createLocalStream(videoStream, "video");
 }
 
 module.exports = RTC;

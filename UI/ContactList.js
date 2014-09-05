@@ -1,3 +1,5 @@
+var VideoLayout = require("./videolayout.js");
+
 /**
  * Contact list.
  */

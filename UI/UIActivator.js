@@ -63,7 +63,7 @@ var UIActivator = function()
 
                 // Update the large video to the last added video only if there's no
                 // current active or focused speaker.
-                if (!focusedVideoSrc && !VideoLayout.getDominantSpeakerResourceJid())
+                if (!VideoLayout.focusedVideoSrc && !VideoLayout.getDominantSpeakerResourceJid())
                     VideoLayout.updateLargeVideo(videoelem.attr('src'), 1);
 
                 VideoLayout.showFocusIndicator();
@@ -89,11 +89,23 @@ var UIActivator = function()
 
     function registerListeners() {
         RTCActivator.addStreamListener(function (stream) {
-            VideoLayout.changeLocalAudio(stream.getOriginalStream());
-        }, StreamEventTypes.types.EVENT_TYPE_AUDIO_CREATED);
+            switch (stream.type)
+            {
+                case "audio":
+                    VideoLayout.changeLocalAudio(stream.getOriginalStream());
+                    break;
+                case "video":
+                    VideoLayout.changeLocalVideo(stream.getOriginalStream(), true);
+                    break;
+                case "desktop":
+                    VideoLayout.changeLocalVideo(stream, !isUsingScreenStream);
+                    break;
+            }
+        }, StreamEventTypes.types.EVENT_TYPE_LOCAL_CREATED);
+
         RTCActivator.addStreamListener(function (stream) {
-            VideoLayout.changeLocalVideo(stream.getOriginalStream(), true);
-        }, StreamEventTypes.types.EVENT_TYPE_VIDEO_CREATED);
+            VideoLayout.onRemoteStreamAdded(stream);
+        }, StreamEventTypes.types.EVENT_TYPE_REMOTE_CREATED);
         // Listen for large video size updates
         document.getElementById('largeVideo')
             .addEventListener('loadedmetadata', function (e) {

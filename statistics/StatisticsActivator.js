@@ -64,7 +64,7 @@ function StatisticsActivator()
     
     StatisticsActivator.start = function () {
         RTCActivator.addStreamListener(StatisticsActivator.onStreamCreated,
-            SteamEventType.types.EVENT_TYPE_AUDIO_CREATED);
+            SteamEventType.types.EVENT_TYPE_LOCAL_AUDIO_CREATED);
     }
 
     StatisticsActivator.onStreamCreated = function(stream)

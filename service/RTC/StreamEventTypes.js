@@ -4,13 +4,13 @@ function SteamEventType(type)
 }
 
 SteamEventType.types = {
-    EVENT_TYPE_AUDIO_CREATED: new SteamEventType("stream.audio_created"),
+    EVENT_TYPE_LOCAL_CREATED: new SteamEventType("stream.local_created"),
 
-    EVENT_TYPE_AUDIO_ENDED: new SteamEventType("stream.audio_ended"),
+    EVENT_TYPE_LOCAL_ENDED: new SteamEventType("stream.local_ended"),
 
-    EVENT_TYPE_VIDEO_CREATED: new SteamEventType("stream.video_created"),
+    EVENT_TYPE_REMOTE_CREATED: new SteamEventType("stream.remote_created"),
 
-    EVENT_TYPE_VIDEO_ENDED: new SteamEventType("stream.video_ended")
+    EVENT_TYPE_REMOTE_ENDED: new SteamEventType("stream.remote_ended")
 }
 
 module.exports = SteamEventType;
