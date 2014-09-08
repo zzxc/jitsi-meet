@@ -321,3 +321,5 @@ var Toolbar = (function (my) {
 
     return my;
 }(Toolbar || {}));
+
+module.exports = Toolbar;

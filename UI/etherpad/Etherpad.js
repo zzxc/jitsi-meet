@@ -1,5 +1,6 @@
 /* global $, config, Prezi, Util, connection, setLargeVideoVisible, dockToolbar */
 var Prezi = require("../prezi/Prezi.js");
+//var UIUtil = require("../UIUtil.js");
 
 var Etherpad = (function (my) {
     var etherpadName = null;
@@ -82,7 +83,8 @@ var Etherpad = (function (my) {
             var remoteVideos = $('#remoteVideos');
             var availableHeight
                 = window.innerHeight - remoteVideos.outerHeight();
-            var availableWidth = Util.getAvailableVideoWidth();
+            console.log(UIUtil);
+            var availableWidth = UIUtil.getAvailableVideoWidth();
 
             $('#etherpad>iframe').width(availableWidth);
             $('#etherpad>iframe').height(availableHeight);

@@ -1,7 +1,8 @@
-var AudioLevels = require("./audiolevels/AudioLevels.js");
 var RTCBrowserType = require("../service/RTC/RTCBrowserType.js");
 var UIService = require("./UIService.js");
 var UIActivator = require("./UIActivator.js");
+var UIUtil = require("./UIUtil.js");
+var Chat = require("./chat/Chat");
 
 var VideoLayout = (function (my) {
     var preMuted = false;
@@ -836,10 +837,12 @@ var VideoLayout = (function (my) {
      * Resizes the large video container.
      */
     my.resizeLargeVideoContainer = function () {
+        console.log(Chat);
         Chat.resizeChat();
         var availableHeight = window.innerHeight;
-        var availableWidth = Util.getAvailableVideoWidth();
-
+        console.log(UIUtil);
+        var availableWidth = UIUtil.getAvailableVideoWidth();
+//        var availableWidth = 1280;
         if (availableWidth < 0 || availableHeight < 0) return;
 
         $('#videospace').width(availableWidth);

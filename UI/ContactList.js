@@ -1,4 +1,4 @@
-var VideoLayout = require("./videolayout.js");
+var VideoLayout = require("./VideoLayout.js");
 
 /**
  * Contact list.
@@ -235,3 +235,5 @@ var ContactList = (function (my) {
 
     return my;
 }(ContactList || {}));
+
+module.exports = ContactList;

@@ -30,29 +30,13 @@
     <script src="desktopsharing.js?v=2"></script><!-- desktop sharing -->
     <script src="data_channels.js?v=3"></script><!-- data channels -->
     <script src="app.js?v=7"></script><!-- application logic -->
-    <script src="commands.js?v=1"></script><!-- application logic -->
-    <script src="chat.js?v=9"></script><!-- chat logic -->
-    <script src="contact_list.js?v=1"></script><!-- contact list logic -->
-    <script src="util.js?v=6"></script><!-- utility functions -->
-    <script src="etherpad.js?v=8"></script><!-- etherpad plugin -->
-    <script src="prezi.js?v=4"></script><!-- prezi plugin -->
-    <script src="smileys.js?v=2"></script><!-- smiley images -->
-    <script src="replacement.js?v=6"></script><!-- link and smiley replacement -->
+    <script src="UI/UI_bundle.js"></script><!-- chat logic -->
+    <script src="RTC/RTC_bundle.js"></script>
+    <script src="util/util.js?v=6"></script><!-- utility functions -->
     <script src="moderatemuc.js?v=3"></script><!-- moderator plugin -->
     <script src="analytics.js?v=1"></script><!-- google analytics plugin -->
-    <script src="rtp_sts.js?v=1"></script><!-- RTP stats processing -->
-    <script src="local_sts.js?v=1"></script><!-- Local stats processing -->
-    <script src="videolayout.js?v=8"></script><!-- video ui -->
-    <script src="toolbar.js?v=4"></script><!-- toolbar ui -->
-    <script src="canvas_util.js?v=1"></script><!-- canvas drawing utils -->
-<<<<<<< HEAD
-    <script src="UI/audio_levels.js?v=1"></script><!-- audio levels plugin -->
-=======
-    <script src="audio_levels.js?v=1"></script><!-- audio levels plugin -->
-    <script src="media_stream.js?v=1"></script><!-- media stream -->
-    <script src="bottom_toolbar.js?v=1"></script><!-- media stream -->
+    <script src="statistics/Statistics_bundle.js?v=1"></script><!-- RTP stats processing -->
     <script src="roomname_generator.js?v=1"></script><!-- generator for random room names -->
->>>>>>> master
     <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
     <link rel="stylesheet" href="css/font.css?v=3"/>
     <link rel="stylesheet" type="text/css" media="screen" href="css/main.css?v=23"/>
@@ -69,7 +53,6 @@
     <link rel="chrome-webstore-item" href="https://chrome.google.com/webstore/detail/diibjkoicjeejcmhdnailmkgecihlobk">
     <script src="libs/jquery-impromptu.js"></script>
     <script src="libs/jquery.autosize.js"></script>
-    <script src="libs/prezi_player.js?v=2"></script>
   </head>
   <body>
     <div id="welcome_page">
@@ -168,31 +151,31 @@
                             <i id="recordButton" class="icon-recEnable"></i>
                         </a>
                     </span>
-                    <div class="header_button_separator"></div>
-                    <a class="button" data-toggle="popover" data-placement="bottom" data-content="Lock / unlock room" onclick="Toolbar.openLockDialog();">
-                        <i id="lockIcon" class="icon-security"></i>
-                    </a>
-                    <div class="header_button_separator"></div>
-                    <a class="button" data-toggle="popover" data-placement="bottom" data-content="Invite others" onclick="Toolbar.openLinkDialog();">
-                        <i class="icon-link"></i>
-                    </a>
-                    <div class="header_button_separator"></div>
-                    <span class="toolbar_span">
-                        <a class="button" data-toggle="popover" data-placement="bottom" data-content="Open / close chat" onclick='BottomToolbar.toggleChat();'>
-                            <i id="chatButton" class="icon-chat"></i>
-                        </a>
-                        <span id="unreadMessages"></span>
-                    </span>
-                    <div class="header_button_separator"></div>
-                    <a class="button" data-toggle="popover" data-placement="bottom" data-content="Share Prezi" onclick='Prezi.openPreziDialog();'>
-                        <i class="icon-prezi"></i>
-                    </a>
-                    <span id="etherpadButton">
-                        <div class="header_button_separator"></div>
-                        <a class="button" data-toggle="popover" data-placement="bottom" data-content="Shared document" onclick='Etherpad.toggleEtherpad(0);'>
-                            <i class="icon-share-doc"></i>
-                        </a>
-                    </span>
+                    <!--<div class="header_button_separator"></div>-->
+                    <!--<a class="button" data-toggle="popover" data-placement="bottom" data-content="Lock / unlock room" onclick="Toolbar.openLockDialog();">-->
+                        <!--<i id="lockIcon" class="icon-security"></i>-->
+                    <!--</a>-->
+                    <!--<div class="header_button_separator"></div>-->
+                    <!--<a class="button" data-toggle="popover" data-placement="bottom" data-content="Invite others" onclick="Toolbar.openLinkDialog();">-->
+                        <!--<i class="icon-link"></i>-->
+                    <!--</a>-->
+                    <!--<div class="header_button_separator"></div>-->
+                    <!--<span class="toolbar_span">-->
+                        <!--<a class="button" data-toggle="popover" data-placement="bottom" data-content="Open / close chat" onclick='BottomToolbar.toggleChat();'>-->
+                            <!--<i id="chatButton" class="icon-chat"></i>-->
+                        <!--</a>-->
+                        <!--<span id="unreadMessages"></span>-->
+                    <!--</span>-->
+                    <!--<div class="header_button_separator"></div>-->
+                    <!--<a class="button" data-toggle="popover" data-placement="bottom" data-content="Share Prezi" onclick='Prezi.openPreziDialog();'>-->
+                        <!--<i class="icon-prezi"></i>-->
+                    <!--</a>-->
+                    <!--<span id="etherpadButton">-->
+                        <!--<div class="header_button_separator"></div>-->
+                        <!--<a class="button" data-toggle="popover" data-placement="bottom" data-content="Shared document" onclick='Etherpad.toggleEtherpad(0);'>-->
+                            <!--<i class="icon-share-doc"></i>-->
+                        <!--</a>-->
+                    <!--</span>-->
                     <div class="header_button_separator"></div>
                     <span id="desktopsharing" style="display: none">
                         <a class="button" data-toggle="popover" data-placement="bottom" data-content="Share screen" onclick="toggleScreenSharing();">
@@ -228,7 +211,7 @@
           </form>
         </div>
         <div id="reloadPresentation"><a onclick='Prezi.reloadPresentation();'><i title="Reload Prezi" class="fa fa-repeat fa-lg"></i></a></div>
-        <div id="videospace" onmousemove="Toolbar.showToolbar();">
+        <div id="videospace" onmousemove="//Toolbar.showToolbar();">
             <div id="largeVideoContainer" class="videocontainer">
                 <div id="presentation"></div>
                 <div id="etherpad"></div>

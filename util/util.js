@@ -47,17 +47,6 @@ var Util = (function (my) {
         return $('<div/>').text(unsafeText).html();
     };
 
-    /**
-     * Returns the available video width.
-     */
-    my.getAvailableVideoWidth = function () {
-        var chatspaceWidth
-            = (Chat.isVisible() || ContactList.isVisible())
-                ? $('#chatspace').width()
-                : 0;
-
-        return window.innerWidth - chatspaceWidth;
-    };
 
     my.imageToGrayScale = function (canvas) {
         var context = canvas.getContext('2d');

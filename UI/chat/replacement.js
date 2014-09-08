@@ -70,6 +70,7 @@ function Replacement()
     }
 }
 
-module.exports = Replacement
+module.exports = Replacement;
+
 
 

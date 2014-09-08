@@ -1,7 +1,7 @@
 var AudioLevels = require("./audiolevels/AudioLevels.js");
 var Etherpad = require("./etherpad/Etherpad.js");
-var VideoLayout = requre("./VideoLayout.js");
-var Toolbar = require("./toolbar.js");
+var VideoLayout = require("./VideoLayout.js");
+var Toolbar = require("./Toolbar.js");
 
 var UIService = function() {
     /**

@@ -1,43 +1,42 @@
-/**
- * Created by hristo on 8/20/14.
- */
-
 var RTCService = require("./RTCService.js");
 
 var RTCActivator = (function()
 {
     var rtcService = null;
 
-    return {
+    function RTCActivatorProto()
+    {
+        
+    }
+
+    RTCActivatorProto.stop=  function () {
+        rtcService.dispose();
+        rtcService = null;
+
+    }
 
 
-        stop:  function () {
-            rtcService.dispose();
-            rtcService = null;
+    RTCActivatorProto.start= function () {
+        rtcService = new RTCService();
+    }
 
-        },
+    RTCActivatorProto.getRTCService= function () {
+        return rtcService;
+    }
 
+    RTCActivatorProto.addStreamListener= function(listener, eventType)
+    {
+        console.log(RTCService);
+        console.log(require("./RTCService.js"));
+        return RTCService.addStreamListener(listener, eventType);
+    }
 
-
-        start: function () {
-            rtcService = new RTCService();
-        },
-
-        getRTCService: function () {
-            return rtcService;
-        },
-
-        addStreamListener: function(listener, eventType)
-        {
-            return RTCService.addStreamListener(listener, eventType);
-        },
-
-        removeStreamListener: function(listener, eventType)
-        {
-            return RTCService.removeStreamListener(listener, eventType);
-        }
-
-};
+    RTCActivatorProto.removeStreamListener= function(listener, eventType)
+    {
+        return RTCService.removeStreamListener(listener, eventType);
+    }
+    
+    return RTCActivatorProto;
 })();
 
 module.exports = RTCActivator;

@@ -55,7 +55,7 @@ var RTCService = function()
             throw "Illegal argument";
 
         if (eventEmmiter == null) {
-            eventEmmiter = new EventEmitter();
+            eventEmmiter = new EventEmmiter();
         }
 
         eventEmmiter.on(eventType, listener);
@@ -109,3 +109,5 @@ var RTCService = function()
 
     return RTCServiceProto;
 }();
+
+module.exports = RTCService;

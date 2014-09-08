@@ -1,21 +1,17 @@
-/**
- * Created by hristo on 8/4/14.
- */
-
-var UIService = require("UIService");
+var UIService = require("./UIService");
+var VideoLayout = require("./VideoLayout.js");
 var StatisticsActivator = require("../statistics/StatisticsActivator.js");
 var AudioLevels = require("./audiolevels/AudioLevels.js");
 var Prezi = require("./prezi/Prezi.js");
 var Etherpad = require("./etherpad/Etherpad.js");
 var Chat = require("./chat/Chat.js");
-var VideoLayout = require("./VideoLayout.js");
 var RTCActivator = require("../RTC/RTCActivator.js");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
 
 var UIActivator = function()
 {
     var uiService = null;
-    function UIActivator()
+    function UIActivatorProto()
     {
 
     }
@@ -71,7 +67,7 @@ var UIActivator = function()
         });
     }
 
-    UIActivator.start = function () {
+    UIActivatorProto.start = function () {
         // By default we use camera
         getVideoSize = VideoLayout.getCameraVideoSize;
         getVideoPosition = VideoLayout.getCameraVideoPosition;
@@ -142,12 +138,12 @@ var UIActivator = function()
         });
     }
 
-    UIActivator.getRTCService = function()
+    UIActivatorProto.getRTCService = function()
     {
         return RTCActivator.getRTCService();
     }
 
-    UIActivator.getUIService = function()
+    UIActivatorProto.getUIService = function()
     {
         if(uiService == null)
         {
@@ -156,7 +152,7 @@ var UIActivator = function()
         return uiService;
     }
 
-    return UIAactivator;
+    return UIActivatorProto;
 }();
 
 module.exports = UIActivator;

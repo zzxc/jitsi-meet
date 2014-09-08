@@ -215,3 +215,5 @@ var AudioLevels = (function(my) {
     return my;
 
 })(AudioLevels || {});
+
+module.exports = AudioLevels;

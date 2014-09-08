@@ -1,4 +1,5 @@
 var PreziPlayer = require("./PreziPlayer.js");
+var UIUtil = require("../UIUtil.js");
 
 var Prezi = (function (my) {
     var preziPlayer = null;
@@ -286,7 +287,8 @@ var Prezi = (function (my) {
      * Returns the presentation width.
      */
     function getPresentationWidth() {
-        var availableWidth = Util.getAvailableVideoWidth();
+        console.log(UIUtil);
+        var availableWidth = UIUtil.getAvailableVideoWidth();
         var availableHeight = getPresentationHeihgt();
 
         var aspectRatio = 16.0 / 9.0;

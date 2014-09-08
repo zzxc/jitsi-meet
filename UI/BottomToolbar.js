@@ -1,5 +1,5 @@
 var ContactList = require("./ContactList.js");
-var Chat = require("./chat/chat.js");
+var Chat = require("./chat/Chat.js");
 
 var BottomToolbar = (function (my) {
     my.toggleChat = function() {
@@ -33,3 +33,5 @@ var BottomToolbar = (function (my) {
 
     return my;
 }(BottomToolbar || {}));
+
+module.exports = BottomToolbar;
