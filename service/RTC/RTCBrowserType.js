@@ -1,10 +1,7 @@
-function RTCBrowserType(type)
-{
-    this.type = type;
-}
+var RTCBrowserType = {
+    RTC_BROWSER_CHROME: "rtc_browser.chrome",
 
-module.exports = {
-    RTC_BROWSER_CHROME: new RTCBrowserType("chrome"),
+    RTC_BROWSER_FIREFOX: "rtc_browser.firefox"
+};
 
-    RTC_BROWSER_FIREFOX: new RTCBrowserType("firefox")
-}
+module.exports = RTCBrowserType;

@@ -287,7 +287,6 @@ var Prezi = (function (my) {
      * Returns the presentation width.
      */
     function getPresentationWidth() {
-        console.log(UIUtil);
         var availableWidth = UIUtil.getAvailableVideoWidth();
         var availableHeight = getPresentationHeihgt();
 

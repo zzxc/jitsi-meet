@@ -1,11 +1,9 @@
 var UIService = require("./UIService");
 var VideoLayout = require("./VideoLayout.js");
-var StatisticsActivator = require("../statistics/StatisticsActivator.js");
 var AudioLevels = require("./audiolevels/AudioLevels.js");
 var Prezi = require("./prezi/Prezi.js");
 var Etherpad = require("./etherpad/Etherpad.js");
 var Chat = require("./chat/Chat.js");
-var RTCActivator = require("../RTC/RTCActivator.js");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
 
 var UIActivator = function()
@@ -97,11 +95,11 @@ var UIActivator = function()
                     VideoLayout.changeLocalVideo(stream, !isUsingScreenStream);
                     break;
             }
-        }, StreamEventTypes.types.EVENT_TYPE_LOCAL_CREATED);
+        }, StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
 
         RTCActivator.addStreamListener(function (stream) {
             VideoLayout.onRemoteStreamAdded(stream);
-        }, StreamEventTypes.types.EVENT_TYPE_REMOTE_CREATED);
+        }, StreamEventTypes.EVENT_TYPE_REMOTE_CREATED);
         // Listen for large video size updates
         document.getElementById('largeVideo')
             .addEventListener('loadedmetadata', function (e) {

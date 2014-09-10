@@ -29,7 +29,7 @@ var MediaStream = (function() {
         this.session = connection.jingle.sessions[sid];
         this.type = (this.stream.getVideoTracks().length > 0)
                     ? this.VIDEO_TYPE : this.AUDIO_TYPE;
-        eventEmmiter.emit(StreamEventTypes.types.EVENT_TYPE_REMOTE_CREATED, this);
+        eventEmmiter.emit(StreamEventTypes.EVENT_TYPE_REMOTE_CREATED, this);
     }
 
     if(RTC.browser == RTCBrowserType.RTC_BROWSER_FIREFOX)

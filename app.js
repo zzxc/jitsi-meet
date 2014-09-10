@@ -43,8 +43,6 @@ var sessionTerminated = false;
 
 function init() {
     RTCActivator.start();
-    // maybeDoJoin must be in module
-    RTCActivator.addStreamListener(maybeDoJoin(), StreamEventTypes.types.EVENT_TYPE_LOCAL_VIDEO_CREATED);
 
     var jid = document.getElementById('jid').value || config.hosts.anonymousdomain || config.hosts.domain || window.location.hostname;
     connect(jid);

@@ -1,8 +1,11 @@
-var RTCBrowserType = require("../service/RTC/RTCBrowserType.js");
-var UIService = require("./UIService.js");
-var UIActivator = require("./UIActivator.js");
-var UIUtil = require("./UIUtil.js");
-var Chat = require("./chat/Chat");
+var dep =
+{
+    "RTCBrowserType": function(){ return require("../service/RTC/RTCBrowserType.js")},
+    "UIService": function(){ return require("./UIService.js")},
+    "UIActivator": function(){ return require("./UIActivator.js")},
+    "Chat": function(){ return require("./chat/Chat")},
+    "UIUtil": function(){ return require("./UIUtil.js")}
+}
 
 var VideoLayout = (function (my) {
     var preMuted = false;
@@ -19,14 +22,14 @@ var VideoLayout = (function (my) {
     function attachMediaStream(element, stream) {
         if(browser == null)
         {
-            browser = UIService.getBrowserType();
+            browser = dep.UIService().getBrowserType();
         }
         switch (browser)
         {
-            case RTCBrowserType.RTC_BROWSER_CHROME:
+            case dep.RTCBrowserType().RTC_BROWSER_CHROME:
                 element.attr('src', webkitURL.createObjectURL(stream));
                 break;
-            case RTCBrowserType.RTC_BROWSER_FIREFOX:
+            case dep.RTCBrowserType().RTC_BROWSER_FIREFOX:
                 element[0].mozSrcObject = stream;
                 element[0].play();
                 break;
@@ -62,7 +65,7 @@ var VideoLayout = (function (my) {
         // Set default display name.
         setDisplayName('localVideoContainer');
 
-        UIService.updateAudioLevelCanvas();
+        dep.UIService().updateAudioLevelCanvas();
 
         var localVideoSelector = $('#' + localVideo.id);
         // Add click handler to both video and video wrapper elements in case
@@ -421,7 +424,7 @@ var VideoLayout = (function (my) {
             addRemoteVideoMenu(peerJid, container);
 
         remotes.appendChild(container);
-        UIService.updateAudioLevelCanvas(peerJid);
+        dep.UIService().updateAudioLevelCanvas(peerJid);
 
         return container;
     };
@@ -653,7 +656,7 @@ var VideoLayout = (function (my) {
                             connection.emuc.addDisplayNameToPresence(nickname);
                             connection.emuc.sendPresence();
 
-                            Chat.setChatConversationMode(true);
+                            dep.Chat().setChatConversationMode(true);
                         }
 
                         if (!$('#localDisplayName').is(":visible")) {
@@ -837,12 +840,9 @@ var VideoLayout = (function (my) {
      * Resizes the large video container.
      */
     my.resizeLargeVideoContainer = function () {
-        console.log(Chat);
-        Chat.resizeChat();
+        dep.Chat().resizeChat();
         var availableHeight = window.innerHeight;
-        console.log(UIUtil);
-        var availableWidth = UIUtil.getAvailableVideoWidth();
-//        var availableWidth = 1280;
+        var availableWidth = dep.UIUtil().getAvailableVideoWidth();
         if (availableWidth < 0 || availableHeight < 0) return;
 
         $('#videospace').width(availableWidth);
@@ -1419,7 +1419,7 @@ var VideoLayout = (function (my) {
                     console.log("Add to last N", resourceJid);
                     showPeerContainer(resourceJid, true);
 
-                    UIActivator.getRTCService().remoteStreams.some(function (mediaStream) {
+                    dep.UIActivator().getRTCService().remoteStreams.some(function (mediaStream) {
                         if (mediaStream.peerjid
                             && Strophe.getResourceFromJid(mediaStream.peerjid)
                                 === resourceJid

@@ -10,13 +10,10 @@ var RTCService = function()
 
     function Stream(stream, type)
     {
-        this.isVideoStream = false;
-        if(isVideoStream)
-            this.isVideoStream = isVideoStream;
         this.stream = stream;
         this.eventEmmiter = eventEmmiter;
         this.type = type;
-        eventEmmiter.emit(StreamEventTypes.types.EVENT_TYPE_LOCAL_CREATED, this);
+        eventEmmiter.emit(StreamEventTypes.EVENT_TYPE_LOCAL_CREATED, this);
         var self = this;
         this.stream.onended = function()
         {
@@ -25,16 +22,7 @@ var RTCService = function()
     }
 
     Stream.prototype.streamEnded = function () {
-        var type = null;
-        if(this.isVideoStream)
-        {
-            type = StreamEventTypes.types.EVENT_TYPE_LOCAL_VIDEO_ENDED;
-        }
-        else
-        {
-            type = StreamEventTypes.types.EVENT_TYPE_LOCAL_AUDIO_ENDED;
-        }
-        eventEmmiter.emit(type, this);
+        eventEmmiter.emit(StreamEventTypes.EVENT_TYPE_LOCAL_ENDED, this);
     }
 
     Stream.prototype.getOriginalStream = function()
@@ -47,13 +35,11 @@ var RTCService = function()
         this.rtc.obtainAudioAndVideoPermissions();
         this.localStreams = new Array();
         this.remoteStreams = new Array();
+        RTCService.addStreamListener(maybeDoJoin(), StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
     }
 
 
     RTCServiceProto.addStreamListener = function (listener, eventType) {
-        if(!(eventType instanceof SteamEventType))
-            throw "Illegal argument";
-
         if (eventEmmiter == null) {
             eventEmmiter = new EventEmmiter();
         }

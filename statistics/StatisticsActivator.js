@@ -4,36 +4,41 @@
 var LocalStats = require("./LocalStatsCollector.js");
 var RTPStats = require("./RTPStatsCollector.js");
 var EventEmmiter = require("events");
-var RTCActivator = require("../RTC/RTCActivator.js");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
 
-function StatisticsActivator()
+var StatisticsActivator = function()
 {
     var eventEmmiter = null;
 
     var localStats = null;
 
     var rtpStats = null;
-    StatisticsActivator.LOCAL_JID = 'local';
 
-    StatisticsActivator.addAudioLevelListener = function(listener)
+    function StatisticsActivatorProto()
+    {
+
+    }
+
+    StatisticsActivatorProto.LOCAL_JID = 'local';
+
+    StatisticsActivatorProto.addAudioLevelListener = function(listener)
     {
         if(eventEmmiter == null)
         {
-            eventEmmiter = new EventEmitter();
+            eventEmmiter = new EventEmmiter();
         }
 
         eventEmmiter.on("statistics.audioLevel", listener);
     }
 
-    StatisticsActivator.removeAudioLevelListener = function(listener)
+    StatisticsActivatorProto.removeAudioLevelListener = function(listener)
     {
         if(eventEmmiter == null)
             return;
         eventEmmiter.removeListener("statistics.audioLevel", listener);
     }
 
-    StatisticsActivator.stop = function () {
+    StatisticsActivatorProto.stop = function () {
         if(eventEmmiter)
         {
             eventEmmiter.removeAllListeners("statistics.audioLevel");
@@ -44,7 +49,7 @@ function StatisticsActivator()
 
     }
 
-    StatisticsActivator.stopLocal = function()
+    StatisticsActivatorProto.stopLocal = function()
     {
         if(localStats)
         {
@@ -53,7 +58,7 @@ function StatisticsActivator()
         }
     }
 
-    StatisticsActivator.stopRemote = function()
+    StatisticsActivatorProto.stopRemote = function()
     {
         if(rtpStats)
         {
@@ -61,19 +66,19 @@ function StatisticsActivator()
             rtpStats = null;
         }
     }
-    
-    StatisticsActivator.start = function () {
+
+    StatisticsActivatorProto.start = function () {
         RTCActivator.addStreamListener(StatisticsActivator.onStreamCreated,
-            SteamEventType.types.EVENT_TYPE_LOCAL_AUDIO_CREATED);
+            StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
     }
 
-    StatisticsActivator.onStreamCreated = function(stream)
+    StatisticsActivatorProto.onStreamCreated = function(stream)
     {
         localStats = new LocalStats(stream.getOriginalStream(), 100, eventEmmiter);
         localStats.start();
     }
 
-    StatisticsActivator.startRemoteStats = function (peerconnection) {
+    StatisticsActivatorProto.startRemoteStats = function (peerconnection) {
         if (config.enableRtpStats)
         {
             if(rtpStats)
@@ -88,7 +93,9 @@ function StatisticsActivator()
 
     }
 
-}
+    return StatisticsActivatorProto;
+
+}();
 
 
 
