@@ -611,7 +611,6 @@ $(document).ready(function () {
     }
 
     $("#welcome_page").hide();
-    Chat.init();
 
     $('body').popover({ selector: '[data-toggle=popover]',
                         trigger: 'click hover'});

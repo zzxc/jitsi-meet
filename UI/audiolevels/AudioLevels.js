@@ -1,3 +1,4 @@
+var VideoLayout = require("../VideoLayout");
 var CanvasUtil = require("./CanvasUtil.js");
 
 /**

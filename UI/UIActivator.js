@@ -5,6 +5,7 @@ var Prezi = require("./prezi/Prezi.js");
 var Etherpad = require("./etherpad/Etherpad.js");
 var Chat = require("./chat/Chat.js");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
+var Toolbar = require("./toolbar");
 
 var UIActivator = function()
 {
@@ -63,6 +64,10 @@ var UIActivator = function()
                 VideoLayout.showFocusIndicator();
             }
         });
+    }
+
+    function setupToolbar() {
+        Toolbar.init();
     }
 
     UIActivatorProto.start = function () {
@@ -149,6 +154,21 @@ var UIActivator = function()
         }
         return uiService;
     }
+
+    UIActivatorProto.chatAddError = function(errorMessage, originalText)
+    {
+        return Chat.chatAddError(errorMessage, originalText);
+    }
+
+    UIActivatorProto.chatSetSubject = function(text)
+    {
+        return Chat.chatSetSubject(text);
+    }
+
+    UIActivatorProto.updateChatConversation = function (from, displayName, message) {
+        return Chat.updateChatConversation(from, displayName, message);
+    }
+
 
     return UIActivatorProto;
 }();

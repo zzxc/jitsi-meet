@@ -2,34 +2,29 @@ var RTCActivator = require("./RTCActivator");
 
 var RTCBrowserTypes = require("../service/RTC/RTCBrowserType.js");
 
-function RTC()
+function RTC(RTCService)
 {
-    var RTC = null;
-
+    this.service = RTCService;
     if (navigator.mozGetUserMedia) {
         console.log('This appears to be Firefox');
         var version = parseInt(navigator.userAgent.match(/Firefox\/([0-9]+)\./)[1], 10);
         if (version >= 22) {
-            RTC = {
-                peerconnection: mozRTCPeerConnection,
-                browser: RTCBrowserTypes.RTC_BROWSER_FIREFOX,
-                getUserMedia: navigator.mozGetUserMedia.bind(navigator),
-                pc_constraints: {}
-            };
+            this.peerconnection = mozRTCPeerConnection;
+            this.browser = RTCBrowserTypes.RTC_BROWSER_FIREFOX;
+            this.getUserMedia = navigator.mozGetUserMedia.bind(navigator);
+            this.pc_constraints = {};
             RTCSessionDescription = mozRTCSessionDescription;
             RTCIceCandidate = mozRTCIceCandidate;
         }
     } else if (navigator.webkitGetUserMedia) {
         console.log('This appears to be Chrome');
-        RTC = {
-            peerconnection: webkitRTCPeerConnection,
-            browser: RTCBrowserTypes.RTC_BROWSER_CHROME,
-            getUserMedia: navigator.webkitGetUserMedia.bind(navigator),
-            // DTLS should now be enabled by default but..
-            pc_constraints: {'optional': [{'DtlsSrtpKeyAgreement': 'true'}]}
-        };
+        this.peerconnection = webkitRTCPeerConnection;
+        this.browser = RTCBrowserTypes.RTC_BROWSER_CHROME;
+        this.getUserMedia = navigator.webkitGetUserMedia.bind(navigator);
+        // DTLS should now be enabled by default but..
+        this.pc_constraints = {'optional': [{'DtlsSrtpKeyAgreement': 'true'}]};
         if (navigator.userAgent.indexOf('Android') != -1) {
-            RTC.pc_constraints = {}; // disable DTLS on Android
+            this.pc_constraints = {}; // disable DTLS on Android
         }
         if (!webkitMediaStream.prototype.getVideoTracks) {
             webkitMediaStream.prototype.getVideoTracks = function () {
@@ -42,19 +37,19 @@ function RTC()
             };
         }
     }
-    if (RTC === null) {
+    else
+    {
         try { console.log('Browser does not appear to be WebRTC-capable'); } catch (e) { }
 
         window.location.href = 'webrtcrequired.html';
         return;
     }
 
-    if (RTC.browser !== 'chrome') {
+    if (this.browser !== RTCBrowserTypes.RTC_BROWSER_CHROME) {
         window.location.href = 'chromeonly.html';
         return;
     }
 
-    return RTC;
 }
 
 RTC.prototype.getUserMediaWithConstraints
@@ -201,10 +196,11 @@ RTC.prototype.getUserMediaWithConstraints
 }
 
 RTC.prototype.obtainAudioAndVideoPermissions = function () {
+    var self = this;
     this.getUserMediaWithConstraints(
         ['audio', 'video'],
         function (avStream) {
-            RTC.handleLocalStream(avStream);
+            self.handleLocalStream(avStream);
         },
         function (error) {
             console.error('failed to obtain audio/video stream - stop', error);
@@ -213,7 +209,7 @@ RTC.prototype.obtainAudioAndVideoPermissions = function () {
 
 }
 
-RTC.handleLocalStream = function(stream) {
+RTC.prototype.handleLocalStream = function(stream) {
 
     var audioStream = new webkitMediaStream(stream);
     var videoStream = new webkitMediaStream(stream);
@@ -222,11 +218,11 @@ RTC.handleLocalStream = function(stream) {
     for (var i = 0; i < videoTracks.length; i++) {
         audioStream.removeTrack(videoTracks[i]);
     }
-    RTCActivator.getRTCService().createLocalStream(audioStream, "audio");
+    this.service.createLocalStream(audioStream, "audio");
     for (i = 0; i < audioTracks.length; i++) {
         videoStream.removeTrack(audioTracks[i]);
     }
-    RTCActivator.getRTCService().createLocalStream(videoStream, "video");
+    this.service.createLocalStream(videoStream, "video");
 }
 
 module.exports = RTC;

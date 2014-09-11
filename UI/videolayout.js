@@ -1,10 +1,10 @@
 var dep =
 {
     "RTCBrowserType": function(){ return require("../service/RTC/RTCBrowserType.js")},
-    "UIService": function(){ return require("./UIService.js")},
     "UIActivator": function(){ return require("./UIActivator.js")},
     "Chat": function(){ return require("./chat/Chat")},
-    "UIUtil": function(){ return require("./UIUtil.js")}
+    "UIUtil": function(){ return require("./UIUtil.js")},
+    "ContactList": function(){ return require("./ContactList")}
 }
 
 var VideoLayout = (function (my) {
@@ -22,7 +22,7 @@ var VideoLayout = (function (my) {
     function attachMediaStream(element, stream) {
         if(browser == null)
         {
-            browser = dep.UIService().getBrowserType();
+            browser = dep.UIActivator().getRTCService().getBrowserType();
         }
         switch (browser)
         {
@@ -65,7 +65,7 @@ var VideoLayout = (function (my) {
         // Set default display name.
         setDisplayName('localVideoContainer');
 
-        dep.UIService().updateAudioLevelCanvas();
+        dep.UIActivator().getUIService().updateAudioLevelCanvas();
 
         var localVideoSelector = $('#' + localVideo.id);
         // Add click handler to both video and video wrapper elements in case
@@ -376,7 +376,7 @@ var VideoLayout = (function (my) {
      * <tt>false</tt> - otherwise
      */
     my.ensurePeerContainerExists = function(peerJid) {
-        ContactList.ensureAddContact(peerJid);
+        dep.ContactList().ensureAddContact(peerJid);
 
         var resourceJid = Strophe.getResourceFromJid(peerJid);
 
@@ -424,7 +424,7 @@ var VideoLayout = (function (my) {
             addRemoteVideoMenu(peerJid, container);
 
         remotes.appendChild(container);
-        dep.UIService().updateAudioLevelCanvas(peerJid);
+        dep.UIActivator().getUIService().updateAudioLevelCanvas(peerJid);
 
         return container;
     };
@@ -478,7 +478,7 @@ var VideoLayout = (function (my) {
                 VideoLayout.removeRemoteStreamElement(stream, container);
 
                 if (peerJid)
-                    ContactList.removeContact(peerJid);
+                    dep.ContactList().removeContact(peerJid);
             };
 
             // Add click handler.

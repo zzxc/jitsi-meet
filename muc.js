@@ -266,7 +266,7 @@ Strophe.addConnectionPlugin('emuc', {
         var type = msg.getAttribute("type");
         if(type == "error")
         {
-            Chat.chatAddError($(msg).find('>text').text(), txt);
+            UIActivator.chatAddError($(msg).find('>text').text(), txt);
             return true;
         }
 
@@ -275,7 +275,7 @@ Strophe.addConnectionPlugin('emuc', {
         {
             var subjectText = subject.text();
             if(subjectText || subjectText == "") {
-                Chat.chatSetSubject(subjectText);
+                UIActivator.chatSetSubject(subjectText);
                 console.log("Subject is changed to " + subjectText);
             }
         }
@@ -284,7 +284,7 @@ Strophe.addConnectionPlugin('emuc', {
         if (txt) {
             console.log('chat', nick, txt);
 
-            Chat.updateChatConversation(from, nick, txt);
+            UIActivator.updateChatConversation(from, nick, txt);
         }
         return true;
     },

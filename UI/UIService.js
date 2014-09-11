@@ -2,6 +2,7 @@ var AudioLevels = require("./audiolevels/AudioLevels.js");
 var Etherpad = require("./etherpad/Etherpad.js");
 var VideoLayout = require("./VideoLayout.js");
 var Toolbar = require("./Toolbar.js");
+var ContactList = require("./ContactList");
 
 var UIService = function() {
     /**
@@ -36,7 +37,7 @@ var UIService = function() {
         VideoLayout.checkChangeLargeVideo(removedVideoSrc);
     }
 
-    UIServiceProto.prototype.onMucJoined = function (jid, info, noMember) {
+    UIServiceProto.prototype.onMucJoined = function (jid, info, noMembers) {
         updateRoomUrl(window.location.href);
         document.getElementById('localNick').appendChild(
             document.createTextNode(Strophe.getResourceFromJid(jid) + ' (me)')

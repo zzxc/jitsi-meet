@@ -1,8 +1,64 @@
+var BottomToolbar = require("./BottomToolbar");
+var Prezi = require("./prezi/prezi");
+var Etherpad = require("./etherpad/Etherpad");
+
 var Toolbar = (function (my) {
     var INITIAL_TOOLBAR_TIMEOUT = 20000;
     var TOOLBAR_TIMEOUT = INITIAL_TOOLBAR_TIMEOUT;
 
     var toolbarTimeout = null;
+
+    var buttonHandlers = {
+        "toolbar_button_mute": function () {
+            return toggleAudio();
+        },
+        "toolbar_button_camera": function () {
+            buttonClick("#video", "icon-camera icon-camera-disabled");
+            return toggleVideo();
+        },
+        "toolbar_button_record": function () {
+            return toggleRecording();
+        }
+        ,
+        "toolbar_button_security": function () {
+            return Toolbar.openLockDialog();
+        },
+        "toolbar_button_link": function () {
+            return Toolbar.openLinkDialog();
+        },
+        "toolbar_button_chat": function () {
+            return BottomToolbar.toggleChat();
+        },
+        "toolbar_button_prezi": function () {
+            return Prezi.openPreziDialog();
+        },
+        "toolbar_button_etherpad": function () {
+            return Etherpad.toggleEtherpad(0);
+        },
+        "toolbar_button_desktopsharing": function () {
+            return toggleScreenSharing();
+        },
+        "toolbar_button_fullScreen": function()
+        {
+            buttonClick("#fullScreen", "icon-full-screen icon-exit-full-screen");
+            return Toolbar.toggleFullScreen();
+        },
+        "toolbar_button_sip": function () {
+            return callSipButtonClicked();
+        },
+        "toolbar_button_hangup": function () {
+            return hangup();
+        }
+    }
+    //sets onclick handlers
+    my.init = function () {
+        for(var k in buttonHandlers)
+        {
+            var el = $(k);
+            if(el)
+                el.click(buttonHandlers[k]);
+        }
+    }
 
     /**
      * Opens the lock room dialog.

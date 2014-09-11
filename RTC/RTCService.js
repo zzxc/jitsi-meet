@@ -31,11 +31,11 @@ var RTCService = function()
     }
 
     function RTCServiceProto() {
-        this.rtc = new RTC();
+        this.rtc = new RTC(this);
         this.rtc.obtainAudioAndVideoPermissions();
         this.localStreams = new Array();
         this.remoteStreams = new Array();
-        RTCService.addStreamListener(maybeDoJoin(), StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
+        RTCService.addStreamListener(maybeDoJoin, StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
     }
 
 

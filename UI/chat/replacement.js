@@ -1,4 +1,4 @@
-function Replacement()
+var Replacement = function()
 {
     /**
      * Replaces common smiley strings with images
@@ -32,10 +32,14 @@ function Replacement()
         return body;
     }
 
+    function ReplacementProto() {
+
+    }
+
     /**
      * Processes links and smileys in "body"
      */
-    Replacement.processReplacements = function(body)
+    ReplacementProto.processReplacements = function(body)
     {
         //make links clickable
         body = linkify(body);
@@ -50,7 +54,7 @@ function Replacement()
      * Finds and replaces all links in the links in "body"
      * with their <a href=""></a>
      */
-    Replacement.linkify = function(inputText)
+    ReplacementProto.linkify = function(inputText)
     {
         var replacedText, replacePattern1, replacePattern2, replacePattern3;
 
@@ -68,7 +72,8 @@ function Replacement()
 
         return replacedText;
     }
-}
+    return ReplacementProto;
+}();
 
 module.exports = Replacement;
 
