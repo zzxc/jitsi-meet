@@ -139,11 +139,11 @@ Strophe.addConnectionPlugin('emuc', {
             if (focus !== null) {
                 // FIXME: this should prepare the video
                 if (focus.confid === null) {
-                    console.log('make new conference with', jid);
+                    console.log('make new conference with', from);
                     focus.makeConference(Object.keys(connection.emuc.members));
                 } else {
-                    console.log('invite', jid, 'into conference');
-                    focus.addNewParticipant(jid);
+                    console.log('invite', from, 'into conference');
+                    focus.addNewParticipant(from);
                 }
             }
         }
@@ -153,7 +153,7 @@ Strophe.addConnectionPlugin('emuc', {
 
         // Trigger status message update
         if (member.status) {
-            $(document).trigger('presence.status.muc', [from, member, pres]);
+            UIActivator.getUIService().onMucPresenceStatus(from, member, pres);
         }
 
         return true;

@@ -4,7 +4,8 @@ var dep =
     "UIActivator": function(){ return require("./UIActivator.js")},
     "Chat": function(){ return require("./chat/Chat")},
     "UIUtil": function(){ return require("./UIUtil.js")},
-    "ContactList": function(){ return require("./ContactList")}
+    "ContactList": function(){ return require("./ContactList")},
+    "Toolbar": function(){ return require("./Toolbar")}
 }
 
 var VideoLayout = (function (my) {
@@ -1458,7 +1459,7 @@ var VideoLayout = (function (my) {
                 console.warn("No ssrc given for video", selector);
             }
 
-            videoActive([selector]);
+            videoActive(selector);
         } else {
             setTimeout(function () {
                 waitForRemoteVideo(selector, ssrc, stream);
@@ -1493,13 +1494,120 @@ var VideoLayout = (function (my) {
         }
     };
 
-    //document events setup
-    $(document).bind('presence.status.muc', function (event, jid, info, pres) {
+    my.resizeVideoSpace = function(rightColumnEl, rightColumnSize, isVisible)
+    {
+        var videospace = $('#videospace');
 
-        VideoLayout.setPresenceStatus(
-                'participant_' + Strophe.getResourceFromJid(jid), info.status);
+        var videospaceWidth = window.innerWidth - rightColumnSize[0];
+        var videospaceHeight = window.innerHeight;
+        var videoSize
+            = getVideoSize(null, null, videospaceWidth, videospaceHeight);
+        var videoWidth = videoSize[0];
+        var videoHeight = videoSize[1];
+        var videoPosition = getVideoPosition(videoWidth,
+            videoHeight,
+            videospaceWidth,
+            videospaceHeight);
+        var horizontalIndent = videoPosition[0];
+        var verticalIndent = videoPosition[1];
 
-    });
+        var thumbnailSize = VideoLayout.calculateThumbnailSize(videospaceWidth);
+        var thumbnailsWidth = thumbnailSize[0];
+        var thumbnailsHeight = thumbnailSize[1];
+
+        if (isVisible) {
+            videospace.animate({right: rightColumnSize[0],
+                    width: videospaceWidth,
+                    height: videospaceHeight},
+                {queue: false,
+                    duration: 500});
+
+            $('#remoteVideos').animate({height: thumbnailsHeight},
+                {queue: false,
+                    duration: 500});
+
+            $('#remoteVideos>span').animate({height: thumbnailsHeight,
+                    width: thumbnailsWidth},
+                {queue: false,
+                    duration: 500,
+                    complete: function() {
+                        $(document).trigger(
+                            "remotevideo.resized",
+                            [thumbnailsWidth,
+                                thumbnailsHeight]);
+                    }});
+
+            $('#largeVideoContainer').animate({ width: videospaceWidth,
+                    height: videospaceHeight},
+                {queue: false,
+                    duration: 500
+                });
+
+            $('#largeVideo').animate({  width: videoWidth,
+                    height: videoHeight,
+                    top: verticalIndent,
+                    bottom: verticalIndent,
+                    left: horizontalIndent,
+                    right: horizontalIndent},
+                {   queue: false,
+                    duration: 500
+                });
+
+            rightColumnEl.hide("slide", { direction: "right",
+                queue: false,
+                duration: 500});
+        }
+        else {
+            // Undock the toolbar when the chat is shown and if we're in a
+            // video mode.
+            if (VideoLayout.isLargeVideoVisible())
+                dep.Toolbar().dockToolbar(false);
+
+            videospace.animate({right: rightColumnSize[0],
+                    width: videospaceWidth,
+                    height: videospaceHeight},
+                {queue: false,
+                    duration: 500,
+                    complete: function () {
+                        rightColumnEl.trigger('shown');
+                    }
+                });
+
+            $('#remoteVideos').animate({height: thumbnailsHeight},
+                {queue: false,
+                    duration: 500});
+
+            $('#remoteVideos>span').animate({height: thumbnailsHeight,
+                    width: thumbnailsWidth},
+                {queue: false,
+                    duration: 500,
+                    complete: function() {
+                        $(document).trigger(
+                            "remotevideo.resized",
+                            [thumbnailsWidth, thumbnailsHeight]);
+                    }});
+
+            $('#largeVideoContainer').animate({ width: videospaceWidth,
+                    height: videospaceHeight},
+                {queue: false,
+                    duration: 500
+                });
+
+            $('#largeVideo').animate({  width: videoWidth,
+                    height: videoHeight,
+                    top: verticalIndent,
+                    bottom: verticalIndent,
+                    left: horizontalIndent,
+                    right: horizontalIndent},
+                {queue: false,
+                    duration: 500
+                });
+
+            rightColumnEl.show("slide", { direction: "right",
+                queue: false,
+                duration: 500});
+        }
+    }
 
     return my;
 }(VideoLayout || {}));

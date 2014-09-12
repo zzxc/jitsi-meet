@@ -217,7 +217,7 @@ StatsCollector.prototype.processReport = function ()
             jidStats.setSsrcAudioLevel(ssrc, audioLevel);
             //my roomjid shouldn't be global
             if(jid != connection.emuc.myroomjid)
-                this.eventEmmiter("statistics.audioLevel", jid, audioLevel);
+                this.eventEmmiter.emit("statistics.audioLevel", Strophe.getResourceFromJid(jid), audioLevel);
         }
 
         var key = 'packetsReceived';

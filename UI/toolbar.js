@@ -53,11 +53,7 @@ var Toolbar = (function (my) {
     //sets onclick handlers
     my.init = function () {
         for(var k in buttonHandlers)
-        {
-            var el = $(k);
-            if(el)
-                el.click(buttonHandlers[k]);
-        }
+            $("#" + k).click(buttonHandlers[k]);
     }
 
     /**

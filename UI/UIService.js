@@ -93,6 +93,11 @@ var UIService = function() {
         }
     }
 
+    UIServiceProto.prototype.onMucPresenceStatus = function ( jid, info, pres) {
+        VideoLayout.setPresenceStatus(
+                'participant_' + Strophe.getResourceFromJid(jid), info.status);
+    }
+
     UIServiceProto.prototype.onMucLeft = function(jid)
     {
         // Need to call this with a slight delay, otherwise the element couldn't be

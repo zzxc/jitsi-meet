@@ -1,3 +1,4 @@
+
 var Replacement = function()
 {
     /**
@@ -42,7 +43,7 @@ var Replacement = function()
     ReplacementProto.processReplacements = function(body)
     {
         //make links clickable
-        body = linkify(body);
+        body = ReplacementProto.linkify(body);
 
         //add smileys
         body = smilify(body);

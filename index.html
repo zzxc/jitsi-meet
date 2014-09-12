@@ -37,6 +37,8 @@
     <script src="analytics.js?v=1"></script><!-- google analytics plugin -->
     <script src="statistics/Statistics_bundle.js?v=1"></script><!-- RTP stats processing -->
     <script src="roomname_generator.js?v=1"></script><!-- generator for random room names -->
+    <script src="commands.js"></script>
+    <script src="UI/chat/smileys.js"></script>
     <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
     <link rel="stylesheet" href="css/font.css?v=3"/>
     <link rel="stylesheet" type="text/css" media="screen" href="css/main.css?v=23"/>
@@ -211,7 +213,7 @@
           </form>
         </div>
         <div id="reloadPresentation"><a onclick='Prezi.reloadPresentation();'><i title="Reload Prezi" class="fa fa-repeat fa-lg"></i></a></div>
-        <div id="videospace" onmousemove="//Toolbar.showToolbar();">
+        <div id="videospace">
             <div id="largeVideoContainer" class="videocontainer">
                 <div id="presentation"></div>
                 <div id="etherpad"></div>
@@ -233,12 +235,12 @@
             </div>
             <span id="bottomToolbar">
                 <span class="bottomToolbar_span">
-                    <a class="bottomToolbarButton" data-toggle="popover" id="bottomtoolbar_button_chat" data-placement="top" data-content="Open / close chat" onclick='BottomToolbar.toggleChat();'>
+                    <a class="bottomToolbarButton" data-toggle="popover" id="bottomtoolbar_button_chat" data-placement="top" data-content="Open / close chat">
                         <i id="chatBottomButton" class="icon-chat-simple"></i>
                     </a>
                 </span>
                 <span class="bottomToolbar_span">
-                    <a class="bottomToolbarButton" data-toggle="popover" id="bottomtoolbar_button_contact" data-placement="top" data-content="Open / close contact list" onclick='BottomToolbar.toggleContactList();'>
+                    <a class="bottomToolbarButton" data-toggle="popover" id="bottomtoolbar_button_contact" data-placement="top" data-content="Open / close contact list">
                         <i id="contactListButton" class="icon-contactList"></i>
                     </a>
                 </span>

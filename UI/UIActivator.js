@@ -6,6 +6,7 @@ var Etherpad = require("./etherpad/Etherpad.js");
 var Chat = require("./chat/Chat.js");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
 var Toolbar = require("./toolbar");
+var BottomToolbar = require("./BottomToolbar");
 
 var UIActivator = function()
 {
@@ -66,8 +67,9 @@ var UIActivator = function()
         });
     }
 
-    function setupToolbar() {
+    function setupToolbars() {
         Toolbar.init();
+        BottomToolbar.init();
     }
 
     UIActivatorProto.start = function () {
@@ -77,13 +79,17 @@ var UIActivator = function()
         $('body').popover({ selector: '[data-toggle=popover]',
             trigger: 'click hover'});
         VideoLayout.resizeLargeVideoContainer();
+        $("#videospace").mousemove(function () {
+            return Toolbar.showToolbar();
+        });
         registerListeners();
         bindEvents();
         setupAudioLevels();
+        setupVideoLayoutEvents();
         setupPrezi();
         setupEtherpad();
-
-
+        setupToolbars();
+        setupChat()
     }
 
     function registerListeners() {

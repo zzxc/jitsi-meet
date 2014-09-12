@@ -3,7 +3,7 @@
  */
 var LocalStats = require("./LocalStatsCollector.js");
 var RTPStats = require("./RTPStatsCollector.js");
-var EventEmmiter = require("events");
+var EventEmitter = require("events");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
 
 var StatisticsActivator = function()
@@ -25,7 +25,7 @@ var StatisticsActivator = function()
     {
         if(eventEmmiter == null)
         {
-            eventEmmiter = new EventEmmiter();
+            eventEmmiter = new EventEmitter();
         }
 
         eventEmmiter.on("statistics.audioLevel", listener);
@@ -74,6 +74,8 @@ var StatisticsActivator = function()
 
     StatisticsActivatorProto.onStreamCreated = function(stream)
     {
+        if(eventEmmiter == null)
+            eventEmmiter = new EventEmitter();
         localStats = new LocalStats(stream.getOriginalStream(), 100, eventEmmiter);
         localStats.start();
     }
@@ -87,6 +89,8 @@ var StatisticsActivator = function()
                 rtpStats = null;
             }
 
+            if(eventEmmiter == null)
+                eventEmmiter = new EventEmitter();
             rtpStats = new RTPStats(peerconnection, 200, eventEmmiter);
             rtpStats.start();
         }

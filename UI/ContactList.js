@@ -79,118 +79,23 @@ var ContactList = (function (my) {
      */
     my.toggleContactList = function () {
         var contactlist = $('#contactlist');
-        var videospace = $('#videospace');
 
-        var chatSize = (ContactList.isVisible()) ? [0, 0] : Chat.getChatSize();
-        var videospaceWidth = window.innerWidth - chatSize[0];
-        var videospaceHeight = window.innerHeight;
-        var videoSize
-            = getVideoSize(null, null, videospaceWidth, videospaceHeight);
-        var videoWidth = videoSize[0];
-        var videoHeight = videoSize[1];
-        var videoPosition = getVideoPosition(videoWidth,
-                                             videoHeight,
-                                             videospaceWidth,
-                                             videospaceHeight);
-        var horizontalIndent = videoPosition[0];
-        var verticalIndent = videoPosition[1];
+        var chatSize = (ContactList.isVisible()) ? [0, 0] : ContactList.getContactListSize();
+        VideoLayout.resizeVideoSpace(contactlist, chatSize, ContactList.isVisible());
+    };
 
-        var thumbnailSize = VideoLayout.calculateThumbnailSize(videospaceWidth);
-        var thumbnailsWidth = thumbnailSize[0];
-        var thumbnailsHeight = thumbnailSize[1];
+    /**
+     * Returns the size of the chat.
+     */
+    my.getContactListSize = function () {
+        var availableHeight = window.innerHeight;
+        var availableWidth = window.innerWidth;
 
-        if (ContactList.isVisible()) {
-            videospace.animate({right: chatSize[0],
-                                width: videospaceWidth,
-                                height: videospaceHeight},
-                                {queue: false,
-                                duration: 500});
+        var chatWidth = 200;
+        if (availableWidth * 0.2 < 200)
+            chatWidth = availableWidth * 0.2;
 
-            $('#remoteVideos').animate({height: thumbnailsHeight},
-                                        {queue: false,
-                                        duration: 500});
-
-            $('#remoteVideos>span').animate({height: thumbnailsHeight,
-                                            width: thumbnailsWidth},
-                                            {queue: false,
-                                            duration: 500,
-                                            complete: function() {
-                                                $(document).trigger(
-                                                        "remotevideo.resized",
-                                                        [thumbnailsWidth,
-                                                         thumbnailsHeight]);
-                                            }});
-
-            $('#largeVideoContainer').animate({ width: videospaceWidth,
-                                                height: videospaceHeight},
-                                                {queue: false,
-                                                 duration: 500
-                                                });
-
-            $('#largeVideo').animate({  width: videoWidth,
-                                        height: videoHeight,
-                                        top: verticalIndent,
-                                        bottom: verticalIndent,
-                                        left: horizontalIndent,
-                                        right: horizontalIndent},
-                                        {   queue: false,
-                                            duration: 500
-                                        });
-
-            $('#contactlist').hide("slide", { direction: "right",
-                                            queue: false,
-                                            duration: 500});
-        }
-        else {
-            // Undock the toolbar when the chat is shown and if we're in a 
-            // video mode.
-            if (VideoLayout.isLargeVideoVisible())
-                Toolbar.dockToolbar(false);
-
-            videospace.animate({right: chatSize[0],
-                                width: videospaceWidth,
-                                height: videospaceHeight},
-                               {queue: false,
-                                duration: 500,
-                                complete: function () {
-                                    contactlist.trigger('shown');
-                                }
-                               });
-
-            $('#remoteVideos').animate({height: thumbnailsHeight},
-                    {queue: false,
-                    duration: 500});
-
-            $('#remoteVideos>span').animate({height: thumbnailsHeight,
-                        width: thumbnailsWidth},
-                        {queue: false,
-                        duration: 500,
-                        complete: function() {
-                            $(document).trigger(
-                                    "remotevideo.resized",
-                                    [thumbnailsWidth, thumbnailsHeight]);
-                        }});
-
-            $('#largeVideoContainer').animate({ width: videospaceWidth,
-                                                height: videospaceHeight},
-                                                {queue: false,
-                                                 duration: 500
-                                                });
-
-            $('#largeVideo').animate({  width: videoWidth,
-                                        height: videoHeight,
-                                        top: verticalIndent,
-                                        bottom: verticalIndent,
-                                        left: horizontalIndent,
-                                        right: horizontalIndent},
-                                        {queue: false,
-                                         duration: 500
-                                        });
-
-            $('#contactlist').show("slide", { direction: "right",
-                                            queue: false,
-                                            duration: 500});
-        }
+        return [chatWidth, availableHeight];
     };
 
     /**
