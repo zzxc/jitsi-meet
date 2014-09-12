@@ -124,23 +124,19 @@ RTC.prototype.getUserMediaWithConstraints
         case 'fullhd':
             constraints.video.mandatory.minWidth = 1920;
             constraints.video.mandatory.minHeight = 1080;
-            constraints.video.optional.push({ minAspectRatio: 1.77 });
             break;
         case '720':
         case 'hd':
             constraints.video.mandatory.minWidth = 1280;
             constraints.video.mandatory.minHeight = 720;
-            constraints.video.optional.push({ minAspectRatio: 1.77 });
             break;
         case '360':
             constraints.video.mandatory.minWidth = 640;
             constraints.video.mandatory.minHeight = 360;
-            constraints.video.optional.push({ minAspectRatio: 1.77 });
             break;
         case '180':
             constraints.video.mandatory.minWidth = 320;
             constraints.video.mandatory.minHeight = 180;
-            constraints.video.optional.push({ minAspectRatio: 1.77 });
             break;
         // 4:3
         case '960':
@@ -164,6 +160,10 @@ RTC.prototype.getUserMediaWithConstraints
             }
             break;
     }
+    if (constraints.video.mandatory.minWidth)
+        constraints.video.mandatory.maxWidth = constraints.video.mandatory.minWidth;
+    if (constraints.video.mandatory.minHeight)
+        constraints.video.mandatory.maxHeight = constraints.video.mandatory.minHeight;
 
     if (bandwidth) { // doesn't work currently, see webrtc issue 1846
         if (!constraints.video) constraints.video = {mandatory: {}, optional: []};//same behaviour as true
@@ -175,18 +175,43 @@ RTC.prototype.getUserMediaWithConstraints
         constraints.video.mandatory.minFrameRate = fps;
     }
 
+    var isFF = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+
     try {
-        this.getUserMedia(constraints,
-            function (stream) {
-                console.log('onUserMediaSuccess');
-                success_callback(stream);
-            },
-            function (error) {
-                console.warn('Failed to get access to local media. Error ', error);
-                if (failure_callback) {
-                    failure_callback(error);
-                }
-            });
+        if (config.enableSimulcast
+            && constraints.video
+            && constraints.video.chromeMediaSource !== 'screen'
+            && constraints.video.chromeMediaSource !== 'desktop'
+            && !isAndroid
+
+            // We currently do not support FF, as it doesn't have multistream support.
+            && !isFF) {
+            var simulcast = new Simulcast();
+            simulcast.getUserMedia(constraints, function (stream) {
+                    console.log('onUserMediaSuccess');
+                    success_callback(stream);
+                },
+                function (error) {
+                    console.warn('Failed to get access to local media. Error ', error);
+                    if (failure_callback) {
+                        failure_callback(error);
+                    }
+                });
+        } else {
+
+            RTC.getUserMedia(constraints,
+                function (stream) {
+                    console.log('onUserMediaSuccess');
+                    success_callback(stream);
+                },
+                function (error) {
+                    console.warn('Failed to get access to local media. Error ', error);
+                    if (failure_callback) {
+                        failure_callback(error);
+                    }
+                });
+
+        }
     } catch (e) {
         console.error('GUM failed: ', e);
         if (failure_callback) {

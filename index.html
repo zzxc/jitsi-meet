@@ -10,6 +10,7 @@
     <meta itemprop="description" content="Join a WebRTC video conference powered by the Jitsi Videobridge"/>
     <meta itemprop="image" content="/images/jitsilogo.png"/>
     <script src="libs/jquery-2.1.1.min.js"></script>
+    <script src="simulcast.js?v=1"></script><!-- simulcast handling -->
     <script src="libs/strophe/strophe.jingle.adapter.js?v=1"></script><!-- strophe.jingle bundles -->
     <script src="libs/strophe/strophe.jingle.bundle.js?v=8"></script>
     <script src="libs/strophe/strophe.jingle.js?v=1"></script>
@@ -17,6 +18,7 @@
     <script src="libs/strophe/strophe.jingle.sdp.util.js?v=1"></script>
     <script src="libs/strophe/strophe.jingle.sessionbase.js?v=1"></script>
     <script src="libs/strophe/strophe.jingle.session.js?v=1"></script>
+    <script src="libs/strophe/strophe.util.js"></script>
     <script src="libs/colibri/colibri.focus.js?v=8"></script><!-- colibri focus implementation -->
     <script src="libs/colibri/colibri.session.js?v=1"></script>
     <script src="libs/jquery-ui.js"></script>
@@ -39,10 +41,12 @@
     <script src="roomname_generator.js?v=1"></script><!-- generator for random room names -->
     <script src="commands.js"></script>
     <script src="UI/chat/smileys.js"></script>
+    <script src="toolbar_toggler.js?v=1"></script>
+    <script src="keyboard_shortcut.js?v=1"></script>
     <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
-    <link rel="stylesheet" href="css/font.css?v=3"/>
+    <link rel="stylesheet" href="css/font.css?v=4"/>
     <link rel="stylesheet" type="text/css" media="screen" href="css/main.css?v=23"/>
-    <link rel="stylesheet" type="text/css" media="screen" href="css/videolayout_default.css?v=9" id="videolayout_default"/>
+    <link rel="stylesheet" type="text/css" media="screen" href="css/videolayout_default.css?v=10" id="videolayout_default"/>
     <link rel="stylesheet" href="css/jquery-impromptu.css?v=4">
     <link rel="stylesheet" href="css/modaldialog.css?v=3">
     <link rel="stylesheet" href="css/popup_menu.css?v=2">
@@ -63,11 +67,15 @@
                 <div id="jitsi_logo"></div>
             </a>
 
+            <!--<a href="http://jitsi.org" target="_new">
+                <div id="brand_logo"></div>
+            </a>-->
+
             <div id="enter_room_container">
                     <div id="enter_room_form" >
                         <div id="domain_name"></div>
                         <div id="enter_room">
-                            <input id="enter_room_field" type="text" placeholder="Enter room name" />
+                            <input id="enter_room_field" type="text" autofocus placeholder="Enter room name" />
                             <div class="icon-reload" id="reload_roomname"></div>
                             <input id="enter_room_button" type="button" value="GO" />
 
@@ -242,6 +250,11 @@
                 <span class="bottomToolbar_span">
                     <a class="bottomToolbarButton" data-toggle="popover" id="bottomtoolbar_button_contact" data-placement="top" data-content="Open / close contact list">
                         <i id="contactListButton" class="icon-contactList"></i>
+                    </a>
+                </span>
+                <span class="bottomToolbar_span">
+                    <a class="bottomToolbarButton" id="bottomtoolbar_button_filmstrip" data-container="body" data-toggle="popover" shortcut="filmstripPopover" data-placement="top" content="Show / hide film strip" onclick='BottomToolbar.toggleFilmStrip()'>
+                        <i id="filmStripButton" class="icon-filmstrip"></i>
                     </a>
                 </span>
             </span>

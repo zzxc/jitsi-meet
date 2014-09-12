@@ -50,6 +50,11 @@ function init() {
 }
 
 function connect(jid, password) {
+    var localAudio, localVideo;
+    if (connection && connection.jingle) {
+        localAudio = connection.jingle.localAudio;
+        localVideo = connection.jingle.localVideo;
+    }
     connection = new Strophe.Connection(document.getElementById('boshURL').value || config.bosh || '/http-bind');
 
     if (nickname) {
@@ -65,6 +70,8 @@ function connect(jid, password) {
         if (!connection.jingle.pc_constraints.optional) connection.jingle.pc_constraints.optional = [];
         connection.jingle.pc_constraints.optional.push({googIPv6: true});
     }
+    if (localAudio) connection.jingle.localAudio = localAudio;
+    if (localVideo) connection.jingle.localVideo = localVideo;
 
     if(!password)
         password = document.getElementById('password').value;
@@ -162,20 +169,41 @@ function doJoin() {
     }
     connection.emuc.doJoin(roomjid);
 }
-
 $(document).bind('remotestreamadded.jingle', function (event, data, sid) {
+    waitForPresence(data, sid);
+});
+
+function waitForPresence(data, sid) {
     var sess = connection.jingle.sessions[sid];
 
     var thessrc;
     // look up an associated JID for a stream id
     if (data.stream.id.indexOf('mixedmslabel') === -1) {
+        // look only at a=ssrc: and _not_ at a=ssrc-group: lines
         var ssrclines
-            = SDPUtil.find_lines(sess.peerconnection.remoteDescription.sdp, 'a=ssrc');
+            = SDPUtil.find_lines(sess.peerconnection.remoteDescription.sdp, 'a=ssrc:');
         ssrclines = ssrclines.filter(function (line) {
             return line.indexOf('mslabel:' + data.stream.label) !== -1;
         });
         if (ssrclines.length) {
             thessrc = ssrclines[0].substring(7).split(' ')[0];
+
+            // We signal our streams (through Jingle to the focus) before we set
+            // our presence (through which peers associate remote streams to
+            // jids). So, it might arrive that a remote stream is added but
+            // ssrc2jid is not yet updated and thus data.peerjid cannot be
+            // successfully set. Here we wait for up to a second for the
+            // presence to arrive.
+
+            if (!ssrc2jid[thessrc]) {
+                setTimeout(function(d, s) {
+                    return function() {
+                            waitForPresence(d, s);
+                    }
+                }(data, sid), 250);
+                return;
+            }
+
             // ok to overwrite the one from focus? might save work in colibri.js
             console.log('associated jid', ssrc2jid[thessrc], data.peerjid);
             if (ssrc2jid[thessrc]) {
@@ -183,6 +211,39 @@ $(document).bind('remotestreamadded.jingle', function (event, data, sid) {
             }
         }
     }
+//<<<<<<< HEAD
+//=======
+//
+//    // NOTE(gp) now that we have simulcast, a media stream can have more than 1
+//    // ssrc. We should probably take that into account in our MediaStream
+//    // wrapper.
+//    mediaStreams.push(new MediaStream(data, sid, thessrc));
+//
+//    var container;
+//    var remotes = document.getElementById('remoteVideos');
+//
+//    if (data.peerjid) {
+//        VideoLayout.ensurePeerContainerExists(data.peerjid);
+//
+//        container  = document.getElementById(
+//                'participant_' + Strophe.getResourceFromJid(data.peerjid));
+//    } else {
+//        if (data.stream.id !== 'mixedmslabel') {
+//            console.error(  'can not associate stream',
+//                            data.stream.id,
+//                            'with a participant');
+//            // We don't want to add it here since it will cause troubles
+//            return;
+//        }
+//        // FIXME: for the mixed ms we dont need a video -- currently
+//        container = document.createElement('span');
+//        container.id = 'mixedstream';
+//        container.className = 'videocontainer';
+//        remotes.appendChild(container);
+//        Util.playSoundNotification('userJoined');
+//    }
+//
+//>>>>>>> master
     var isVideo = data.stream.getVideoTracks().length > 0;
 
     RTCActivator.getRTCService().createRemoteStream(data, sid, thessrc);
@@ -197,7 +258,7 @@ $(document).bind('remotestreamadded.jingle', function (event, data, sid) {
             sendKeyframe(sess.peerconnection);
         }, 3000);
     }
-});
+}
 
 // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
 function sendKeyframe(pc) {
@@ -297,41 +358,69 @@ $(document).bind('callterminated.jingle', function (event, sid, jid, reason) {
 $(document).bind('setLocalDescription.jingle', function (event, sid) {
     // put our ssrcs into presence so other clients can identify our stream
     var sess = connection.jingle.sessions[sid];
-    var newssrcs = {};
-    var directions = {};
-    var localSDP = new SDP(sess.peerconnection.localDescription.sdp);
-    localSDP.media.forEach(function (media) {
-        var type = SDPUtil.parse_mid(SDPUtil.find_line(media, 'a=mid:'));
+    var newssrcs = [];
+    var simulcast = new Simulcast();
+    var media = simulcast.parseMedia(sess.peerconnection.localDescription);
+    media.forEach(function (media) {
 
-        if (SDPUtil.find_line(media, 'a=ssrc:')) {
-            // assumes a single local ssrc
-            var ssrc = SDPUtil.find_line(media, 'a=ssrc:').substring(7).split(' ')[0];
-            newssrcs[type] = ssrc;
-
-            directions[type] = (
-                SDPUtil.find_line(media, 'a=sendrecv') ||
-                SDPUtil.find_line(media, 'a=recvonly') ||
-                SDPUtil.find_line(media, 'a=sendonly') ||
-                SDPUtil.find_line(media, 'a=inactive') ||
-                'a=sendrecv').substr(2);
-        }
+        // TODO(gp) maybe exclude FID streams?
+        Object.keys(media.sources).forEach(function(ssrc) {
+            newssrcs.push({
+                'ssrc': ssrc,
+                'type': media.type,
+                'direction': media.direction
+            });
+        });
     });
     console.log('new ssrcs', newssrcs);
 
     // Have to clear presence map to get rid of removed streams
     connection.emuc.clearPresenceMedia();
-    var i = 0;
-    Object.keys(newssrcs).forEach(function (mtype) {
-        i++;
-        var type = mtype;
-        // Change video type to screen
-        if (mtype === 'video' && isUsingScreenStream) {
-            type = 'screen';
+
+    if (newssrcs.length > 0) {
+        for (var i = 1; i <= newssrcs.length; i ++) {
+            // Change video type to screen
+            if (newssrcs[i-1].type === 'video' && isUsingScreenStream) {
+                newssrcs[i-1].type = 'screen';
+            }
+            connection.emuc.addMediaToPresence(i,
+                newssrcs[i-1].type, newssrcs[i-1].ssrc, newssrcs[i-1].direction);
         }
-        connection.emuc.addMediaToPresence(i, type, newssrcs[mtype], directions[mtype]);
-    });
-    if (i > 0) {
+
         connection.emuc.sendPresence();
+    }
+});
+
+$(document).bind('iceconnectionstatechange.jingle', function (event, sid, session) {
+    switch (session.peerconnection.iceConnectionState) {
+    case 'checking': 
+        session.timeChecking = (new Date()).getTime();
+        session.firstconnect = true;
+        break;
+    case 'completed': // on caller side
+    case 'connected':
+        if (session.firstconnect) {
+            session.firstconnect = false;
+            var metadata = {};
+            metadata.setupTime = (new Date()).getTime() - session.timeChecking;
+            session.peerconnection.getStats(function (res) {
+                res.result().forEach(function (report) {
+                    if (report.type == 'googCandidatePair' && report.stat('googActiveConnection') == 'true') {
+                        metadata.localCandidateType = report.stat('googLocalCandidateType');
+                        metadata.remoteCandidateType = report.stat('googRemoteCandidateType');
+
+                        // log pair as well so we can get nice pie charts 
+                        metadata.candidatePair = report.stat('googLocalCandidateType') + ';' + report.stat('googRemoteCandidateType');
+
+                        if (report.stat('googRemoteAddress').indexOf('[') === 0) {
+                            metadata.ipv6 = true;
+                        }
+                    }
+                });
+                trackUsage('iceConnected', metadata);
+            });
+        }
+        break;
     }
 });
 
@@ -433,6 +522,7 @@ function getConferenceHandler() {
 }
 
 function toggleVideo() {
+    buttonClick("#video", "icon-camera icon-camera-disabled");
     if (!(connection && connection.jingle.localVideo))
         return;
 
@@ -554,6 +644,7 @@ function toggleRecording() {
 
 $(document).ready(function () {
     UIActivator.start();
+    document.title = brand.appName;
 
     if(config.enableWelcomePage && window.location.pathname == "/" &&
         (!window.localStorage.welcomePageDisabled || window.localStorage.welcomePageDisabled == "false"))
@@ -561,18 +652,21 @@ $(document).ready(function () {
         $("#videoconference_page").hide();
         $("#domain_name").text(window.location.protocol + "//" + window.location.host + "/");
         $("span[name='appName']").text(brand.appName);
-        $("#enter_room_button").click(function()
+        function enter_room()
         {
             var val = $("#enter_room_field").val();
             if(!val)
                 val = $("#enter_room_field").attr("room_name");
             window.location.pathname = "/" + val;
+        }
+        $("#enter_room_button").click(function()
+        {
+            enter_room();
         });
 
         $("#enter_room_field").keydown(function (event) {
             if (event.keyCode === 13) {
-                var val = Util.escapeHtml(this.value);
-                window.location.pathname = "/" + val;
+                enter_room();
             }
         });
 
@@ -614,7 +708,12 @@ $(document).ready(function () {
     $("#welcome_page").hide();
 
     $('body').popover({ selector: '[data-toggle=popover]',
-                        trigger: 'click hover'});
+        trigger: 'click hover',
+        content: function() {
+            return this.getAttribute("content") +
+                   KeyboardShortcut.getShortcut(this.getAttribute("shortcut"));
+        }
+    });
 
     // Set the defaults for prompt dialogs.
     jQuery.prompt.setDefaults({persistent: false});

@@ -153,10 +153,12 @@ var Chat = (function (my) {
         var chatSize = (chatspace.is(":visible")) ? [0, 0] : Chat.getChatSize();
         dep.VideoLayout().resizeVideoSpace(chatspace, chatSize, chatspace.is(":visible"));
 
+        // Fix me: Should be called as callback of show animation
+
         // Request the focus in the nickname field or the chat input field.
-        if ($('#nickname').css('visibility') === 'visible')
+        if ($('#nickname').css('visibility') === 'visible') {
             $('#nickinput').focus();
-        else {
+        } else {
             $('#usermsg').focus();
         }
     };

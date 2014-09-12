@@ -25,7 +25,7 @@ var Prezi = (function (my) {
                 VideoLayout.setLargeVideoVisible(false);
                 $('#presentation>iframe').fadeIn(300, function() {
                     $('#presentation>iframe').css({opacity:'1'});
-                    Toolbar.dockToolbar(true);
+                    ToolbarToggler.dockToolbar(true);
                 });
             });
         }
@@ -36,7 +36,7 @@ var Prezi = (function (my) {
                     $('#reloadPresentation').css({display:'none'});
                     $('#largeVideo').fadeIn(300, function() {
                         VideoLayout.setLargeVideoVisible(true);
-                        Toolbar.dockToolbar(false);
+                        ToolbarToggler.dockToolbar(false);
                     });
                 });
             }
