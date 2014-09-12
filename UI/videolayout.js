@@ -436,6 +436,10 @@ var VideoLayout = (function (my) {
     my.createStreamElement = function (sid, stream) {
         var isVideo = stream.getVideoTracks().length > 0;
 
+        if(isVideo)
+        {
+            console.trace(stream);
+        }
         var element = isVideo
                         ? document.createElement('video')
                         : document.createElement('audio');

@@ -30,6 +30,10 @@ var RTCService = function()
         return this.stream;
     }
 
+    Stream.prototype.isAudioStream = function () {
+        return (this.stream.getAudioTracks() && this.stream.getAudioTracks().length > 0);
+    }
+
     function RTCServiceProto() {
         this.rtc = new RTC(this);
         this.rtc.obtainAudioAndVideoPermissions();

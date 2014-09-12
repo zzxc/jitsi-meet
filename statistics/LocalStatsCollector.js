@@ -23,12 +23,12 @@ var LocalStatsCollector = (function() {
      *                                   update.
      * @constructor
      */
-    function LocalStatsCollectorProto(stream, interval, eventEmmiter) {
+    function LocalStatsCollectorProto(stream, interval, eventEmitter) {
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.stream = stream;
         this.intervalId = null;
         this.intervalMilis = interval;
-        this.eventEmmiter = eventEmmiter;
+        this.eventEmitter = eventEmitter;
         this.audioLevel = 0;
     }
 
@@ -59,7 +59,7 @@ var LocalStatsCollector = (function() {
                 if(audioLevel != self.audioLevel) {
                     self.audioLevel = animateLevel(audioLevel, self.audioLevel);
                     if(!isAudioMuted())
-                        self.eventEmmiter.trigger("statistics.audioLevel", LocalStatsCollectorProto.LOCAL_JID,
+                        self.eventEmitter.emit("statistics.audioLevel", LocalStatsCollectorProto.LOCAL_JID,
                             self.audioLevel);
                 }
             },

@@ -74,6 +74,9 @@ var StatisticsActivator = function()
 
     StatisticsActivatorProto.onStreamCreated = function(stream)
     {
+        if(!stream.isAudioStream())
+            return;
+
         if(eventEmmiter == null)
             eventEmmiter = new EventEmitter();
         localStats = new LocalStats(stream.getOriginalStream(), 100, eventEmmiter);

@@ -42,6 +42,7 @@ var getVideoPosition;
 var sessionTerminated = false;
 
 function init() {
+    StatisticsActivator.start();
     RTCActivator.start();
 
     var jid = document.getElementById('jid').value || config.hosts.anonymousdomain || config.hosts.domain || window.location.hostname;
