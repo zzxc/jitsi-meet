@@ -108,7 +108,6 @@ function connect(jid, password) {
     });
 }
 
-
 function maybeDoJoin() {
     if (connection && connection.connected && Strophe.getResourceFromJid(connection.jid) // .connected is true while connecting?
         && (connection.jingle.localAudio || connection.jingle.localVideo)) {
@@ -169,6 +168,7 @@ function doJoin() {
     }
     connection.emuc.doJoin(roomjid);
 }
+
 $(document).bind('remotestreamadded.jingle', function (event, data, sid) {
     waitForPresence(data, sid);
 });
@@ -183,7 +183,10 @@ function waitForPresence(data, sid) {
         var ssrclines
             = SDPUtil.find_lines(sess.peerconnection.remoteDescription.sdp, 'a=ssrc:');
         ssrclines = ssrclines.filter(function (line) {
-            return line.indexOf('mslabel:' + data.stream.label) !== -1;
+            // NOTE(gp) previously we filtered on the mslabel, but that property
+            // is not always present.
+            // return line.indexOf('mslabel:' + data.stream.label) !== -1;
+            return line.indexOf('msid:' + data.stream.id) !== -1;
         });
         if (ssrclines.length) {
             thessrc = ssrclines[0].substring(7).split(' ')[0];
@@ -196,6 +199,7 @@ function waitForPresence(data, sid) {
             // presence to arrive.
 
             if (!ssrc2jid[thessrc]) {
+                // TODO(gp) limit wait duration to 1 sec.
                 setTimeout(function(d, s) {
                     return function() {
                             waitForPresence(d, s);
@@ -211,39 +215,38 @@ function waitForPresence(data, sid) {
             }
         }
     }
-//<<<<<<< HEAD
-//=======
-//
-//    // NOTE(gp) now that we have simulcast, a media stream can have more than 1
-//    // ssrc. We should probably take that into account in our MediaStream
-//    // wrapper.
-//    mediaStreams.push(new MediaStream(data, sid, thessrc));
-//
-//    var container;
-//    var remotes = document.getElementById('remoteVideos');
-//
-//    if (data.peerjid) {
-//        VideoLayout.ensurePeerContainerExists(data.peerjid);
-//
-//        container  = document.getElementById(
-//                'participant_' + Strophe.getResourceFromJid(data.peerjid));
-//    } else {
-//        if (data.stream.id !== 'mixedmslabel') {
-//            console.error(  'can not associate stream',
-//                            data.stream.id,
-//                            'with a participant');
-//            // We don't want to add it here since it will cause troubles
-//            return;
-//        }
-//        // FIXME: for the mixed ms we dont need a video -- currently
-//        container = document.createElement('span');
-//        container.id = 'mixedstream';
-//        container.className = 'videocontainer';
-//        remotes.appendChild(container);
-//        Util.playSoundNotification('userJoined');
-//    }
-//
-//>>>>>>> master
+
+    // NOTE(gp) now that we have simulcast, a media stream can have more than 1
+    // ssrc. We should probably take that into account in our MediaStream
+    // wrapper.
+    mediaStreams.push(new MediaStream(data, sid, thessrc));
+
+    var container;
+    var remotes = document.getElementById('remoteVideos');
+
+    if (data.peerjid) {
+        VideoLayout.ensurePeerContainerExists(data.peerjid);
+
+        container  = document.getElementById(
+                'participant_' + Strophe.getResourceFromJid(data.peerjid));
+    } else {
+        if (data.stream.id !== 'mixedmslabel') {
+            console.error('can not associate stream',
+                data.stream.id,
+                'with a participant');
+            messageHandler.showError('Oops',
+                'We could not associate the current stream with a participant.');
+            // We don't want to add it here since it will cause troubles
+            return;
+        }
+        // FIXME: for the mixed ms we dont need a video -- currently
+        container = document.createElement('span');
+        container.id = 'mixedstream';
+        container.className = 'videocontainer';
+        remotes.appendChild(container);
+        Util.playSoundNotification('userJoined');
+    }
+
     var isVideo = data.stream.getVideoTracks().length > 0;
 
     RTCActivator.getRTCService().createRemoteStream(data, sid, thessrc);
@@ -276,16 +279,19 @@ function sendKeyframe(pc) {
                         },
                         function (error) {
                             console.log('triggerKeyframe setLocalDescription failed', error);
+                            messageHandler.showError();
                         }
                     );
                 },
                 function (error) {
                     console.log('triggerKeyframe createAnswer failed', error);
+                    messageHandler.showError();
                 }
             );
         },
         function (error) {
             console.log('triggerKeyframe setRemoteDescription failed', error);
+            messageHandler.showError();
         }
     );
 }
@@ -350,7 +356,7 @@ $(document).bind('callterminated.jingle', function (event, sid, jid, reason) {
     if (connection.emuc.joined && focus == null && reason === 'kick') {
         sessionTerminated = true;
         connection.emuc.doLeave();
-        openMessageDialog(  "Session Terminated",
+        messageHandler.openMessageDialog("Session Terminated",
                             "Ouch! You have been kicked out of the meet!");
     }
 });
@@ -466,45 +472,49 @@ $(document).bind('presence.muc', function (event, jid, info, pres) {
     if (focus !== null && info.displayName !== null) {
         focus.setEndpointDisplayName(jid, info.displayName);
     }
+
+    //check if the video bridge is available
+    if($(pres).find(">bridgeIsDown").length > 0 && !bridgeIsDown) {
+        bridgeIsDown = true;
+        messageHandler.showError("Error",
+            "The video bridge is currently unavailable.");
+    }
+
 });
 
 $(document).bind('passwordrequired.muc', function (event, jid) {
     console.log('on password required', jid);
 
-    $.prompt('<h2>Password required</h2>' +
-        '<input id="lockKey" type="text" placeholder="shared key" autofocus>', {
-        persistent: true,
-        buttons: { "Ok": true, "Cancel": false},
-        defaultButton: 1,
-        loaded: function (event) {
-            document.getElementById('lockKey').focus();
-        },
-        submit: function (e, v, m, f) {
+    messageHandler.openTwoButtonDialog(null,
+        '<h2>Password required</h2>' +
+        '<input id="lockKey" type="text" placeholder="shared key" autofocus>',
+        true,
+        "Ok",
+        function (e, v, m, f) {
             if (v) {
                 var lockKey = document.getElementById('lockKey');
-
                 if (lockKey.value !== null) {
                     setSharedKey(lockKey.value);
                     connection.emuc.doJoin(jid, lockKey.value);
                 }
             }
+        },
+        function (event) {
+            document.getElementById('lockKey').focus();
         }
-    });
+    );
 });
 
 $(document).bind('passwordrequired.main', function (event) {
     console.log('password is required');
 
-    $.prompt('<h2>Password required</h2>' +
-        '<input id="passwordrequired.username" type="text" placeholder="user@domain.net" autofocus>' +
-        '<input id="passwordrequired.password" type="password" placeholder="user password">', {
-        persistent: true,
-        buttons: { "Ok": true, "Cancel": false},
-        defaultButton: 1,
-        loaded: function (event) {
-            document.getElementById('passwordrequired.username').focus();
-        },
-        submit: function (e, v, m, f) {
+    messageHandler.openTwoButtonDialog(null,
+        '<h2>Password required</h2>' +
+            '<input id="passwordrequired.username" type="text" placeholder="user@domain.net" autofocus>' +
+            '<input id="passwordrequired.password" type="password" placeholder="user password">',
+        true,
+        "Ok",
+        function (e, v, m, f) {
             if (v) {
                 var username = document.getElementById('passwordrequired.username');
                 var password = document.getElementById('passwordrequired.password');
@@ -513,8 +523,11 @@ $(document).bind('passwordrequired.main', function (event) {
                     connect(username.value, password.value);
                 }
             }
+        },
+        function (event) {
+            document.getElementById('passwordrequired.username').focus();
         }
-    });
+    );
 });
 
 function getConferenceHandler() {
@@ -537,20 +550,11 @@ function toggleVideo() {
                     $('#video').removeClass("icon-camera icon-camera-disabled");
                     $('#video').addClass("icon-camera");
                 }
+                connection.emuc.addVideoInfoToPresence(isMuted);
+                connection.emuc.sendPresence();
             }
         );
     }
-
-    sess = focus || activecall;
-    if (!sess) {
-        return;
-    }
-
-    sess.pendingop = ismuted ? 'unmute' : 'mute';
-//    connection.emuc.addVideoInfoToPresence(!ismuted);
-//    connection.emuc.sendPresence();
-
-    sess.modifySources();
 }
 
 /**
@@ -600,25 +604,23 @@ function toggleRecording() {
 
     if (!recordingToken)
     {
-        $.prompt('<h2>Enter recording token</h2>' +
+        messageHandler.openTwoButtonDialog(null,
+            '<h2>Enter recording token</h2>' +
                 '<input id="recordingToken" type="text" placeholder="token" autofocus>',
-            {
-                persistent: false,
-                buttons: { "Save": true, "Cancel": false},
-                defaultButton: 1,
-                loaded: function (event) {
-                    document.getElementById('recordingToken').focus();
-                },
-                submit: function (e, v, m, f) {
-                    if (v) {
-                        var token = document.getElementById('recordingToken');
+            false,
+            "Save",
+            function (e, v, m, f) {
+                if (v) {
+                    var token = document.getElementById('recordingToken');
 
-                        if (token.value) {
-                            setRecordingToken(Util.escapeHtml(token.value));
-                            toggleRecording();
-                        }
+                    if (token.value) {
+                        setRecordingToken(Util.escapeHtml(token.value));
+                        toggleRecording();
                     }
                 }
+            },
+            function (event) {
+                document.getElementById('recordingToken').focus();
             }
         );
 
@@ -783,6 +785,16 @@ function dump(elem, filename) {
     elem = elem.parentNode;
     elem.download = filename || 'meetlog.json';
     elem.href = 'data:application/json;charset=utf-8,\n';
+    var data = populateData();
+    elem.href += encodeURIComponent(JSON.stringify(data, null, '  '));
+    return false;
+}
+
+
+/**
+ * Populates the log data
+ */
+function populateData() {
     var data = {};
     if (connection.jingle) {
         Object.keys(connection.jingle.sessions).forEach(function (sid) {
@@ -797,7 +809,7 @@ function dump(elem, filename) {
             }
         });
     }
-    metadata = {};
+    var metadata = {};
     metadata.time = new Date();
     metadata.url = window.location.href;
     metadata.ua = navigator.userAgent;
@@ -805,8 +817,7 @@ function dump(elem, filename) {
         metadata.xmpp = connection.logger.log;
     }
     data.metadata = metadata;
-    elem.href += encodeURIComponent(JSON.stringify(data, null, '  '));
-    return false;
+    return data;
 }
 
 /**
@@ -814,21 +825,6 @@ function dump(elem, filename) {
  */
 function buttonClick(id, classname) {
     $(id).toggleClass(classname); // add the class to the clicked element
-}
-
-/**
- * Shows a message to the user.
- *
- * @param titleString the title of the message
- * @param messageString the text of the message
- */
-function openMessageDialog(titleString, messageString) {
-    $.prompt(messageString,
-        {
-            title: titleString,
-            persistent: false
-        }
-    );
 }
 
 /**
@@ -906,35 +902,46 @@ $(document).bind('fatalError.jingle',
     {
         sessionTerminated = true;
         connection.emuc.doLeave();
-        openMessageDialog(  "Sorry",
+        messageHandler.showError(  "Sorry",
             "Your browser version is too old. Please update and try again...");
     }
 );
 
+function onSelectedEndpointChanged(userJid)
+{
+    console.log('selected endpoint changed: ', userJid);
+    if (_dataChannels && _dataChannels.length != 0) {
+        _dataChannels[0].send(JSON.stringify({
+            'colibriClass': 'SelectedEndpointChangedEvent',
+            'selectedEndpoint': (!userJid || userJid == null)
+                ? null : Strophe.getResourceFromJid(userJid)
+        }));
+    }
+}
+
+$(document).bind("selectedendpointchanged", function(event, userJid) {
+    onSelectedEndpointChanged(userJid);
+});
+
 function callSipButtonClicked()
 {
-    $.prompt('<h2>Enter SIP number</h2>' +
-        '<input id="sipNumber" type="text" value="" autofocus>',
-        {
-            persistent: false,
-            buttons: { "Dial": true, "Cancel": false},
-            defaultButton: 2,
-            loaded: function (event)
-            {
-                document.getElementById('sipNumber').focus();
-            },
-            submit: function (e, v, m, f)
-            {
-                if (v)
-                {
-                    var numberInput = document.getElementById('sipNumber');
-                    if (numberInput.value && numberInput.value.length)
-                    {
-                        connection.rayo.dial(
-                            numberInput.value, 'fromnumber', roomName);
-                    }
+    messageHandler.openTwoButtonDialog(null,
+        '<h2>Enter SIP number</h2>' +
+            '<input id="sipNumber" type="text"' +
+            ' value="' + config.defaultSipNumber + '" autofocus>',
+        false,
+        "Dial",
+        function (e, v, m, f) {
+            if (v) {
+                var numberInput = document.getElementById('sipNumber');
+                if (numberInput.value) {
+                    connection.rayo.dial(
+                        numberInput.value, 'fromnumber', roomName);
                 }
             }
+        },
+        function (event) {
+            document.getElementById('sipNumber').focus();
         }
     );
 }

@@ -93,7 +93,7 @@ function ColibriFocus(connection, bridgejid) {
 }
 
 // creates a conferences with an initial set of peers
-ColibriFocus.prototype.makeConference = function (peers) {
+ColibriFocus.prototype.makeConference = function (peers, errorCallback) {
     var self = this;
     if (this.confid !== null) {
         console.error('makeConference called twice? Ignoring...');
@@ -155,7 +155,7 @@ ColibriFocus.prototype.makeConference = function (peers) {
         }
         self.sendIceCandidate(event.candidate);
     };
-    this._makeConference();
+    this._makeConference(errorCallback);
     /*
     this.peerconnection.createOffer(
         function (offer) {
@@ -275,7 +275,7 @@ ColibriFocus.prototype.updateEndpoints = function() {
     );
 };
 
-ColibriFocus.prototype._makeConference = function () {
+ColibriFocus.prototype._makeConference = function (errorCallback) {
     var self = this;
     var elem = $iq({ to: this.bridgejid, type: 'get' });
     elem.c('conference', { xmlns: 'http://jitsi.org/protocol/colibri' });
@@ -360,6 +360,7 @@ ColibriFocus.prototype._makeConference = function () {
         },
         function (error) {
             console.warn(error);
+            errorCallback(error);
         }
     );
 };
@@ -530,7 +531,7 @@ ColibriFocus.prototype.createdConference = function (result) {
     bridgeSDP.raw = bridgeSDP.session + bridgeSDP.media.join('');
     var bridgeDesc = new RTCSessionDescription({type: 'offer', sdp: bridgeSDP.raw});
     var simulcast = new Simulcast();
-    var bridgeDesc = simulcast.transformBridgeDescription(bridgeDesc);
+    var bridgeDesc = simulcast.transformRemoteDescription(bridgeDesc);
 
     this.peerconnection.setRemoteDescription(bridgeDesc,
         function () {

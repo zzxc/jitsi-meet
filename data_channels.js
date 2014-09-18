@@ -23,6 +23,14 @@ function onDataChannel(event)
         //dataChannel.send("Hello bridge!");
         // Sends 12 bytes binary message to the bridge
         //dataChannel.send(new ArrayBuffer(12));
+
+        // when the data channel becomes available, tell the bridge about video
+        // selections so that it can do adaptive simulcast,
+        var largeVideoSrc = $('#largeVideo').attr('src');
+        var userJid = getJidFromVideoSrc(largeVideoSrc);
+        // we want the notification to trigger even if userJid is undefined,
+        // or null.
+        onSelectedEndpointChanged(userJid);
     };
 
     dataChannel.onerror = function (error)
@@ -88,6 +96,16 @@ function onDataChannel(event)
             {
                 var endpointSimulcastLayers = obj.endpointSimulcastLayers;
                 $(document).trigger('simulcastlayerschanged', [endpointSimulcastLayers]);
+            }
+            else if ("StartSimulcastLayerEvent" === colibriClass)
+            {
+                var simulcastLayer = obj.simulcastLayer;
+                $(document).trigger('startsimulcastlayer', simulcastLayer);
+            }
+            else if ("StopSimulcastLayerEvent" === colibriClass)
+            {
+                var simulcastLayer = obj.simulcastLayer;
+                $(document).trigger('stopsimulcastlayer', simulcastLayer);
             }
             else
             {

@@ -11,8 +11,11 @@ var dep =
 var VideoLayout = (function (my) {
     var preMuted = false;
     var currentDominantSpeaker = null;
+    var defaultRemoteDisplayName = "Fellow Jitster";
+    var defaultDominantSpeakerDisplayName = "Speaker";
     var lastNCount = config.channelLastN;
     var lastNEndpointsCache = [];
+    var largeVideoNewSrc = '';
     var browser = null;
     /**
      * Currently focused video "src"(displayed in large video).
@@ -148,8 +151,18 @@ var VideoLayout = (function (my) {
         console.log('hover in', newSrc);
 
         if ($('#largeVideo').attr('src') != newSrc) {
+            largeVideoNewSrc = newSrc;
 
             var isVisible = $('#largeVideo').is(':visible');
+
+            // we need this here because after the fade the videoSrc may have
+            // changed.
+            var isDesktop = isVideoSrcDesktop(newSrc);
+
+            var userJid = getJidFromVideoSrc(newSrc);
+            // we want the notification to trigger even if userJid is undefined,
+            // or null.
+            $(document).trigger("selectedendpointchanged", [userJid]);
 
             $('#largeVideo').fadeOut(300, function () {
                 var oldSrc = $(this).attr('src');
@@ -172,7 +185,7 @@ var VideoLayout = (function (my) {
                 }
 
                 // Change the way we'll be measuring and positioning large video
-                var isDesktop = isVideoSrcDesktop(newSrc);
+
                 getVideoSize = isDesktop
                     ? getDesktopVideoSize
                     : VideoLayout.getCameraVideoSize;
@@ -595,7 +608,6 @@ var VideoLayout = (function (my) {
     function setDisplayName(videoSpanId, displayName) {
         var nameSpan = $('#' + videoSpanId + '>span.displayname');
         var defaultLocalDisplayName = "Me";
-        var defaultRemoteDisplayName = "Speaker";
 
         // If we already have a display name for this video.
         if (nameSpan.length > 0) {
@@ -640,6 +652,7 @@ var VideoLayout = (function (my) {
 
                 var editableText = document.createElement('input');
                 editableText.className = 'displayname';
+                editableText.type = 'text';
                 editableText.id = 'editDisplayName';
 
                 if (displayName && displayName.length) {
@@ -824,6 +837,7 @@ var VideoLayout = (function (my) {
 
         if (isMuted === 'false') {
             if (audioMutedSpan.length > 0) {
+                audioMutedSpan.popover('hide');
                 audioMutedSpan.remove();
             }
         }
@@ -1370,10 +1384,19 @@ var VideoLayout = (function (my) {
             return;
 
         // Update the current dominant speaker.
-        if (resourceJid !== currentDominantSpeaker)
+        if (resourceJid !== currentDominantSpeaker) {
+            var oldSpeakerVideoSpanId = "participant_" + currentDominantSpeaker,
+                newSpeakerVideoSpanId = "participant_" + resourceJid;
+            if($("#" + oldSpeakerVideoSpanId + ">span.displayname").text() === defaultDominantSpeakerDisplayName) {
+                setDisplayName(oldSpeakerVideoSpanId, null);
+            }
+            if($("#" + newSpeakerVideoSpanId + ">span.displayname").text() === defaultRemoteDisplayName) {
+                setDisplayName(newSpeakerVideoSpanId, defaultDominantSpeakerDisplayName);
+            }
             currentDominantSpeaker = resourceJid;
-        else
+        } else {
             return;
+        }
 
         // Obtain container for new dominant speaker.
         var container  = document.getElementById(
@@ -1627,6 +1650,28 @@ var VideoLayout = (function (my) {
         }
     }
 
+    $(document).bind('simulcastlayerstarted', function(event) {
+        var localVideoSelector = $('#' + 'localVideo_' + connection.jingle.localVideo.id);
+        var simulcast = new Simulcast();
+        var stream = simulcast.getLocalVideoStream();
+
+        // Attach WebRTC stream
+        RTC.attachMediaStream(localVideoSelector, stream);
+
+        localVideoSrc = $(localVideoSelector).attr('src');
+    });
+
+    $(document).bind('simulcastlayerstopped', function(event) {
+        var localVideoSelector = $('#' + 'localVideo_' + connection.jingle.localVideo.id);
+        var simulcast = new Simulcast();
+        var stream = simulcast.getLocalVideoStream();
+
+        // Attach WebRTC stream
+        RTC.attachMediaStream(localVideoSelector, stream);
+
+        localVideoSrc = $(localVideoSelector).attr('src');
+    });
+
     /**
      * On simulcast layers changed event.
      */
@@ -1635,7 +1680,6 @@ var VideoLayout = (function (my) {
         endpointSimulcastLayers.forEach(function (esl) {
 
             var primarySSRC = esl.simulcastLayer.primarySSRC;
-            simulcast.setReceivingVideoStream(primarySSRC);
             var msid = simulcast.getRemoteVideoStreamIdBySSRC(primarySSRC);
 
             // Get session and stream from msid.
@@ -1685,7 +1729,7 @@ var VideoLayout = (function (my) {
                 var selRemoteVideo = $(['#', 'remoteVideo_', session.sid, '_', msidParts[0]].join(''));
 
                 var updateLargeVideo = (ssrc2jid[videoSrcToSsrc[selRemoteVideo.attr('src')]]
-                    == ssrc2jid[videoSrcToSsrc[$('#largeVideo').attr('src')]]);
+                    == ssrc2jid[videoSrcToSsrc[largeVideoNewSrc]]);
                 var updateFocusedVideoSrc = (selRemoteVideo.attr('src') == focusedVideoSrc);
 
                 var electedStreamUrl = webkitURL.createObjectURL(electedStream);

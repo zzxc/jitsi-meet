@@ -234,12 +234,17 @@ Strophe.addConnectionPlugin('emuc', {
                 // we are connected with anonymous domain and only non anonymous users can create rooms
                 // we must authorize the user
                 $(document).trigger('passwordrequired.main');
-            }
-            else
+            } else {
                 console.warn('onPresError ', pres);
-
+                messageHandler.openReportDialog(null,
+                    'Oops! Something went wrong and we couldn`t connect to the conference.',
+                pres);
+            }
         } else {
             console.warn('onPresError ', pres);
+            messageHandler.openReportDialog(null,
+                'Oops! Something went wrong and we couldn`t connect to the conference.',
+                pres);
         }
         return true;
     },
@@ -305,14 +310,23 @@ Strophe.addConnectionPlugin('emuc', {
                         },
                         function (err) {
                             console.warn('setting password failed', err);
+                            messageHandler.showError('Lock failed',
+                                'Failed to lock conference.',
+                                err);
                         }
                     );
                 } else {
                     console.warn('room passwords not supported');
+                    messageHandler.showError('Warning',
+                        'Room passwords are currently not supported.');
+
                 }
             },
             function (err) {
                 console.warn('setting password failed', err);
+                messageHandler.showError('Lock failed',
+                    'Failed to lock conference.',
+                    err);
             }
         );
     },
@@ -340,6 +354,10 @@ Strophe.addConnectionPlugin('emuc', {
         }
 
         pres.up();
+
+        if(this.presMap['bridgeIsDown']) {
+            pres.c('bridgeIsDown').up();
+        }
 
         if (this.presMap['displayName']) {
             // XEP-0172
@@ -388,6 +406,7 @@ Strophe.addConnectionPlugin('emuc', {
                     ).up();
                 }
         }
+
         pres.up();
         connection.send(pres);
     },
@@ -445,5 +464,8 @@ Strophe.addConnectionPlugin('emuc', {
             return Strophe.getResourceFromJid(jid) === resourceJid;
         });
         return peerJid;
+    },
+    addBridgeIsDownToPresence: function() {
+        this.presMap['bridgeIsDown'] = true;
     }
 });
