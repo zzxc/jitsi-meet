@@ -31,9 +31,9 @@
     <script src="estos_log.js?v=2"></script><!-- simple stanza logger -->
     <script src="desktopsharing.js?v=3"></script><!-- desktop sharing -->
     <script src="data_channels.js?v=3"></script><!-- data channels -->
+    <script src="app.js?v=7"></script><!-- application logic -->
     <script src="RTC/RTC_bundle.js"></script>
     <script src="UI/UI_bundle.js"></script><!-- chat logic -->
-    <script src="app.js?v=7"></script><!-- application logic -->
     <script src="util/util.js?v=6"></script><!-- utility functions -->
     <script src="moderatemuc.js?v=3"></script><!-- moderator plugin -->
     <script src="analytics.js?v=1"></script><!-- google analytics plugin -->
@@ -41,8 +41,6 @@
     <script src="roomname_generator.js?v=1"></script><!-- generator for random room names -->
     <script src="commands.js"></script>
     <script src="UI/chat/smileys.js"></script>
-    <script src="toolbar_toggler.js?v=1"></script>
-    <script src="keyboard_shortcut.js?v=1"></script>
     <script src="tracking.js?v=1"></script><!-- tracking -->
     <script src="message_handler.js?v=1"></script>
     <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
@@ -255,7 +253,7 @@
                     </a>
                 </span>
                 <span class="bottomToolbar_span">
-                    <a class="bottomToolbarButton" id="bottomtoolbar_button_filmstrip" data-container="body" data-toggle="popover" shortcut="filmstripPopover" data-placement="top" content="Show / hide film strip" onclick='BottomToolbar.toggleFilmStrip()'>
+                    <a class="bottomToolbarButton" id="bottomtoolbar_button_filmstrip" data-container="body" data-toggle="popover" shortcut="filmstripPopover" data-placement="top" content="Show / hide film strip">
                         <i id="filmStripButton" class="icon-filmstrip"></i>
                     </a>
                 </span>

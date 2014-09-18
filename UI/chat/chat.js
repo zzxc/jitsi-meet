@@ -2,7 +2,7 @@
 var Replacement = require("./Replacement.js");
 var dep = {
     "VideoLayout": function(){ return require("../VideoLayout")},
-    "Toolbar": function(){return require("../Toolbar")}
+    "Toolbar": function(){return require("../toolbars/Toolbar")}
 };
 /**
  * Chat related user interface.

@@ -1,6 +1,7 @@
 /* global $, config, Prezi, Util, connection, setLargeVideoVisible, dockToolbar */
 var Prezi = require("../prezi/Prezi.js");
 var UIUtil = require("../UIUtil.js");
+var ToolbarToggler = require("../toolbars/toolbar_toggler");
 
 var Etherpad = (function (my) {
     var etherpadName = null;

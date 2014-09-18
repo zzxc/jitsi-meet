@@ -5,7 +5,7 @@ var dep =
     "Chat": function(){ return require("./chat/Chat")},
     "UIUtil": function(){ return require("./UIUtil.js")},
     "ContactList": function(){ return require("./ContactList")},
-    "Toolbar": function(){ return require("./Toolbar")}
+    "Toolbar": function(){ return require("./toolbars/toolbar_toggler")}
 }
 
 var VideoLayout = (function (my) {
@@ -1656,7 +1656,7 @@ var VideoLayout = (function (my) {
         var stream = simulcast.getLocalVideoStream();
 
         // Attach WebRTC stream
-        RTC.attachMediaStream(localVideoSelector, stream);
+        attachMediaStream(localVideoSelector, stream);
 
         localVideoSrc = $(localVideoSelector).attr('src');
     });
@@ -1667,7 +1667,7 @@ var VideoLayout = (function (my) {
         var stream = simulcast.getLocalVideoStream();
 
         // Attach WebRTC stream
-        RTC.attachMediaStream(localVideoSelector, stream);
+        attachMediaStream(localVideoSelector, stream);
 
         localVideoSrc = $(localVideoSelector).attr('src');
     });

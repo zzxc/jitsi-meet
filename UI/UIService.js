@@ -1,7 +1,8 @@
 var AudioLevels = require("./audiolevels/AudioLevels.js");
 var Etherpad = require("./etherpad/Etherpad.js");
 var VideoLayout = require("./VideoLayout.js");
-var Toolbar = require("./Toolbar.js");
+var Toolbar = require("./toolbars/toolbar.js");
+var ToolbarToggler = require("./toolbars/toolbar_toggler.js");
 var ContactList = require("./ContactList");
 
 var UIService = function() {
@@ -62,7 +63,7 @@ var UIService = function() {
         ContactList.addContact(jid);
 
         // Once we've joined the muc show the toolbar
-        Toolbar.showToolbar();
+        ToolbarToggler.showToolbar();
 
         if (info.displayName)
             $(document).trigger('displaynamechanged',

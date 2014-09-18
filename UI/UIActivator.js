@@ -5,8 +5,10 @@ var Prezi = require("./prezi/Prezi.js");
 var Etherpad = require("./etherpad/Etherpad.js");
 var Chat = require("./chat/Chat.js");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
-var Toolbar = require("./toolbar");
-var BottomToolbar = require("./BottomToolbar");
+var Toolbar = require("./toolbars/toolbar");
+var ToolbarToggler = require("./toolbars/toolbar_toggler");
+var BottomToolbar = require("./toolbars/BottomToolbar");
+var KeyboardShortcut = require("./keyboard_shortcut");
 
 var UIActivator = function()
 {
@@ -80,8 +82,9 @@ var UIActivator = function()
             trigger: 'click hover'});
         VideoLayout.resizeLargeVideoContainer();
         $("#videospace").mousemove(function () {
-            return Toolbar.showToolbar();
+            return ToolbarToggler.showToolbar();
         });
+        KeyboardShortcut.init();
         registerListeners();
         bindEvents();
         setupAudioLevels();

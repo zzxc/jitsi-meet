@@ -1,5 +1,5 @@
-var ContactList = require("./ContactList.js");
-var Chat = require("./chat/Chat.js");
+var ContactList = require("./../ContactList.js");
+var Chat = require("./../chat/chat.js");
 
 var BottomToolbar = (function (my) {
 
@@ -10,6 +10,9 @@ var BottomToolbar = (function (my) {
         },
         "bottomtoolbar_button_contact": function () {
             return BottomToolbar.toggleContactList();
+        },
+        "bottomtoolbar_button_filmstrip": function () {
+            return BottomToolbar.toggleFilmStrip();
         }
     };
 

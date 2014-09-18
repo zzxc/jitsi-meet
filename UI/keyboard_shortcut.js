@@ -1,3 +1,5 @@
+var BottomToolbar = require("./toolbars/BottomToolbar");
+
 var KeyboardShortcut = (function(my) {
     //maps keycode to character, id of popover for given function and function
     var shortcuts = {
@@ -71,5 +73,17 @@ var KeyboardShortcut = (function(my) {
         }
         return "";
     };
+
+    my.init = function () {
+        $('body').popover({ selector: '[data-toggle=popover]',
+            trigger: 'click hover',
+            content: function() {
+                return this.getAttribute("content") +
+                    KeyboardShortcut.getShortcut(this.getAttribute("shortcut"));
+            }
+        });
+    }
     return my;
 }(KeyboardShortcut || {}));
+
+module.exports = KeyboardShortcut;

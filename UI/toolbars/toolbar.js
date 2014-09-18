@@ -1,6 +1,6 @@
 var BottomToolbar = require("./BottomToolbar");
-var Prezi = require("./prezi/prezi");
-var Etherpad = require("./etherpad/Etherpad");
+var Prezi = require("./../prezi/prezi");
+var Etherpad = require("./../etherpad/Etherpad");
 
 var Toolbar = (function (my) {
 
@@ -48,6 +48,68 @@ var Toolbar = (function (my) {
             return hangup();
         }
     }
+
+    // Starts or stops the recording for the conference.
+    function toggleRecording() {
+        if (focus === null || focus.confid === null) {
+            console.log('non-focus, or conference not yet organized: not enabling recording');
+            return;
+        }
+
+        if (!recordingToken)
+        {
+            messageHandler.openTwoButtonDialog(null,
+                    '<h2>Enter recording token</h2>' +
+                    '<input id="recordingToken" type="text" placeholder="token" autofocus>',
+                false,
+                "Save",
+                function (e, v, m, f) {
+                    if (v) {
+                        var token = document.getElementById('recordingToken');
+
+                        if (token.value) {
+                            setRecordingToken(Util.escapeHtml(token.value));
+                            toggleRecording();
+                        }
+                    }
+                },
+                function (event) {
+                    document.getElementById('recordingToken').focus();
+                }
+            );
+
+            return;
+        }
+
+        var oldState = focus.recordingEnabled;
+        Toolbar.toggleRecordingButtonState();
+        focus.setRecording(!oldState,
+            recordingToken,
+            function (state) {
+                console.log("New recording state: ", state);
+                if (state == oldState) //failed to change, reset the token because it might have been wrong
+                {
+                    Toolbar.toggleRecordingButtonState();
+                    setRecordingToken(null);
+                }
+            }
+        );
+
+
+    }
+
+    /**
+     * Locks / unlocks the room.
+     */
+    function lockRoom(lock) {
+        if (lock)
+            connection.emuc.lockRoom(sharedKey);
+        else
+            connection.emuc.lockRoom('');
+
+        Toolbar.updateLockButton();
+    }
+
     //sets onclick handlers
     my.init = function () {
         for(var k in buttonHandlers)

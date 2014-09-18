@@ -199,7 +199,7 @@ RTC.prototype.getUserMediaWithConstraints
                 });
         } else {
 
-            RTC.getUserMedia(constraints,
+            this.getUserMedia(constraints,
                 function (stream) {
                     console.log('onUserMediaSuccess');
                     success_callback(stream);

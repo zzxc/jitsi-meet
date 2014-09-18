@@ -100,7 +100,7 @@ var ContactList = (function (my) {
 
     /**
      * Creates the avatar element.
-     * 
+     *
      * @return the newly created avatar element
      */
     function createAvatar() {
@@ -140,5 +140,4 @@ var ContactList = (function (my) {
 
     return my;
 }(ContactList || {}));
-
-module.exports = ContactList;
+module.exports = ContactList

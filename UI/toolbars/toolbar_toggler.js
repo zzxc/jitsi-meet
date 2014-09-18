@@ -1,3 +1,5 @@
+var Toolbar = require("./toolbar");
+
 var ToolbarToggler = (function(my) {
     var INITIAL_TOOLBAR_TIMEOUT = 20000;
     var TOOLBAR_TIMEOUT = INITIAL_TOOLBAR_TIMEOUT;
@@ -98,3 +100,5 @@ var ToolbarToggler = (function(my) {
 
     return my;
 }(ToolbarToggler || {}));
+
+module.exports = ToolbarToggler;

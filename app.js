@@ -216,36 +216,37 @@ function waitForPresence(data, sid) {
         }
     }
 
-    // NOTE(gp) now that we have simulcast, a media stream can have more than 1
-    // ssrc. We should probably take that into account in our MediaStream
-    // wrapper.
-    mediaStreams.push(new MediaStream(data, sid, thessrc));
+//    // NOTE(gp) now that we have simulcast, a media stream can have more than 1
+//    // ssrc. We should probably take that into account in our MediaStream
+//    // wrapper.
+//    mediaStreams.push(new MediaStream(data, sid, thessrc));
 
-    var container;
-    var remotes = document.getElementById('remoteVideos');
-
-    if (data.peerjid) {
-        VideoLayout.ensurePeerContainerExists(data.peerjid);
-
-        container  = document.getElementById(
-                'participant_' + Strophe.getResourceFromJid(data.peerjid));
-    } else {
-        if (data.stream.id !== 'mixedmslabel') {
-            console.error('can not associate stream',
-                data.stream.id,
-                'with a participant');
-            messageHandler.showError('Oops',
-                'We could not associate the current stream with a participant.');
-            // We don't want to add it here since it will cause troubles
-            return;
-        }
-        // FIXME: for the mixed ms we dont need a video -- currently
-        container = document.createElement('span');
-        container.id = 'mixedstream';
-        container.className = 'videocontainer';
-        remotes.appendChild(container);
-        Util.playSoundNotification('userJoined');
-    }
+    //This is moved in videolayout
+//    var container;
+//    var remotes = document.getElementById('remoteVideos');
+//
+//    if (data.peerjid) {
+//        VideoLayout.ensurePeerContainerExists(data.peerjid);
+//
+//        container  = document.getElementById(
+//                'participant_' + Strophe.getResourceFromJid(data.peerjid));
+//    } else {
+//        if (data.stream.id !== 'mixedmslabel') {
+//            console.error('can not associate stream',
+//                data.stream.id,
+//                'with a participant');
+//            messageHandler.showError('Oops',
+//                'We could not associate the current stream with a participant.');
+//            // We don't want to add it here since it will cause troubles
+//            return;
+//        }
+//        // FIXME: for the mixed ms we dont need a video -- currently
+//        container = document.createElement('span');
+//        container.id = 'mixedstream';
+//        container.className = 'videocontainer';
+//        remotes.appendChild(container);
+//        Util.playSoundNotification('userJoined');
+//    }
 
     var isVideo = data.stream.getVideoTracks().length > 0;
 
@@ -595,55 +596,6 @@ function isAudioMuted()
     return true;
 }
 
-// Starts or stops the recording for the conference.
-function toggleRecording() {
-    if (focus === null || focus.confid === null) {
-        console.log('non-focus, or conference not yet organized: not enabling recording');
-        return;
-    }
-
-    if (!recordingToken)
-    {
-        messageHandler.openTwoButtonDialog(null,
-            '<h2>Enter recording token</h2>' +
-                '<input id="recordingToken" type="text" placeholder="token" autofocus>',
-            false,
-            "Save",
-            function (e, v, m, f) {
-                if (v) {
-                    var token = document.getElementById('recordingToken');
-
-                    if (token.value) {
-                        setRecordingToken(Util.escapeHtml(token.value));
-                        toggleRecording();
-                    }
-                }
-            },
-            function (event) {
-                document.getElementById('recordingToken').focus();
-            }
-        );
-
-        return;
-    }
-
-    var oldState = focus.recordingEnabled;
-    Toolbar.toggleRecordingButtonState();
-    focus.setRecording(!oldState,
-                        recordingToken,
-                        function (state) {
-                            console.log("New recording state: ", state);
-                            if (state == oldState) //failed to change, reset the token because it might have been wrong
-                            {
-                                Toolbar.toggleRecordingButtonState();
-                                setRecordingToken(null);
-                            }
-                        }
-    );
-
-
-}
-
 $(document).ready(function () {
     UIActivator.start();
     document.title = brand.appName;
@@ -708,14 +660,6 @@ $(document).ready(function () {
     }
 
     $("#welcome_page").hide();
-
-    $('body').popover({ selector: '[data-toggle=popover]',
-        trigger: 'click hover',
-        content: function() {
-            return this.getAttribute("content") +
-                   KeyboardShortcut.getShortcut(this.getAttribute("shortcut"));
-        }
-    });
 
     // Set the defaults for prompt dialogs.
     jQuery.prompt.setDefaults({persistent: false});
@@ -827,17 +771,6 @@ function buttonClick(id, classname) {
     $(id).toggleClass(classname); // add the class to the clicked element
 }
 
-/**
- * Locks / unlocks the room.
- */
-function lockRoom(lock) {
-    if (lock)
-        connection.emuc.lockRoom(sharedKey);
-    else
-        connection.emuc.lockRoom('');
-
-    Toolbar.updateLockButton();
-}
 
 /**
  * Sets the shared key.
