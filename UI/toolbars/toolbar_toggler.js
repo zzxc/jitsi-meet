@@ -1,9 +1,8 @@
 var Toolbar = require("./toolbar");
 
 var ToolbarToggler = (function(my) {
-    var INITIAL_TOOLBAR_TIMEOUT = 20000;
-    var TOOLBAR_TIMEOUT = INITIAL_TOOLBAR_TIMEOUT;
-    var toolbarTimeout;
+    var toolbarTimeoutObject,
+        toolbarTimeout = interfaceConfig.INITIAL_TOOLBAR_TIMEOUT;
 
     /**
      * Shows the main toolbar.
@@ -15,15 +14,15 @@ var ToolbarToggler = (function(my) {
             header.show("slide", { direction: "up", duration: 300});
             $('#subject').animate({top: "+=40"}, 300);
             if(!bottomToolbar.is(":visible")) {
-                bottomToolbar.show("slide", {direction: "right",cduration: 300});
+                bottomToolbar.show("slide", {direction: "right",duration: 300});
             }
 
-            if (toolbarTimeout) {
-                clearTimeout(toolbarTimeout);
-                toolbarTimeout = null;
+            if (toolbarTimeoutObject) {
+                clearTimeout(toolbarTimeoutObject);
+                toolbarTimeoutObject = null;
             }
-            toolbarTimeout = setTimeout(hideToolbar, TOOLBAR_TIMEOUT);
-            TOOLBAR_TIMEOUT = 4000;
+            toolbarTimeoutObject = setTimeout(hideToolbar, toolbarTimeout);
+            toolbarTimeout = interfaceConfig.TOOLBAR_TIMEOUT;
         }
 
         if (focus != null)
@@ -53,18 +52,18 @@ var ToolbarToggler = (function(my) {
                 isToolbarHover = true;
         }
 
-        clearTimeout(toolbarTimeout);
-        toolbarTimeout = null;
+        clearTimeout(toolbarTimeoutObject);
+        toolbarTimeoutObject = null;
 
         if (!isToolbarHover) {
             header.hide("slide", { direction: "up", duration: 300});
             $('#subject').animate({top: "-=40"}, 300);
-            if(!$("#remoteVideos").is(":visible")) {
-                bottomToolbar.hide("slide", {direction: "right", cduration: 300});
+            if($("#remoteVideos").hasClass("hidden")) {
+                bottomToolbar.hide("slide", {direction: "right", duration: 300});
             }
         }
         else {
-            toolbarTimeout = setTimeout(hideToolbar, TOOLBAR_TIMEOUT);
+            toolbarTimeoutObject = setTimeout(hideToolbar, toolbarTimeout);
         }
     };
 
@@ -82,9 +81,9 @@ var ToolbarToggler = (function(my) {
             }
 
             // Then clear the time out, to dock the toolbar.
-            if (toolbarTimeout) {
-                clearTimeout(toolbarTimeout);
-                toolbarTimeout = null;
+            if (toolbarTimeoutObject) {
+                clearTimeout(toolbarTimeoutObject);
+                toolbarTimeoutObject = null;
             }
         }
         else {
@@ -92,7 +91,7 @@ var ToolbarToggler = (function(my) {
                 ToolbarToggler.showToolbar();
             }
             else {
-                toolbarTimeout = setTimeout(hideToolbar, TOOLBAR_TIMEOUT);
+                toolbarTimeoutObject = setTimeout(hideToolbar, toolbarTimeout);
             }
         }
     };
