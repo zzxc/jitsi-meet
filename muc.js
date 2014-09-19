@@ -140,7 +140,7 @@ Strophe.addConnectionPlugin('emuc', {
                 // FIXME: this should prepare the video
                 if (focus.confid === null) {
                     console.log('make new conference with', from);
-                    focus.makeConference(Object.keys(connection.emuc.members));
+                    focus.makeConference(Object.keys(this.members));
                 } else {
                     console.log('invite', from, 'into conference');
                     focus.addNewParticipant(from);
@@ -164,7 +164,8 @@ Strophe.addConnectionPlugin('emuc', {
         if (!$(pres).find('>x[xmlns="http://jabber.org/protocol/muc#user"]>status[code="110"]').length) {
             delete this.members[from];
             this.list_members.splice(this.list_members.indexOf(from), 1);
-            $(document).trigger('left.muc', [from]);
+            this.leftMuc(from);
+//            $(document).trigger('left.muc', [from]);
         }
         // If the status code is 110 this means we're leaving and we would like
         // to remove everyone else from our view, so we trigger the event.
@@ -173,7 +174,8 @@ Strophe.addConnectionPlugin('emuc', {
                 var member = this.list_members[i];
                 delete this.members[i];
                 this.list_members.splice(i, 1);
-                $(document).trigger('left.muc', member);
+                this.leftMuc(member);
+//                $(document).trigger('left.muc', member);
             }
         }
         return true;

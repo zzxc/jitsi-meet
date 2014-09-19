@@ -437,6 +437,7 @@ $(document).bind('presence.muc', function (event, jid, info, pres) {
     Object.keys(ssrc2jid).forEach(function (ssrc) {
         if (ssrc2jid[ssrc] == jid) {
             delete ssrc2jid[ssrc];
+            console.log("deleted " + ssrc + " for " + jid);
         }
         if (ssrc2videoType[ssrc] == jid) {
             delete ssrc2videoType[ssrc];
@@ -447,6 +448,7 @@ $(document).bind('presence.muc', function (event, jid, info, pres) {
         //console.log(jid, 'assoc ssrc', ssrc.getAttribute('type'), ssrc.getAttribute('ssrc'));
         var ssrcV = ssrc.getAttribute('ssrc');
         ssrc2jid[ssrcV] = jid;
+        console.log("added " + ssrcV + " for " + jid);
 
         var type = ssrc.getAttribute('type');
         ssrc2videoType[ssrcV] = type;

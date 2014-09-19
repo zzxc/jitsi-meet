@@ -82,11 +82,7 @@ var UIService = function() {
             // FIXME: this should prepare the video
             if (focus.confid === null) {
                 console.log('make new conference with', jid);
-                focus.makeConference(Object.keys(connection.emuc.members));
                 Toolbar.showRecordingButton(true);
-            } else {
-                console.log('invite', jid, 'into conference');
-                focus.addNewParticipant(jid);
             }
         }
         else if (sharedKey) {
