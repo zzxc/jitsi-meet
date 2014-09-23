@@ -15,6 +15,9 @@ var VideoLayout = (function (my) {
     var lastNEndpointsCache = [];
     var largeVideoNewSrc = '';
     var browser = null;
+    var flipXLocalVideo = true;
+
+    var mutedAudios = {};
     /**
      * Currently focused video "src"(displayed in large video).
      * @type {String}

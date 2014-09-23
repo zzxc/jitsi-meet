@@ -98,6 +98,40 @@ var Toolbar = (function (my) {
 
     }
 
+    function hangup() {
+        disposeConference();
+        sessionTerminated = true;
+        connection.emuc.doLeave();
+        var buttons = {};
+        if(config.enableWelcomePage)
+        {
+            setTimeout(function()
+            {
+                window.localStorage.welcomePageDisabled = false;
+                window.location.pathname = "/";
+            }, 10000);
+
+        }
+
+        $.prompt("Session Terminated",
+            {
+                title: "You hung up the call",
+                persistent: true,
+                buttons: {
+                    "Join again": true
+                },
+                closeText: '',
+                submit: function(event, value, message, formVals)
+                {
+                    window.location.reload();
+                    return false;
+                }
+
+            }
+        );
+
+    }
+
     /**
      * Locks / unlocks the room.
      */

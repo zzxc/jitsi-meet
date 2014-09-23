@@ -150,6 +150,20 @@ var UIActivator = function()
         });
     }
 
+    /**
+     * Sets the current view.
+     */
+    function setView(viewName) {
+//    if (viewName == "fullscreen") {
+//        document.getElementById('videolayout_fullscreen').disabled  = false;
+//        document.getElementById('videolayout_default').disabled  = true;
+//    }
+//    else {
+//        document.getElementById('videolayout_default').disabled  = false;
+//        document.getElementById('videolayout_fullscreen').disabled  = true;
+//    }
+    }
+
     UIActivatorProto.getRTCService = function()
     {
         return RTCActivator.getRTCService();

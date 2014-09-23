@@ -4,7 +4,6 @@ var connection = null;
 var authenticatedUser = false;
 var focus = null;
 var activecall = null;
-var RTC = null;
 var nickname = null;
 var sharedKey = '';
 var recordingToken ='';
@@ -19,10 +18,7 @@ var ssrc2jid = {};
 var ssrc2videoType = {};
 var videoSrcToSsrc = {};
 
-var mutedAudios = {};
-
 var localVideoSrc = null;
-var flipXLocalVideo = true;
 var isFullScreen = false;
 var currentVideoWidth = null;
 var currentVideoHeight = null;
@@ -215,38 +211,6 @@ function waitForPresence(data, sid) {
             }
         }
     }
-
-//    // NOTE(gp) now that we have simulcast, a media stream can have more than 1
-//    // ssrc. We should probably take that into account in our MediaStream
-//    // wrapper.
-//    mediaStreams.push(new MediaStream(data, sid, thessrc));
-
-    //This is moved in videolayout
-//    var container;
-//    var remotes = document.getElementById('remoteVideos');
-//
-//    if (data.peerjid) {
-//        VideoLayout.ensurePeerContainerExists(data.peerjid);
-//
-//        container  = document.getElementById(
-//                'participant_' + Strophe.getResourceFromJid(data.peerjid));
-//    } else {
-//        if (data.stream.id !== 'mixedmslabel') {
-//            console.error('can not associate stream',
-//                data.stream.id,
-//                'with a participant');
-//            messageHandler.showError('Oops',
-//                'We could not associate the current stream with a participant.');
-//            // We don't want to add it here since it will cause troubles
-//            return;
-//        }
-//        // FIXME: for the mixed ms we dont need a video -- currently
-//        container = document.createElement('span');
-//        container.id = 'mixedstream';
-//        container.className = 'videocontainer';
-//        remotes.appendChild(container);
-//        Util.playSoundNotification('userJoined');
-//    }
 
     var isVideo = data.stream.getVideoTracks().length > 0;
 
@@ -796,20 +760,6 @@ function closePageWarning() {
         return "You are about to leave this conversation.";
 }
 
-/**
- * Sets the current view.
- */
-function setView(viewName) {
-//    if (viewName == "fullscreen") {
-//        document.getElementById('videolayout_fullscreen').disabled  = false;
-//        document.getElementById('videolayout_default').disabled  = true;
-//    }
-//    else {
-//        document.getElementById('videolayout_default').disabled  = false;
-//        document.getElementById('videolayout_fullscreen').disabled  = true;
-//    }
-}
-
 function hangUp() {
     if (connection && connection.connected) {
         // ensure signout
@@ -879,38 +829,4 @@ function callSipButtonClicked()
             document.getElementById('sipNumber').focus();
         }
     );
-}
-
-function hangup() {
-    disposeConference();
-    sessionTerminated = true;
-    connection.emuc.doLeave();
-    var buttons = {};
-    if(config.enableWelcomePage)
-    {
-        setTimeout(function()
-        {
-            window.localStorage.welcomePageDisabled = false;
-            window.location.pathname = "/";
-        }, 10000);
-
-    }
-
-    $.prompt("Session Terminated",
-        {
-            title: "You hung up the call",
-            persistent: true,
-            buttons: {
-                "Join again": true
-            },
-            closeText: '',
-            submit: function(event, value, message, formVals)
-            {
-                window.location.reload();
-                return false;
-            }
-
-        }
-    );
-
 }
