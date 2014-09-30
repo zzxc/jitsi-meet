@@ -95,6 +95,11 @@ var UIActivator = function()
         setupChat()
     }
 
+    UIActivatorProto.start = function () {
+        uiService.dispose();
+        uiService = null;
+    }
+
     function registerListeners() {
         RTCActivator.addStreamListener(function (stream) {
             switch (stream.type)
@@ -131,9 +136,7 @@ var UIActivator = function()
             function () {
                 VideoLayout.resizeLargeVideoContainer();
                 VideoLayout.positionLarge();
-                isFullScreen = document.fullScreen ||
-                    document.mozFullScreen ||
-                    document.webkitIsFullScreen;
+                var isFullScreen = VideoLayout.isFullScreen();
 
                 if (isFullScreen) {
                     setView("fullscreen");
@@ -192,6 +195,11 @@ var UIActivator = function()
         return Chat.updateChatConversation(from, displayName, message);
     }
 
+
+    UIActivatorProto.addNicknameListener = function(listener)
+    {
+
+    }
 
     return UIActivatorProto;
 }();

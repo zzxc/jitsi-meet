@@ -398,3 +398,5 @@ SDPUtil = {
     }
 };
 
+module.exports = SDPUtil;
+

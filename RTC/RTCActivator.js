@@ -26,8 +26,6 @@ var RTCActivator = (function()
 
     RTCActivatorProto.addStreamListener= function(listener, eventType)
     {
-        console.log(RTCService);
-        console.log(require("./RTCService.js"));
         return RTCService.addStreamListener(listener, eventType);
     }
 

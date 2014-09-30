@@ -1,3 +1,5 @@
+var SDP = require("./strophe.jingle.sdp");
+
 /**
  * Base class for ColibriFocus and JingleSession.
  * @param connection Strophe connection object
@@ -242,3 +244,39 @@ SessionBase.prototype.toggleVideoMute = function (callback) {
     this.peerconnection.hardMuteVideo(!ismuted);
     this.modifySources(callback(!ismuted));
 };
+
+
+SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
+    switch (session.peerconnection.iceConnectionState) {
+        case 'checking':
+            session.timeChecking = (new Date()).getTime();
+            session.firstconnect = true;
+            break;
+        case 'completed': // on caller side
+        case 'connected':
+            if (session.firstconnect) {
+                session.firstconnect = false;
+                var metadata = {};
+                metadata.setupTime = (new Date()).getTime() - session.timeChecking;
+                session.peerconnection.getStats(function (res) {
+                    res.result().forEach(function (report) {
+                        if (report.type == 'googCandidatePair' && report.stat('googActiveConnection') == 'true') {
+                            metadata.localCandidateType = report.stat('googLocalCandidateType');
+                            metadata.remoteCandidateType = report.stat('googRemoteCandidateType');
+
+                            // log pair as well so we can get nice pie charts
+                            metadata.candidatePair = report.stat('googLocalCandidateType') + ';' + report.stat('googRemoteCandidateType');
+
+                            if (report.stat('googRemoteAddress').indexOf('[') === 0) {
+                                metadata.ipv6 = true;
+                            }
+                        }
+                    });
+                    trackUsage('iceConnected', metadata);
+                });
+            }
+            break;
+    }
+}
+
+module.exports = SessionBase;

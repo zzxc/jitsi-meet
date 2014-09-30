@@ -6,6 +6,8 @@ var Toolbar = (function (my) {
 
     var toolbarTimeout = null;
 
+    var roomUrl = null;
+
     var buttonHandlers = {
         "toolbar_button_mute": function () {
             return toggleAudio();
@@ -48,6 +50,36 @@ var Toolbar = (function (my) {
             return hangup();
         }
     }
+
+    my.sharedKey = '';
+
+    function setRecordingToken(token) {
+        recordingToken = token;
+    }
+
+    function callSipButtonClicked()
+    {
+        messageHandler.openTwoButtonDialog(null,
+                '<h2>Enter SIP number</h2>' +
+                '<input id="sipNumber" type="text"' +
+                ' value="' + config.defaultSipNumber + '" autofocus>',
+            false,
+            "Dial",
+            function (e, v, m, f) {
+                if (v) {
+                    var numberInput = document.getElementById('sipNumber');
+                    if (numberInput.value) {
+                        connection.rayo.dial(
+                            numberInput.value, 'fromnumber', UIActivator.getUIService().getRoomName());
+                    }
+                }
+            },
+            function (event) {
+                document.getElementById('sipNumber').focus();
+            }
+        );
+    }
+
 
     // Starts or stops the recording for the conference.
     function toggleRecording() {
@@ -133,11 +165,18 @@ var Toolbar = (function (my) {
     }
 
     /**
+     * Sets the shared key.
+     */
+    my.setSharedKey = function(sKey) {
+        Toolbar.sharedKey = sKey;
+    }
+
+    /**
      * Locks / unlocks the room.
      */
     function lockRoom(lock) {
         if (lock)
-            connection.emuc.lockRoom(sharedKey);
+            connection.emuc.lockRoom(Toolbar.sharedKey);
         else
             connection.emuc.lockRoom('');
 
@@ -156,7 +195,7 @@ var Toolbar = (function (my) {
     my.openLockDialog = function () {
         // Only the focus is able to set a shared key.
         if (focus === null) {
-            if (sharedKey) {
+            if (Toolbar.sharedKey) {
                 messageHandler.openMessageDialog(null,
                         "This conversation is currently protected by" +
                         " a shared secret key.",
@@ -171,14 +210,14 @@ var Toolbar = (function (my) {
                     "Secret key");
             }
         } else {
-            if (sharedKey) {
+            if (Toolbar.sharedKey) {
                 messageHandler.openTwoButtonDialog(null,
                     "Are you sure you would like to remove your secret key?",
                     false,
                     "Remove",
                     function (e, v) {
                         if (v) {
-                            setSharedKey('');
+                            Toolbar.setSharedKey('');
                             lockRoom(false);
                         }
                     });
@@ -194,7 +233,7 @@ var Toolbar = (function (my) {
                             var lockKey = document.getElementById('lockKey');
 
                             if (lockKey.value) {
-                                setSharedKey(Util.escapeHtml(lockKey.value));
+                                Toolbar.setSharedKey(Util.escapeHtml(lockKey.value));
                                 lockRoom(true);
                             }
                         }
@@ -206,6 +245,21 @@ var Toolbar = (function (my) {
             }
         }
     };
+
+    /**
+     * Updates the room invite url.
+     */
+    my.updateRoomUrl = function(newRoomUrl) {
+        roomUrl = newRoomUrl;
+
+        // If the invite dialog has been already opened we update the information.
+        var inviteLink = document.getElementById('inviteLinkRef');
+        if (inviteLink) {
+            inviteLink.value = roomUrl;
+            inviteLink.select();
+            document.getElementById('jqi_state0_buttonInvite').disabled = false;
+        }
+    }
 
     /**
      * Opens the invite link dialog.
@@ -249,11 +303,11 @@ var Toolbar = (function (my) {
             return;
 
         var sharedKeyText = "";
-        if (sharedKey && sharedKey.length > 0) {
+        if (Toolbar.sharedKey && Toolbar.sharedKey.length > 0) {
             sharedKeyText =
                 "This conference is password protected. Please use the " +
                 "following pin when joining:%0D%0A%0D%0A" +
-                sharedKey + "%0D%0A%0D%0A";
+                    Toolbar.sharedKey + "%0D%0A%0D%0A";
         }
 
         var conferenceName = roomUrl.substring(roomUrl.lastIndexOf('/') + 1);

@@ -39,7 +39,6 @@ var RTCService = function()
         this.rtc.obtainAudioAndVideoPermissions();
         this.localStreams = new Array();
         this.remoteStreams = new Array();
-        RTCService.addStreamListener(maybeDoJoin, StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
     }
 
 

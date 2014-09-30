@@ -1,14 +1,9 @@
 /* jshint -W117 */
 /* application specific logic */
 var connection = null;
-var authenticatedUser = false;
 var focus = null;
 var activecall = null;
-var nickname = null;
-var sharedKey = '';
 var recordingToken ='';
-var roomUrl = null;
-var roomName = null;
 var ssrc2jid = {};
 
 /**
@@ -19,7 +14,6 @@ var ssrc2videoType = {};
 var videoSrcToSsrc = {};
 
 var localVideoSrc = null;
-var isFullScreen = false;
 var currentVideoWidth = null;
 var currentVideoHeight = null;
 /**
@@ -40,130 +34,10 @@ var sessionTerminated = false;
 function init() {
     StatisticsActivator.start();
     RTCActivator.start();
-
-    var jid = document.getElementById('jid').value || config.hosts.anonymousdomain || config.hosts.domain || window.location.hostname;
-    connect(jid);
+    var uiCredentials = UIActivator.getUIService().getCredentials();
+    XMPPActivator.start(null, null, uiCredentials);
 }
 
-function connect(jid, password) {
-    var localAudio, localVideo;
-    if (connection && connection.jingle) {
-        localAudio = connection.jingle.localAudio;
-        localVideo = connection.jingle.localVideo;
-    }
-    connection = new Strophe.Connection(document.getElementById('boshURL').value || config.bosh || '/http-bind');
-
-    if (nickname) {
-        connection.emuc.addDisplayNameToPresence(nickname);
-    }
-
-    if (connection.disco) {
-        // for chrome, add multistream cap
-    }
-    connection.jingle.pc_constraints = RTCActivator.getRTCService().getPCConstraints();
-    if (config.useIPv6) {
-        // https://code.google.com/p/webrtc/issues/detail?id=2828
-        if (!connection.jingle.pc_constraints.optional) connection.jingle.pc_constraints.optional = [];
-        connection.jingle.pc_constraints.optional.push({googIPv6: true});
-    }
-    if (localAudio) connection.jingle.localAudio = localAudio;
-    if (localVideo) connection.jingle.localVideo = localVideo;
-
-    if(!password)
-        password = document.getElementById('password').value;
-
-    var anonymousConnectionFailed = false;
-    connection.connect(jid, password, function (status, msg) {
-        if (status === Strophe.Status.CONNECTED) {
-            console.log('connected');
-            if (config.useStunTurn) {
-                connection.jingle.getStunAndTurnCredentials();
-            }
-            document.getElementById('connect').disabled = true;
-
-            if(password)
-                authenticatedUser = true;
-            maybeDoJoin();
-        } else if (status === Strophe.Status.CONNFAIL) {
-            if(msg === 'x-strophe-bad-non-anon-jid') {
-                anonymousConnectionFailed = true;
-            }
-            console.log('status', status);
-        } else if (status === Strophe.Status.DISCONNECTED) {
-            if(anonymousConnectionFailed) {
-                // prompt user for username and password
-                $(document).trigger('passwordrequired.main');
-            }
-        } else if (status === Strophe.Status.AUTHFAIL) {
-            // wrong password or username, prompt user
-            $(document).trigger('passwordrequired.main');
-
-        } else {
-            console.log('status', status);
-        }
-    });
-}
-
-function maybeDoJoin() {
-    if (connection && connection.connected && Strophe.getResourceFromJid(connection.jid) // .connected is true while connecting?
-        && (connection.jingle.localAudio || connection.jingle.localVideo)) {
-        doJoin();
-    }
-}
-
-
-function doJoin() {
-    var roomnode = null;
-    var path = window.location.pathname;
-    var roomjid;
-
-    // determinde the room node from the url
-    // TODO: just the roomnode or the whole bare jid?
-    if (config.getroomnode && typeof config.getroomnode === 'function') {
-        // custom function might be responsible for doing the pushstate
-        roomnode = config.getroomnode(path);
-    } else {
-        /* fall back to default strategy
-         * this is making assumptions about how the URL->room mapping happens.
-         * It currently assumes deployment at root, with a rewrite like the
-         * following one (for nginx):
-        location ~ ^/([a-zA-Z0-9]+)$ {
-            rewrite ^/(.*)$ / break;
-        }
-         */
-        if (path.length > 1) {
-            roomnode = path.substr(1).toLowerCase();
-        } else {
-            var word = RoomNameGenerator.generateRoomWithoutSeparator(3);
-            roomnode = word.toLowerCase();
-
-            window.history.pushState('VideoChat',
-                    'Room: ' + word, window.location.pathname + word);
-        }
-    }
-
-    roomName = roomnode + '@' + config.hosts.muc;
-
-    roomjid = roomName;
-
-    if (config.useNicks) {
-        var nick = window.prompt('Your nickname (optional)');
-        if (nick) {
-            roomjid += '/' + nick;
-        } else {
-            roomjid += '/' + Strophe.getNodeFromJid(connection.jid);
-        }
-    } else {
-
-        var tmpJid = Strophe.getNodeFromJid(connection.jid);
-
-        if(!authenticatedUser)
-            tmpJid = tmpJid.substr(0, 8);
-
-        roomjid += '/' + tmpJid;
-    }
-    connection.emuc.doJoin(roomjid);
-}
 
 $(document).bind('remotestreamadded.jingle', function (event, data, sid) {
     waitForPresence(data, sid);
@@ -362,39 +236,6 @@ $(document).bind('setLocalDescription.jingle', function (event, sid) {
     }
 });
 
-$(document).bind('iceconnectionstatechange.jingle', function (event, sid, session) {
-    switch (session.peerconnection.iceConnectionState) {
-    case 'checking': 
-        session.timeChecking = (new Date()).getTime();
-        session.firstconnect = true;
-        break;
-    case 'completed': // on caller side
-    case 'connected':
-        if (session.firstconnect) {
-            session.firstconnect = false;
-            var metadata = {};
-            metadata.setupTime = (new Date()).getTime() - session.timeChecking;
-            session.peerconnection.getStats(function (res) {
-                res.result().forEach(function (report) {
-                    if (report.type == 'googCandidatePair' && report.stat('googActiveConnection') == 'true') {
-                        metadata.localCandidateType = report.stat('googLocalCandidateType');
-                        metadata.remoteCandidateType = report.stat('googRemoteCandidateType');
-
-                        // log pair as well so we can get nice pie charts 
-                        metadata.candidatePair = report.stat('googLocalCandidateType') + ';' + report.stat('googRemoteCandidateType');
-
-                        if (report.stat('googRemoteAddress').indexOf('[') === 0) {
-                            metadata.ipv6 = true;
-                        }
-                    }
-                });
-                trackUsage('iceConnected', metadata);
-            });
-        }
-        break;
-    }
-});
-
 $(document).bind('presence.muc', function (event, jid, info, pres) {
 
     // Remove old ssrcs coming from the jid
@@ -447,54 +288,6 @@ $(document).bind('presence.muc', function (event, jid, info, pres) {
             "The video bridge is currently unavailable.");
     }
 
-});
-
-$(document).bind('passwordrequired.muc', function (event, jid) {
-    console.log('on password required', jid);
-
-    messageHandler.openTwoButtonDialog(null,
-        '<h2>Password required</h2>' +
-        '<input id="lockKey" type="text" placeholder="shared key" autofocus>',
-        true,
-        "Ok",
-        function (e, v, m, f) {
-            if (v) {
-                var lockKey = document.getElementById('lockKey');
-                if (lockKey.value !== null) {
-                    setSharedKey(lockKey.value);
-                    connection.emuc.doJoin(jid, lockKey.value);
-                }
-            }
-        },
-        function (event) {
-            document.getElementById('lockKey').focus();
-        }
-    );
-});
-
-$(document).bind('passwordrequired.main', function (event) {
-    console.log('password is required');
-
-    messageHandler.openTwoButtonDialog(null,
-        '<h2>Password required</h2>' +
-            '<input id="passwordrequired.username" type="text" placeholder="user@domain.net" autofocus>' +
-            '<input id="passwordrequired.password" type="password" placeholder="user password">',
-        true,
-        "Ok",
-        function (e, v, m, f) {
-            if (v) {
-                var username = document.getElementById('passwordrequired.username');
-                var password = document.getElementById('passwordrequired.password');
-
-                if (username.value !== null && password.value != null) {
-                    connect(username.value, password.value);
-                }
-            }
-        },
-        function (event) {
-            document.getElementById('passwordrequired.username').focus();
-        }
-    );
 });
 
 function getConferenceHandler() {
@@ -738,16 +531,6 @@ function buttonClick(id, classname) {
 }
 
 
-/**
- * Sets the shared key.
- */
-function setSharedKey(sKey) {
-    sharedKey = sKey;
-}
-
-function setRecordingToken(token) {
-    recordingToken = token;
-}
 
 /**
  * Warning to the user that the conference window is about to be closed.
@@ -807,26 +590,3 @@ function onSelectedEndpointChanged(userJid)
 $(document).bind("selectedendpointchanged", function(event, userJid) {
     onSelectedEndpointChanged(userJid);
 });
-
-function callSipButtonClicked()
-{
-    messageHandler.openTwoButtonDialog(null,
-        '<h2>Enter SIP number</h2>' +
-            '<input id="sipNumber" type="text"' +
-            ' value="' + config.defaultSipNumber + '" autofocus>',
-        false,
-        "Dial",
-        function (e, v, m, f) {
-            if (v) {
-                var numberInput = document.getElementById('sipNumber');
-                if (numberInput.value) {
-                    connection.rayo.dial(
-                        numberInput.value, 'fromnumber', roomName);
-                }
-            }
-        },
-        function (event) {
-            document.getElementById('sipNumber').focus();
-        }
-    );
-}

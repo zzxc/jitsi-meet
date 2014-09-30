@@ -34,8 +34,22 @@
  THE SOFTWARE.
  */
 /* jshint -W117 */
-
-ColibriFocus.prototype = Object.create(SessionBase.prototype);
+var dep =
+{
+    SessionBase: function () {
+        return require("../strophe.jingle.sessionbase");
+    },
+    ColibriSession: function () {
+        return require("./colibri.session");
+    },
+    TraceablePeerConnection: function () {
+        return require("../strophe.jingle.adapter");
+    },
+    SDP: function () {
+        return require("../strophe.jingle.sdp");
+    }
+}
+ColibriFocus.prototype = Object.create(dep.SessionBase().prototype);
 function ColibriFocus(connection, bridgejid) {
 
     SessionBase.call(this, connection, Math.random().toString(36).substr(2, 12));
@@ -108,7 +122,7 @@ ColibriFocus.prototype.makeConference = function (peers, errorCallback) {
     });
 
     this.peerconnection
-        = new TraceablePeerConnection(
+        = new dep.TraceablePeerConnection()(
             this.connection.jingle.ice_config,
             this.connection.jingle.pc_constraints );
 
@@ -126,7 +140,7 @@ ColibriFocus.prototype.makeConference = function (peers, errorCallback) {
             window.setTimeout(function() { self.modifySources(); }, 1000);
         }
         */
-        $(document).trigger('iceconnectionstatechange.jingle', [self.sid, self]);
+        self.onIceConnectionStateChange(self.sid, self);
     };
     this.peerconnection.onsignalingstatechange = function (event) {
         console.warn(self.peerconnection.signalingState);
@@ -404,7 +418,7 @@ ColibriFocus.prototype.createdConference = function (result) {
     // Notify that the focus has created the conference on the bridge
     $(document).trigger('conferenceCreated.jingle', [self]);
 
-    var bridgeSDP = new SDP(
+    var bridgeSDP = new dep.SDP()(
         'v=0\r\n' +
         'o=- 5151055458874951233 2 IN IP4 127.0.0.1\r\n' +
         's=-\r\n' +
@@ -545,7 +559,7 @@ ColibriFocus.prototype.createdConference = function (result) {
                             $(document).trigger('setLocalDescription.jingle', [self.sid]);
                             var elem = $iq({to: self.bridgejid, type: 'get'});
                             elem.c('conference', {xmlns: 'http://jitsi.org/protocol/colibri', id: self.confid});
-                            var localSDP = new SDP(self.peerconnection.localDescription.sdp);
+                            var localSDP = new dep.SDP()(self.peerconnection.localDescription.sdp);
                             localSDP.media.forEach(function (media, channel) {
                                 var name = SDPUtil.parse_mid(SDPUtil.find_line(media, 'a=mid:'));
                                 elem.c('content', {name: name});
@@ -657,8 +671,8 @@ ColibriFocus.prototype.initiate = function (peer, isInitiator) {
     console.log('tell', peer, participant);
     var sdp;
     if (this.peerconnection !== null && this.peerconnection.signalingState == 'stable') {
-        sdp = new SDP(this.peerconnection.remoteDescription.sdp);
-        var localSDP = new SDP(this.peerconnection.localDescription.sdp);
+        sdp = new dep.SDP()(this.peerconnection.remoteDescription.sdp);
+        var localSDP = new dep.SDP()(this.peerconnection.localDescription.sdp);
         // throw away stuff we don't want
         // not needed with static offer
         if (!config.useBundle) {
@@ -751,7 +765,7 @@ ColibriFocus.prototype.initiate = function (peer, isInitiator) {
     }
     // make a new colibri session and configure it
     // FIXME: is it correct to use this.connection.jid when used in a MUC?
-    var sess = new ColibriSession(this.connection.jid,
+    var sess = new dep.ColibriSession()(this.connection.jid,
                                   Math.random().toString(36).substr(2, 12), // random string
                                   this.connection);
     sess.initiate(peer);
@@ -810,7 +824,7 @@ ColibriFocus.prototype.addNewParticipant = function (peer) {
     elem.c(
         'conference',
         { xmlns: 'http://jitsi.org/protocol/colibri', id: this.confid });
-    var localSDP = new SDP(this.peerconnection.localDescription.sdp);
+    var localSDP = new dep.SDP()(this.peerconnection.localDescription.sdp);
     localSDP.media.forEach(function (media, channel) {
         var name = SDPUtil.parse_mid(SDPUtil.find_line(media, 'a=mid:'));
         var elemName;
@@ -1011,10 +1025,10 @@ ColibriFocus.prototype.addSource = function (elem, fromJid) {
         }
     });
 
-    var oldRemoteSdp = new SDP(this.peerconnection.remoteDescription.sdp);
+    var oldRemoteSdp = new dep.SDP()(this.peerconnection.remoteDescription.sdp);
     this.modifySources(function(){
         // Notify other participants about added ssrc
-        var remoteSDP = new SDP(self.peerconnection.remoteDescription.sdp);
+        var remoteSDP = new dep.SDP()(self.peerconnection.remoteDescription.sdp);
         var newSSRCs = oldRemoteSdp.getNewMedia(remoteSDP);
         self.sendSSRCUpdate(newSSRCs, fromJid, true);
     });
@@ -1048,10 +1062,10 @@ ColibriFocus.prototype.removeSource = function (elem, fromJid) {
         }
     });
 
-    var oldSDP = new SDP(self.peerconnection.remoteDescription.sdp);
+    var oldSDP = new dep.SDP()(self.peerconnection.remoteDescription.sdp);
     this.modifySources(function(){
         // Notify other participants about removed ssrc
-        var remoteSDP = new SDP(self.peerconnection.remoteDescription.sdp);
+        var remoteSDP = new dep.SDP()(self.peerconnection.remoteDescription.sdp);
         var removedSSRCs = remoteSDP.getNewMedia(oldSDP);
         self.sendSSRCUpdate(removedSSRCs, fromJid, false);
     });
@@ -1060,7 +1074,7 @@ ColibriFocus.prototype.removeSource = function (elem, fromJid) {
 ColibriFocus.prototype.setRemoteDescription = function (session, elem, desctype) {
     var participant = this.peers.indexOf(session.peerjid);
     console.log('Colibri.setRemoteDescription from', session.peerjid, participant);
-    var remoteSDP = new SDP('');
+    var remoteSDP = new dep.SDP()('');
     var channel;
     remoteSDP.fromJingle(elem);
 
@@ -1215,7 +1229,7 @@ ColibriFocus.prototype.sendIceCandidates = function (candidates) {
     var mycands = $iq({to: this.bridgejid, type: 'set'});
     mycands.c('conference', {xmlns: 'http://jitsi.org/protocol/colibri', id: this.confid});
     // FIXME: multi-candidate logic is taken from strophe.jingle, should be refactored there
-    var localSDP = new SDP(this.peerconnection.localDescription.sdp);
+    var localSDP = new dep.SDP()(this.peerconnection.localDescription.sdp);
     for (var mid = 0; mid < localSDP.media.length; mid++)
     {
         var cands = candidates.filter(function (el) { return el.sdpMLineIndex == mid; });
@@ -1314,8 +1328,8 @@ ColibriFocus.prototype.terminate = function (session, reason) {
     this.channels.splice(participant, 1);
 
     // tell everyone about the ssrcs to be removed
-    var sdp = new SDP('');
-    var localSDP = new SDP(this.peerconnection.localDescription.sdp);
+    var sdp = new dep.SDP()('');
+    var localSDP = new dep.SDP()(this.peerconnection.localDescription.sdp);
     var contents = SDPUtil.find_lines(localSDP.raw, 'a=mid:').map(SDPUtil.parse_mid);
     for (var j = 0; j < ssrcs.length; j++) {
         sdp.media[j] = 'a=mid:' + contents[j] + '\r\n';
@@ -1360,7 +1374,7 @@ ColibriFocus.prototype.sendTerminate = function (session, reason, text) {
         function (stanza) {
             var error = ($(stanza).find('error').length) ? {
                 code: $(stanza).find('error').attr('code'),
-                reason: $(stanza).find('error :first')[0].tagName,
+                reason: $(stanza).find('error :first')[0].tagName
             }:{};
             $(document).trigger('ack.jingle', [self.sid, error]);
         },
@@ -1379,7 +1393,7 @@ ColibriFocus.prototype.setRTCPTerminationStrategy = function (strategyFQN) {
     var strategyIQ = $iq({to: this.bridgejid, type: 'set'});
     strategyIQ.c('conference', {
 	    xmlns: 'http://jitsi.org/protocol/colibri',
-	    id: this.confid,
+	    id: this.confid
     });
 
     strategyIQ.c('rtcp-termination-strategy', {name: strategyFQN });
@@ -1489,4 +1503,4 @@ ColibriFocus.prototype.setReceiveSimulcastLayer = function (receiveSimulcastLaye
             });
     }
 };
-
+module.exports = ColibriFocus;

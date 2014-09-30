@@ -1,3 +1,5 @@
+var SDP = require("./strophe.jingle.sdp");
+
 function TraceablePeerConnection(ice_config, constraints) {
     var self = this;
     var RTCPeerconnection = navigator.mozGetUserMedia ? mozRTCPeerConnection : webkitRTCPeerConnection;
@@ -483,3 +485,5 @@ TraceablePeerConnection.prototype.getStats = function(callback, errback) {
         this.peerconnection.getStats(callback);
     }
 };
+
+module.exports = TraceablePeerConnection;

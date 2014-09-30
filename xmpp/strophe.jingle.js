@@ -1,4 +1,6 @@
 /* jshint -W117 */
+
+var JingleSession = require("./strophe.jingle.session");
 Strophe.addConnectionPlugin('jingle', {
     connection: null,
     sessions: {},

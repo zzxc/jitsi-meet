@@ -1,5 +1,8 @@
 /* jshint -W117 */
 // Jingle stuff
+var SessionBase = require("./strophe.jingle.sessionbase");
+var TraceablePeerConnection = require("./strophe.jingle.adapter");
+
 JingleSession.prototype = Object.create(SessionBase.prototype);
 function JingleSession(me, sid, connection) {
 
@@ -88,7 +91,7 @@ JingleSession.prototype.initiate = function (peerjid, isInitiator) {
                 this.stopTime = new Date();
                 break;
         }
-        $(document).trigger('iceconnectionstatechange.jingle', [self.sid, self]);
+        self.onIceConnectionStateChange(self.sid, self);
     };
     // add any local and relayed stream
     this.localStreams.forEach(function(stream) {
@@ -724,3 +727,4 @@ JingleSession.prototype.getStats = function (interval) {
     }, interval || 3000);
     return this.statsinterval;
 };
+module.exports = JingleSession;

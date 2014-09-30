@@ -675,8 +675,10 @@ var VideoLayout = (function (my) {
                     $('#editDisplayName').select();
 
                     var inputDisplayNameHandler = function (name) {
+                        var nickname = dep.UIActivator().getUIService().getNickname();
                         if (nickname !== name) {
-                            nickname = name;
+                            dep.UIActivator().getUIService().setNickname(name);
+                            nickname  = name;
                             window.localStorage.displayname = nickname;
                             connection.emuc.addDisplayNameToPresence(nickname);
                             connection.emuc.sendPresence();
@@ -1115,9 +1117,7 @@ var VideoLayout = (function (my) {
         // Parent height isn't completely calculated when we position the video in
         // full screen mode and this is why we use the screen height in this case.
         // Need to think it further at some point and implement it properly.
-        var isFullScreen = document.fullScreen ||
-            document.mozFullScreen ||
-            document.webkitIsFullScreen;
+        var isFullScreen = VideoLayout.isFullScreen();
         if (isFullScreen)
             videoSpaceHeight = window.innerHeight;
 
@@ -1125,6 +1125,13 @@ var VideoLayout = (function (my) {
         var verticalIndent = (videoSpaceHeight - videoHeight) / 2;
 
         return [horizontalIndent, verticalIndent];
+    }
+
+    my.isFullScreen = function()
+    {
+        return document.fullScreen ||
+            document.mozFullScreen ||
+            document.webkitIsFullScreen;
     }
 
     /**

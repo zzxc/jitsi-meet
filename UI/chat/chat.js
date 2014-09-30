@@ -2,7 +2,10 @@
 var Replacement = require("./Replacement.js");
 var dep = {
     "VideoLayout": function(){ return require("../VideoLayout")},
-    "Toolbar": function(){return require("../toolbars/Toolbar")}
+    "Toolbar": function(){return require("../toolbars/Toolbar")},
+    "UIActivator": function () {
+        return require("../UIActivator");
+    }
 };
 /**
  * Chat related user interface.
@@ -16,9 +19,10 @@ var Chat = (function (my) {
      */
     my.init = function () {
         var storedDisplayName = window.localStorage.displayname;
+        var nickname = null;
         if (storedDisplayName) {
+            dep.UIActivator().getUIService().setNickname(storedDisplayName);
             nickname = storedDisplayName;
-
             Chat.setChatConversationMode(true);
         }
 
@@ -27,11 +31,11 @@ var Chat = (function (my) {
                 event.preventDefault();
                 var val = Util.escapeHtml(this.value);
                 this.value = '';
-                if (!nickname) {
-                    nickname = val;
-                    window.localStorage.displayname = nickname;
+                if (!dep.UIActivator().getUIService().getNickname()) {
+                    dep.UIActivator().getUIService().setNickname(val);
+                    window.localStorage.displayname = val;
                     //this should be changed
-                    connection.emuc.addDisplayNameToPresence(nickname);
+                    connection.emuc.addDisplayNameToPresence(val);
                     connection.emuc.sendPresence();
 
                     Chat.setChatConversationMode(true);
@@ -56,7 +60,7 @@ var Chat = (function (my) {
                 {
                     //this should be changed
                     var message = Util.escapeHtml(value);
-                    connection.emuc.sendMessage(message, nickname);
+                    connection.emuc.sendMessage(message, dep.UIActivator().getUIService().getNickname());
                 }
             }
         });

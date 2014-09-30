@@ -690,3 +690,5 @@ SDP.prototype.jingle2media = function (content) {
     }
     return media;
 };
+
+module.exports = SDP;
