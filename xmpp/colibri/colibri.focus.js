@@ -34,23 +34,14 @@
  THE SOFTWARE.
  */
 /* jshint -W117 */
-var dep =
-{
-    SessionBase: function () {
-        return require("../strophe.jingle.sessionbase");
-    },
-    ColibriSession: function () {
-        return require("./colibri.session");
-    },
-    TraceablePeerConnection: function () {
-        return require("../strophe.jingle.adapter");
-    },
-    SDP: function () {
-        return require("../strophe.jingle.sdp");
-    }
-}
-ColibriFocus.prototype = Object.create(dep.SessionBase().prototype);
-function ColibriFocus(connection, bridgejid) {
+var SessionBase = require("../strophe.jingle.sessionbase");
+var ColibriSession = require("./colibri.session");
+var TraceablePeerConnection = require("../strophe.jingle.adapter");
+var SDP = require("../strophe.jingle.sdp");
+var SDPUtil = require("../strophe.jingle.sdp.util");
+var XMPPEvents = require("../../service/xmpp/XMPPEvents");
+ColibriFocus.prototype = Object.create(SessionBase.prototype);
+function ColibriFocus(connection, bridgejid, eventEmitter) {
 
     SessionBase.call(this, connection, Math.random().toString(36).substr(2, 12));
 
@@ -58,6 +49,7 @@ function ColibriFocus(connection, bridgejid) {
     this.peers = [];
     this.remoteStreams = [];
     this.confid = null;
+    this.eventEmitter = eventEmitter;
 
     /**
      * Local XMPP resource used to join the multi user chat.
@@ -122,7 +114,7 @@ ColibriFocus.prototype.makeConference = function (peers, errorCallback) {
     });
 
     this.peerconnection
-        = new dep.TraceablePeerConnection()(
+        = new TraceablePeerConnection(
             this.connection.jingle.ice_config,
             this.connection.jingle.pc_constraints );
 
@@ -159,7 +151,8 @@ ColibriFocus.prototype.makeConference = function (peers, errorCallback) {
             }
         });
         self.remoteStreams.push(event.stream);
-        $(document).trigger('remotestreamadded.jingle', [event, self.sid]);
+//        $(document).trigger('remotestreamadded.jingle', [event, self.sid]);
+        self.waitForPresence(event, self.sid);
     };
     this.peerconnection.onicecandidate = function (event) {
         //console.log('focus onicecandidate', self.confid, new Date().getTime(), event.candidate);
@@ -416,9 +409,9 @@ ColibriFocus.prototype.createdConference = function (result) {
     console.log('remote channels', this.channels);
 
     // Notify that the focus has created the conference on the bridge
-    $(document).trigger('conferenceCreated.jingle', [self]);
+    this.eventEmitter.emit(XMPPEvents.CONFERENCE_CERATED, self);
 
-    var bridgeSDP = new dep.SDP()(
+    var bridgeSDP = new SDP(
         'v=0\r\n' +
         'o=- 5151055458874951233 2 IN IP4 127.0.0.1\r\n' +
         's=-\r\n' +
@@ -559,7 +552,7 @@ ColibriFocus.prototype.createdConference = function (result) {
                             $(document).trigger('setLocalDescription.jingle', [self.sid]);
                             var elem = $iq({to: self.bridgejid, type: 'get'});
                             elem.c('conference', {xmlns: 'http://jitsi.org/protocol/colibri', id: self.confid});
-                            var localSDP = new dep.SDP()(self.peerconnection.localDescription.sdp);
+                            var localSDP = new SDP(self.peerconnection.localDescription.sdp);
                             localSDP.media.forEach(function (media, channel) {
                                 var name = SDPUtil.parse_mid(SDPUtil.find_line(media, 'a=mid:'));
                                 elem.c('content', {name: name});
@@ -640,8 +633,7 @@ ColibriFocus.prototype.createdConference = function (result) {
                             }
 
                             // Notify we've created the conference
-                            $(document).trigger(
-                                'conferenceCreated.jingle', self);
+                            self.eventEmitter.emit(XMPPEvents.CONFERENCE_CERATED, self);
                         },
                         function (error) {
                             console.warn('setLocalDescription failed.', error);
@@ -671,8 +663,8 @@ ColibriFocus.prototype.initiate = function (peer, isInitiator) {
     console.log('tell', peer, participant);
     var sdp;
     if (this.peerconnection !== null && this.peerconnection.signalingState == 'stable') {
-        sdp = new dep.SDP()(this.peerconnection.remoteDescription.sdp);
-        var localSDP = new dep.SDP()(this.peerconnection.localDescription.sdp);
+        sdp = new SDP(this.peerconnection.remoteDescription.sdp);
+        var localSDP = new SDP(this.peerconnection.localDescription.sdp);
         // throw away stuff we don't want
         // not needed with static offer
         if (!config.useBundle) {
@@ -765,7 +757,7 @@ ColibriFocus.prototype.initiate = function (peer, isInitiator) {
     }
     // make a new colibri session and configure it
     // FIXME: is it correct to use this.connection.jid when used in a MUC?
-    var sess = new dep.ColibriSession()(this.connection.jid,
+    var sess = new ColibriSession(this.connection.jid,
                                   Math.random().toString(36).substr(2, 12), // random string
                                   this.connection);
     sess.initiate(peer);
@@ -824,7 +816,7 @@ ColibriFocus.prototype.addNewParticipant = function (peer) {
     elem.c(
         'conference',
         { xmlns: 'http://jitsi.org/protocol/colibri', id: this.confid });
-    var localSDP = new dep.SDP()(this.peerconnection.localDescription.sdp);
+    var localSDP = new SDP(this.peerconnection.localDescription.sdp);
     localSDP.media.forEach(function (media, channel) {
         var name = SDPUtil.parse_mid(SDPUtil.find_line(media, 'a=mid:'));
         var elemName;
@@ -1025,10 +1017,10 @@ ColibriFocus.prototype.addSource = function (elem, fromJid) {
         }
     });
 
-    var oldRemoteSdp = new dep.SDP()(this.peerconnection.remoteDescription.sdp);
+    var oldRemoteSdp = new SDP(this.peerconnection.remoteDescription.sdp);
     this.modifySources(function(){
         // Notify other participants about added ssrc
-        var remoteSDP = new dep.SDP()(self.peerconnection.remoteDescription.sdp);
+        var remoteSDP = new SDP(self.peerconnection.remoteDescription.sdp);
         var newSSRCs = oldRemoteSdp.getNewMedia(remoteSDP);
         self.sendSSRCUpdate(newSSRCs, fromJid, true);
     });
@@ -1062,10 +1054,10 @@ ColibriFocus.prototype.removeSource = function (elem, fromJid) {
         }
     });
 
-    var oldSDP = new dep.SDP()(self.peerconnection.remoteDescription.sdp);
+    var oldSDP = new SDP(self.peerconnection.remoteDescription.sdp);
     this.modifySources(function(){
         // Notify other participants about removed ssrc
-        var remoteSDP = new dep.SDP()(self.peerconnection.remoteDescription.sdp);
+        var remoteSDP = new SDP(self.peerconnection.remoteDescription.sdp);
         var removedSSRCs = remoteSDP.getNewMedia(oldSDP);
         self.sendSSRCUpdate(removedSSRCs, fromJid, false);
     });
@@ -1074,7 +1066,7 @@ ColibriFocus.prototype.removeSource = function (elem, fromJid) {
 ColibriFocus.prototype.setRemoteDescription = function (session, elem, desctype) {
     var participant = this.peers.indexOf(session.peerjid);
     console.log('Colibri.setRemoteDescription from', session.peerjid, participant);
-    var remoteSDP = new dep.SDP()('');
+    var remoteSDP = new SDP('');
     var channel;
     remoteSDP.fromJingle(elem);
 
@@ -1229,7 +1221,7 @@ ColibriFocus.prototype.sendIceCandidates = function (candidates) {
     var mycands = $iq({to: this.bridgejid, type: 'set'});
     mycands.c('conference', {xmlns: 'http://jitsi.org/protocol/colibri', id: this.confid});
     // FIXME: multi-candidate logic is taken from strophe.jingle, should be refactored there
-    var localSDP = new dep.SDP()(this.peerconnection.localDescription.sdp);
+    var localSDP = new SDP(this.peerconnection.localDescription.sdp);
     for (var mid = 0; mid < localSDP.media.length; mid++)
     {
         var cands = candidates.filter(function (el) { return el.sdpMLineIndex == mid; });
@@ -1328,8 +1320,8 @@ ColibriFocus.prototype.terminate = function (session, reason) {
     this.channels.splice(participant, 1);
 
     // tell everyone about the ssrcs to be removed
-    var sdp = new dep.SDP()('');
-    var localSDP = new dep.SDP()(this.peerconnection.localDescription.sdp);
+    var sdp = new SDP('');
+    var localSDP = new SDP(this.peerconnection.localDescription.sdp);
     var contents = SDPUtil.find_lines(localSDP.raw, 'a=mid:').map(SDPUtil.parse_mid);
     for (var j = 0; j < ssrcs.length; j++) {
         sdp.media[j] = 'a=mid:' + contents[j] + '\r\n';

@@ -6,7 +6,7 @@
 var ColibriFocus = require("./colibri/colibri.focus");
 var XMPPActivator = require("./XMPPActivator");
 
-module.exports = function() {
+module.exports = function(eventEmitter) {
     Strophe.addConnectionPlugin('emuc', {
         connection: null,
         roomjid: null,
@@ -17,6 +17,7 @@ module.exports = function() {
         preziMap: {},
         joined: false,
         isOwner: false,
+        sessionTerminated: false,
         init: function (conn) {
             this.connection = conn;
         },
@@ -46,6 +47,7 @@ module.exports = function() {
         },
         doLeave: function () {
             console.log("do leave", this.myroomjid);
+            this.sessionTerminated = true;
             var pres = $pres({to: this.myroomjid, type: 'unavailable' });
             this.presMap.length = 0;
             this.connection.send(pres);
@@ -126,7 +128,7 @@ module.exports = function() {
                     var noMembers = false;
                     if (Object.keys(connection.emuc.members).length < 1) {
                         noMembers = true;
-                        focus = new ColibriFocus(connection, config.hosts.bridge);
+                        focus = new ColibriFocus(connection, config.hosts.bridge, eventEmitter);
                         this.setOwnNickname();
                     }
                     UIActivator.getUIService().onMucJoined(from, member, noMembers);
@@ -192,9 +194,9 @@ module.exports = function() {
                 && connection.emuc.myroomjid === connection.emuc.list_members[0]
                 // If our session has been terminated for some reason
                 // (kicked, hangup), don't try to become the focus
-                && !sessionTerminated) {
+                && !this.sessionTerminated) {
                 console.log('welcome to our new focus... myself');
-                focus = new ColibriFocus(connection, config.hosts.bridge);
+                focus = new ColibriFocus(connection, config.hosts.bridge, eventEmitter);
                 this.setOwnNickname();
 
                 UIActivator.getUIService().updateButtons(null, true);
@@ -210,7 +212,7 @@ module.exports = function() {
                 // FIXME: closing the connection is a hack to avoid some
                 // problems with reinit
                 disposeConference();
-                focus = new ColibriFocus(connection, config.hosts.bridge);
+                focus = new ColibriFocus(connection, config.hosts.bridge, eventEmitter);
                 this.setOwnNickname();
                 UIActivator.getUIService().updateButtons(true, false);
             }

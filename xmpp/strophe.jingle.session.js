@@ -2,6 +2,7 @@
 // Jingle stuff
 var SessionBase = require("./strophe.jingle.sessionbase");
 var TraceablePeerConnection = require("./strophe.jingle.adapter");
+var SDP = require("./strophe.jingle.sdp");
 
 JingleSession.prototype = Object.create(SessionBase.prototype);
 function JingleSession(me, sid, connection) {
@@ -67,7 +68,8 @@ JingleSession.prototype.initiate = function (peerjid, isInitiator) {
     };
     this.peerconnection.onaddstream = function (event) {
         self.remoteStreams.push(event.stream);
-        $(document).trigger('remotestreamadded.jingle', [event, self.sid]);
+//        $(document).trigger('remotestreamadded.jingle', [event, self.sid]);
+        self.waitForPresence(event, self.sid);
     };
     this.peerconnection.onremovestream = function (event) {
         // Remove the stream from remoteStreams
@@ -429,6 +431,7 @@ JingleSession.prototype.setRemoteDescription = function (elem, desctype) {
         function (e) {
             console.error('setRemoteDescription error', e);
             $(document).trigger('fatalError.jingle', [self, e]);
+            connection.emuc.doLeave();
         }
     );
 };

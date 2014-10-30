@@ -75,15 +75,15 @@ var UIActivator = function()
     }
 
     UIActivatorProto.start = function () {
-        // By default we use camera
-        getVideoSize = VideoLayout.getCameraVideoSize;
-        getVideoPosition = VideoLayout.getCameraVideoPosition;
         $('body').popover({ selector: '[data-toggle=popover]',
             trigger: 'click hover'});
         VideoLayout.resizeLargeVideoContainer();
         $("#videospace").mousemove(function () {
             return ToolbarToggler.showToolbar();
         });
+        // Set the defaults for prompt dialogs.
+        jQuery.prompt.setDefaults({persistent: false});
+
         KeyboardShortcut.init();
         registerListeners();
         bindEvents();
@@ -92,12 +92,69 @@ var UIActivator = function()
         setupPrezi();
         setupEtherpad();
         setupToolbars();
-        setupChat()
+        setupChat();
+
+        document.title = brand.appName;
+
+        $("#downloadlog").click(function (event) {
+            dump(event.target);
+        });
+
+        if(config.enableWelcomePage && window.location.pathname == "/" &&
+            (!window.localStorage.welcomePageDisabled || window.localStorage.welcomePageDisabled == "false"))
+        {
+            $("#videoconference_page").hide();
+            var setupWelcomePage = require("./WelcomePage");
+            setupWelcomePage();
+
+            return;
+        }
+
+        $("#welcome_page").hide();
+
+        if (!$('#settings').is(':visible')) {
+            console.log('init');
+            init();
+        } else {
+            loginInfo.onsubmit = function (e) {
+                if (e.preventDefault) e.preventDefault();
+                $('#settings').hide();
+                init();
+            };
+        }
+
     }
 
-    UIActivatorProto.start = function () {
+    UIActivatorProto.stop = function () {
         uiService.dispose();
         uiService = null;
+    }
+
+
+    /**
+     * Populates the log data
+     */
+    function populateData() {
+        var data = XMPPActivator.getJingleData();
+        var metadata = {};
+        metadata.time = new Date();
+        metadata.url = window.location.href;
+        metadata.ua = navigator.userAgent;
+        var logger = XMPPActivator.getLogger();
+        if (logger) {
+            metadata.xmpp = logger.log;
+        }
+        data.metadata = metadata;
+        return data;
+    }
+
+    function dump(elem, filename) {
+        elem = elem.parentNode;
+        elem.download = filename || 'meetlog.json';
+        elem.href = 'data:application/json;charset=utf-8,\n';
+        var data = populateData();
+        elem.href += encodeURIComponent(JSON.stringify(data, null, '  '));
+        return false;
     }
 
     function registerListeners() {
@@ -119,14 +176,18 @@ var UIActivator = function()
         RTCActivator.addStreamListener(function (stream) {
             VideoLayout.onRemoteStreamAdded(stream);
         }, StreamEventTypes.EVENT_TYPE_REMOTE_CREATED);
+
         // Listen for large video size updates
         document.getElementById('largeVideo')
             .addEventListener('loadedmetadata', function (e) {
-                currentVideoWidth = this.videoWidth;
-                currentVideoHeight = this.videoHeight;
-                VideoLayout.positionLarge(currentVideoWidth, currentVideoHeight);
+                VideoLayout.currentVideoWidth = this.videoWidth;
+                VideoLayout.currentVideoHeight = this.videoHeight;
+                VideoLayout.positionLarge(VideoLayout.currentVideoWidth,
+                    VideoLayout.currentVideoHeight);
             });
+
     }
+
     function bindEvents()
     {
         /**

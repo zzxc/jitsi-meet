@@ -16,6 +16,8 @@ var VideoLayout = (function (my) {
     var largeVideoNewSrc = '';
     var browser = null;
     var flipXLocalVideo = true;
+    my.currentVideoWidth = null;
+    my.currentVideoHeight = null;
 
     var mutedAudios = {};
     /**
@@ -1043,9 +1045,9 @@ var VideoLayout = (function (my) {
                                 videoSpaceWidth,
                                 videoSpaceHeight) {
        if (!videoWidth)
-           videoWidth = currentVideoWidth;
+           videoWidth = VideoLayout.currentVideoWidth;
        if (!videoHeight)
-           videoHeight = currentVideoHeight;
+           videoHeight = VideoLayout.currentVideoHeight;
 
        var aspectRatio = videoWidth / videoHeight;
 
@@ -1081,9 +1083,9 @@ var VideoLayout = (function (my) {
                                 videoSpaceWidth,
                                 videoSpaceHeight) {
         if (!videoWidth)
-            videoWidth = currentVideoWidth;
+            videoWidth = VideoLayout.currentVideoWidth;
         if (!videoHeight)
-            videoHeight = currentVideoHeight;
+            videoHeight = VideoLayout.currentVideoHeight;
 
         var aspectRatio = videoWidth / videoHeight;
 
@@ -1126,6 +1128,18 @@ var VideoLayout = (function (my) {
 
         return [horizontalIndent, verticalIndent];
     }
+
+    /**
+     * Method used to get large video position.
+     * @type {function ()}
+     */
+    var getVideoPosition = my.getCameraVideoPosition;
+
+    /**
+     * Method used to calculate large video size.
+     * @type {function ()}
+     */
+    var getVideoSize = my.getCameraVideoSize;
 
     my.isFullScreen = function()
     {

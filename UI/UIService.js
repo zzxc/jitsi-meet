@@ -8,7 +8,7 @@ var EventEmitter = require("events");
 
 var UIService = function() {
 
-    var eventEmitter = null;
+    var eventEmitter = new EventEmitter();
 
     var nickname = null;
 
@@ -137,28 +137,18 @@ var UIService = function() {
     }
 
     UIServiceProto.prototype.addNicknameListener = function (listener) {
-        if(eventEmitter == null)
-        {
-            eventEmitter = new EventEmitter();
-        }
-
         eventEmitter.on("nick_changed", listener);
         eventEmitter.emit("nick_changed", nickname);
 
     }
 
     UIServiceProto.prototype.removeNicknameListener = function (listener) {
-        if (eventEmitter == null)
-            return;
         eventEmitter.removeListener("nick_changed", listener);
     }
 
     UIServiceProto.prototype.dispose = function()
     {
-        if (eventEmitter) {
-            eventEmitter.removeAllListeners("statistics.audioLevel");
-            eventEmitter = null;
-        }
+        eventEmitter.removeAllListeners("statistics.audioLevel");
     }
 
     UIServiceProto.prototype.setNickname = function(value)

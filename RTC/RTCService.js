@@ -1,4 +1,4 @@
-var EventEmmiter = require("events");
+var EventEmitter = require("events");
 var RTC = require("./RTC.js");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
 var MediaStream = require("./MediaStream.js");
@@ -6,14 +6,14 @@ var MediaStream = require("./MediaStream.js");
 
 var RTCService = function()
 {
-    var eventEmmiter = null;
+    var eventEmitter = new EventEmitter();
 
     function Stream(stream, type)
     {
         this.stream = stream;
-        this.eventEmmiter = eventEmmiter;
+        this.eventEmitter = eventEmitter;
         this.type = type;
-        eventEmmiter.emit(StreamEventTypes.EVENT_TYPE_LOCAL_CREATED, this);
+        eventEmitter.emit(StreamEventTypes.EVENT_TYPE_LOCAL_CREATED, this);
         var self = this;
         this.stream.onended = function()
         {
@@ -22,7 +22,7 @@ var RTCService = function()
     }
 
     Stream.prototype.streamEnded = function () {
-        eventEmmiter.emit(StreamEventTypes.EVENT_TYPE_LOCAL_ENDED, this);
+        eventEmitter.emit(StreamEventTypes.EVENT_TYPE_LOCAL_ENDED, this);
     }
 
     Stream.prototype.getOriginalStream = function()
@@ -43,20 +43,14 @@ var RTCService = function()
 
 
     RTCServiceProto.addStreamListener = function (listener, eventType) {
-        if (eventEmmiter == null) {
-            eventEmmiter = new EventEmmiter();
-        }
-
-        eventEmmiter.on(eventType, listener);
+        eventEmitter.on(eventType, listener);
     };
 
     RTCServiceProto.removeStreamListener = function (listener, eventType) {
         if(!(eventType instanceof SteamEventType))
             throw "Illegal argument";
 
-        if (eventEmmiter == null)
-            return;
-        eventEmmiter.removeListener(eventType, listener);
+        eventEmitter.removeListener(eventType, listener);
     };
 
     RTCServiceProto.prototype.createLocalStream = function (stream, type) {
@@ -66,7 +60,7 @@ var RTCService = function()
     };
     
     RTCServiceProto.prototype.createRemoteStream = function (data, sid, thessrc) {
-        var remoteStream = new MediaStream(data, sid, thessrc, eventEmmiter);
+        var remoteStream = new MediaStream(data, sid, thessrc, eventEmitter);
         this.remoteStreams.push(remoteStream);
         return remoteStream;
     }
@@ -86,10 +80,7 @@ var RTCService = function()
         };
 
     RTCServiceProto.prototype.dispose = function() {
-        if (eventEmmiter) {
-            eventEmmiter.removeAllListeners("statistics.audioLevel");
-            eventEmmiter = null;
-        }
+        eventEmitter.removeAllListeners("statistics.audioLevel");
 
         if (this.rtc) {
             this.rtc = null;

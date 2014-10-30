@@ -1,4 +1,57 @@
 /* jshint -W117 */
+
+/**
+ * Class holds a=ssrc lines and media type a=mid
+ * @param ssrc synchronization source identifier number(a=ssrc lines from SDP)
+ * @param type media type eg. "audio" or "video"(a=mid frm SDP)
+ * @constructor
+ */
+function ChannelSsrc(ssrc, type) {
+    this.ssrc = ssrc;
+    this.type = type;
+    this.lines = [];
+}
+
+/**
+ * Class holds a=ssrc-group: lines
+ * @param semantics
+ * @param ssrcs
+ * @constructor
+ */
+function ChannelSsrcGroup(semantics, ssrcs, line) {
+    this.semantics = semantics;
+    this.ssrcs = ssrcs;
+}
+
+/**
+ * Helper class represents media channel. Is a container for ChannelSsrc, holds channel idx and media type.
+ * @param channelNumber channel idx in SDP media array.
+ * @param mediaType media type(a=mid)
+ * @constructor
+ */
+function MediaChannel(channelNumber, mediaType) {
+    /**
+     * SDP channel number
+     * @type {*}
+     */
+    this.chNumber = channelNumber;
+    /**
+     * Channel media type(a=mid)
+     * @type {*}
+     */
+    this.mediaType = mediaType;
+    /**
+     * The maps of ssrc numbers to ChannelSsrc objects.
+     */
+    this.ssrcs = {};
+
+    /**
+     * The array of ChannelSsrcGroup objects.
+     * @type {Array}
+     */
+    this.ssrcGroups = [];
+}
+
 // SDP STUFF
 function SDP(sdp) {
     this.media = sdp.split('\r\nm=');

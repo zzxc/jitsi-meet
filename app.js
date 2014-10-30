@@ -14,22 +14,6 @@ var ssrc2videoType = {};
 var videoSrcToSsrc = {};
 
 var localVideoSrc = null;
-var currentVideoWidth = null;
-var currentVideoHeight = null;
-/**
- * Method used to calculate large video size.
- * @type {function ()}
- */
-var getVideoSize;
-/**
- * Method used to get large video position.
- * @type {function ()}
- */
-var getVideoPosition;
-
-/* window.onbeforeunload = closePageWarning; */
-
-var sessionTerminated = false;
 
 function init() {
     StatisticsActivator.start();
@@ -38,102 +22,6 @@ function init() {
     XMPPActivator.start(null, null, uiCredentials);
 }
 
-
-$(document).bind('remotestreamadded.jingle', function (event, data, sid) {
-    waitForPresence(data, sid);
-});
-
-function waitForPresence(data, sid) {
-    var sess = connection.jingle.sessions[sid];
-
-    var thessrc;
-    // look up an associated JID for a stream id
-    if (data.stream.id.indexOf('mixedmslabel') === -1) {
-        // look only at a=ssrc: and _not_ at a=ssrc-group: lines
-        var ssrclines
-            = SDPUtil.find_lines(sess.peerconnection.remoteDescription.sdp, 'a=ssrc:');
-        ssrclines = ssrclines.filter(function (line) {
-            // NOTE(gp) previously we filtered on the mslabel, but that property
-            // is not always present.
-            // return line.indexOf('mslabel:' + data.stream.label) !== -1;
-            return line.indexOf('msid:' + data.stream.id) !== -1;
-        });
-        if (ssrclines.length) {
-            thessrc = ssrclines[0].substring(7).split(' ')[0];
-
-            // We signal our streams (through Jingle to the focus) before we set
-            // our presence (through which peers associate remote streams to
-            // jids). So, it might arrive that a remote stream is added but
-            // ssrc2jid is not yet updated and thus data.peerjid cannot be
-            // successfully set. Here we wait for up to a second for the
-            // presence to arrive.
-
-            if (!ssrc2jid[thessrc]) {
-                // TODO(gp) limit wait duration to 1 sec.
-                setTimeout(function(d, s) {
-                    return function() {
-                            waitForPresence(d, s);
-                    }
-                }(data, sid), 250);
-                return;
-            }
-
-            // ok to overwrite the one from focus? might save work in colibri.js
-            console.log('associated jid', ssrc2jid[thessrc], data.peerjid);
-            if (ssrc2jid[thessrc]) {
-                data.peerjid = ssrc2jid[thessrc];
-            }
-        }
-    }
-
-    var isVideo = data.stream.getVideoTracks().length > 0;
-
-    RTCActivator.getRTCService().createRemoteStream(data, sid, thessrc);
-
-    // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
-    if (isVideo &&
-        data.peerjid && sess.peerjid === data.peerjid &&
-        data.stream.getVideoTracks().length === 0 &&
-        connection.jingle.localVideo.getVideoTracks().length > 0) {
-        //
-        window.setTimeout(function () {
-            sendKeyframe(sess.peerconnection);
-        }, 3000);
-    }
-}
-
-// an attempt to work around https://github.com/jitsi/jitmeet/issues/32
-function sendKeyframe(pc) {
-    console.log('sendkeyframe', pc.iceConnectionState);
-    if (pc.iceConnectionState !== 'connected') return; // safe...
-    pc.setRemoteDescription(
-        pc.remoteDescription,
-        function () {
-            pc.createAnswer(
-                function (modifiedAnswer) {
-                    pc.setLocalDescription(
-                        modifiedAnswer,
-                        function () {
-                            // noop
-                        },
-                        function (error) {
-                            console.log('triggerKeyframe setLocalDescription failed', error);
-                            messageHandler.showError();
-                        }
-                    );
-                },
-                function (error) {
-                    console.log('triggerKeyframe createAnswer failed', error);
-                    messageHandler.showError();
-                }
-            );
-        },
-        function (error) {
-            console.log('triggerKeyframe setRemoteDescription failed', error);
-            messageHandler.showError();
-        }
-    );
-}
 
 /**
  * Returns the JID of the user to whom given <tt>videoSrc</tt> belongs.
@@ -154,46 +42,9 @@ function getJidFromVideoSrc(videoSrc)
     return ssrc2jid[ssrc];
 }
 
-$(document).bind('callincoming.jingle', function (event, sid) {
-    var sess = connection.jingle.sessions[sid];
-
-    // TODO: do we check activecall == null?
-    activecall = sess;
-
-    StatisticsActivator.startRemoteStats(getConferenceHandler().peerconnection);
-
-    // Bind data channel listener in case we're a regular participant
-    if (config.openSctp)
-    {
-        bindDataChannelListener(sess.peerconnection);
-    }
-
-    // TODO: check affiliation and/or role
-    console.log('emuc data for', sess.peerjid, connection.emuc.members[sess.peerjid]);
-    sess.usedrip = true; // not-so-naive trickle ice
-    sess.sendAnswer();
-    sess.accept();
-
-});
-
-$(document).bind('conferenceCreated.jingle', function (event, focus)
-{
-    StatisticsActivator.startRemoteStats(getConferenceHandler().peerconnection);
-});
-
-$(document).bind('conferenceCreated.jingle', function (event, focus)
-{
-    // Bind data channel listener in case we're the focus
-    if (config.openSctp)
-    {
-        bindDataChannelListener(focus.peerconnection);
-    }
-});
-
 $(document).bind('callterminated.jingle', function (event, sid, jid, reason) {
     // Leave the room if my call has been remotely terminated.
     if (connection.emuc.joined && focus == null && reason === 'kick') {
-        sessionTerminated = true;
         connection.emuc.doLeave();
         messageHandler.openMessageDialog("Session Terminated",
                             "Ouch! You have been kicked out of the meet!");
@@ -357,71 +208,6 @@ function isAudioMuted()
 
 $(document).ready(function () {
     UIActivator.start();
-    document.title = brand.appName;
-
-    if(config.enableWelcomePage && window.location.pathname == "/" &&
-        (!window.localStorage.welcomePageDisabled || window.localStorage.welcomePageDisabled == "false"))
-    {
-        $("#videoconference_page").hide();
-        $("#domain_name").text(window.location.protocol + "//" + window.location.host + "/");
-        $("span[name='appName']").text(brand.appName);
-        function enter_room()
-        {
-            var val = $("#enter_room_field").val();
-            if(!val)
-                val = $("#enter_room_field").attr("room_name");
-            window.location.pathname = "/" + val;
-        }
-        $("#enter_room_button").click(function()
-        {
-            enter_room();
-        });
-
-        $("#enter_room_field").keydown(function (event) {
-            if (event.keyCode === 13) {
-                enter_room();
-            }
-        });
-
-        var updateTimeout;
-        var animateTimeout;
-        $("#reload_roomname").click(function () {
-            clearTimeout(updateTimeout);
-            clearTimeout(animateTimeout);
-            update_roomname();
-        });
-
-        function animate(word) {
-            var currentVal = $("#enter_room_field").attr("placeholder");
-            $("#enter_room_field").attr("placeholder", currentVal + word.substr(0, 1));
-            animateTimeout = setTimeout(function() {
-                    animate(word.substring(1, word.length))
-                }, 70);
-        }
-
-
-        function update_roomname()
-        {
-            var word = RoomNameGenerator.generateRoomWithoutSeparator();
-            $("#enter_room_field").attr("room_name", word);
-            $("#enter_room_field").attr("placeholder", "");
-            animate(word);
-            updateTimeout = setTimeout(update_roomname, 10000);
-
-        }
-        update_roomname();
-
-        $("#disable_welcome").click(function () {
-            window.localStorage.welcomePageDisabled = $("#disable_welcome").is(":checked");
-        });
-
-        return;
-    }
-
-    $("#welcome_page").hide();
-
-    // Set the defaults for prompt dialogs.
-    jQuery.prompt.setDefaults({persistent: false});
 
     // Set default desktop sharing method
     setDesktopSharing(config.desktopSharing);
@@ -429,38 +215,9 @@ $(document).ready(function () {
     if (config.chromeExtensionId) {
         initInlineInstalls();
     }
-
-    if (!$('#settings').is(':visible')) {
-        console.log('init');
-        init();
-    } else {
-        loginInfo.onsubmit = function (e) {
-            if (e.preventDefault) e.preventDefault();
-            $('#settings').hide();
-            init();
-        };
-    }
 });
 
 $(window).bind('beforeunload', function () {
-    if (connection && connection.connected) {
-        // ensure signout
-        $.ajax({
-            type: 'POST',
-            url: config.bosh,
-            async: false,
-            cache: false,
-            contentType: 'application/xml',
-            data: "<body rid='" + (connection.rid || connection._proto.rid) + "' xmlns='http://jabber.org/protocol/httpbind' sid='" + (connection.sid || connection._proto.sid) + "' type='terminate'><presence xmlns='jabber:client' type='unavailable'/></body>",
-            success: function (data) {
-                console.log('signed out');
-                console.log(data);
-            },
-            error: function (XMLHttpRequest, textStatus, errorThrown) {
-                console.log('signout error', textStatus + ' (' + errorThrown + ')');
-            }
-        });
-    }
     disposeConference(true);
 });
 
@@ -484,45 +241,6 @@ function disposeConference(onUnload) {
     activecall = null;
 }
 
-function dump(elem, filename) {
-    elem = elem.parentNode;
-    elem.download = filename || 'meetlog.json';
-    elem.href = 'data:application/json;charset=utf-8,\n';
-    var data = populateData();
-    elem.href += encodeURIComponent(JSON.stringify(data, null, '  '));
-    return false;
-}
-
-
-/**
- * Populates the log data
- */
-function populateData() {
-    var data = {};
-    if (connection.jingle) {
-        Object.keys(connection.jingle.sessions).forEach(function (sid) {
-            var session = connection.jingle.sessions[sid];
-            if (session.peerconnection && session.peerconnection.updateLog) {
-                // FIXME: should probably be a .dump call
-                data["jingle_" + session.sid] = {
-                    updateLog: session.peerconnection.updateLog,
-                    stats: session.peerconnection.stats,
-                    url: window.location.href
-                };
-            }
-        });
-    }
-    var metadata = {};
-    metadata.time = new Date();
-    metadata.url = window.location.href;
-    metadata.ua = navigator.userAgent;
-    if (connection.logger) {
-        metadata.xmpp = connection.logger.log;
-    }
-    data.metadata = metadata;
-    return data;
-}
-
 /**
  * Changes the style class of the element given by id.
  */
@@ -531,62 +249,12 @@ function buttonClick(id, classname) {
 }
 
 
-
-/**
- * Warning to the user that the conference window is about to be closed.
- */
-function closePageWarning() {
-    if (focus !== null)
-        return "You are the owner of this conference call and"
-                + " you are about to end it.";
-    else
-        return "You are about to leave this conversation.";
-}
-
-function hangUp() {
-    if (connection && connection.connected) {
-        // ensure signout
-        $.ajax({
-            type: 'POST',
-            url: config.bosh,
-            async: false,
-            cache: false,
-            contentType: 'application/xml',
-            data: "<body rid='" + (connection.rid || connection._proto.rid) + "' xmlns='http://jabber.org/protocol/httpbind' sid='" + (connection.sid || connection._proto.sid) + "' type='terminate'><presence xmlns='jabber:client' type='unavailable'/></body>",
-            success: function (data) {
-                console.log('signed out');
-                console.log(data);
-            },
-            error: function (XMLHttpRequest, textStatus, errorThrown) {
-                console.log('signout error', textStatus + ' (' + errorThrown + ')');
-            }
-        });
-    }
-    disposeConference(true);
-}
-
 $(document).bind('fatalError.jingle',
     function (event, session, error)
     {
-        sessionTerminated = true;
-        connection.emuc.doLeave();
         messageHandler.showError(  "Sorry",
             "Your browser version is too old. Please update and try again...");
     }
 );
 
-function onSelectedEndpointChanged(userJid)
-{
-    console.log('selected endpoint changed: ', userJid);
-    if (_dataChannels && _dataChannels.length != 0 && _dataChannels[0].readyState == "open") {
-        _dataChannels[0].send(JSON.stringify({
-            'colibriClass': 'SelectedEndpointChangedEvent',
-            'selectedEndpoint': (!userJid || userJid == null)
-                ? null : Strophe.getResourceFromJid(userJid)
-        }));
-    }
-}
 
-$(document).bind("selectedendpointchanged", function(event, userJid) {
-    onSelectedEndpointChanged(userJid);
-});

@@ -272,11 +272,200 @@ SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
                             }
                         }
                     });
-                    trackUsage('iceConnected', metadata);
+//                    trackUsage('iceConnected', metadata);
+                    require("../util/tracking.js")('iceConnected', metadata);
                 });
             }
             break;
     }
+
+    function waitForPresence(data, sid) {
+        var sess = connection.jingle.sessions[sid];
+
+        var thessrc;
+        // look up an associated JID for a stream id
+        if (data.stream.id.indexOf('mixedmslabel') === -1) {
+            // look only at a=ssrc: and _not_ at a=ssrc-group: lines
+            var ssrclines
+                = SDPUtil.find_lines(sess.peerconnection.remoteDescription.sdp, 'a=ssrc:');
+            ssrclines = ssrclines.filter(function (line) {
+                // NOTE(gp) previously we filtered on the mslabel, but that property
+                // is not always present.
+                // return line.indexOf('mslabel:' + data.stream.label) !== -1;
+                return line.indexOf('msid:' + data.stream.id) !== -1;
+            });
+            if (ssrclines.length) {
+                thessrc = ssrclines[0].substring(7).split(' ')[0];
+
+                // We signal our streams (through Jingle to the focus) before we set
+                // our presence (through which peers associate remote streams to
+                // jids). So, it might arrive that a remote stream is added but
+                // ssrc2jid is not yet updated and thus data.peerjid cannot be
+                // successfully set. Here we wait for up to a second for the
+                // presence to arrive.
+
+                if (!ssrc2jid[thessrc]) {
+                    // TODO(gp) limit wait duration to 1 sec.
+                    setTimeout(function(d, s) {
+                        return function() {
+                            waitForPresence(d, s);
+                        }
+                    }(data, sid), 250);
+                    return;
+                }
+
+                // ok to overwrite the one from focus? might save work in colibri.js
+                console.log('associated jid', ssrc2jid[thessrc], data.peerjid);
+                if (ssrc2jid[thessrc]) {
+                    data.peerjid = ssrc2jid[thessrc];
+                }
+            }
+        }
+
+        var isVideo = data.stream.getVideoTracks().length > 0;
+
+        RTCActivator.getRTCService().createRemoteStream(data, sid, thessrc);
+
+        // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
+        if (isVideo &&
+            data.peerjid && sess.peerjid === data.peerjid &&
+            data.stream.getVideoTracks().length === 0 &&
+            connection.jingle.localVideo.getVideoTracks().length > 0) {
+            //
+            window.setTimeout(function () {
+                sendKeyframe(sess.peerconnection);
+            }, 3000);
+        }
+    }
+
+// an attempt to work around https://github.com/jitsi/jitmeet/issues/32
+    function sendKeyframe(pc) {
+        console.log('sendkeyframe', pc.iceConnectionState);
+        if (pc.iceConnectionState !== 'connected') return; // safe...
+        pc.setRemoteDescription(
+            pc.remoteDescription,
+            function () {
+                pc.createAnswer(
+                    function (modifiedAnswer) {
+                        pc.setLocalDescription(
+                            modifiedAnswer,
+                            function () {
+                                // noop
+                            },
+                            function (error) {
+                                console.log('triggerKeyframe setLocalDescription failed', error);
+                                messageHandler.showError();
+                            }
+                        );
+                    },
+                    function (error) {
+                        console.log('triggerKeyframe createAnswer failed', error);
+                        messageHandler.showError();
+                    }
+                );
+            },
+            function (error) {
+                console.log('triggerKeyframe setRemoteDescription failed', error);
+                messageHandler.showError();
+            }
+        );
+    }
 }
+
+
+SessionBase.prototype.waitForPresence = function (data, sid) {
+    var sess = connection.jingle.sessions[sid];
+
+    var thessrc;
+    // look up an associated JID for a stream id
+    if (data.stream.id.indexOf('mixedmslabel') === -1) {
+        // look only at a=ssrc: and _not_ at a=ssrc-group: lines
+        var ssrclines
+            = SDPUtil.find_lines(sess.peerconnection.remoteDescription.sdp, 'a=ssrc:');
+        ssrclines = ssrclines.filter(function (line) {
+            // NOTE(gp) previously we filtered on the mslabel, but that property
+            // is not always present.
+            // return line.indexOf('mslabel:' + data.stream.label) !== -1;
+            return line.indexOf('msid:' + data.stream.id) !== -1;
+        });
+        if (ssrclines.length) {
+            thessrc = ssrclines[0].substring(7).split(' ')[0];
+
+            // We signal our streams (through Jingle to the focus) before we set
+            // our presence (through which peers associate remote streams to
+            // jids). So, it might arrive that a remote stream is added but
+            // ssrc2jid is not yet updated and thus data.peerjid cannot be
+            // successfully set. Here we wait for up to a second for the
+            // presence to arrive.
+
+            if (!ssrc2jid[thessrc]) {
+                // TODO(gp) limit wait duration to 1 sec.
+                setTimeout(function(d, s) {
+                    return function() {
+                        waitForPresence(d, s);
+                    }
+                }(data, sid), 250);
+                return;
+            }
+
+            // ok to overwrite the one from focus? might save work in colibri.js
+            console.log('associated jid', ssrc2jid[thessrc], data.peerjid);
+            if (ssrc2jid[thessrc]) {
+                data.peerjid = ssrc2jid[thessrc];
+            }
+        }
+    }
+
+    var isVideo = data.stream.getVideoTracks().length > 0;
+
+
+    // TODO this must be done with listeners
+    RTCActivator.getRTCService().createRemoteStream(data, sid, thessrc);
+
+    // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
+    if (isVideo &&
+        data.peerjid && sess.peerjid === data.peerjid &&
+        data.stream.getVideoTracks().length === 0 &&
+        connection.jingle.localVideo.getVideoTracks().length > 0) {
+        //
+        window.setTimeout(function () {
+            sendKeyframe(sess.peerconnection);
+        }, 3000);
+    }
+}
+
+// an attempt to work around https://github.com/jitsi/jitmeet/issues/32
+function sendKeyframe(pc) {
+    console.log('sendkeyframe', pc.iceConnectionState);
+    if (pc.iceConnectionState !== 'connected') return; // safe...
+    pc.setRemoteDescription(
+        pc.remoteDescription,
+        function () {
+            pc.createAnswer(
+                function (modifiedAnswer) {
+                    pc.setLocalDescription(
+                        modifiedAnswer,
+                        function () {
+                            // noop
+                        },
+                        function (error) {
+                            console.log('triggerKeyframe setLocalDescription failed', error);
+                            messageHandler.showError();
+                        }
+                    );
+                },
+                function (error) {
+                    console.log('triggerKeyframe createAnswer failed', error);
+                    messageHandler.showError();
+                }
+            );
+        },
+        function (error) {
+            console.log('triggerKeyframe setRemoteDescription failed', error);
+            messageHandler.showError();
+        }
+    );
+}
+
 
 module.exports = SessionBase;

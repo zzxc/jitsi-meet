@@ -132,7 +132,6 @@ var Toolbar = (function (my) {
 
     function hangup() {
         disposeConference();
-        sessionTerminated = true;
         connection.emuc.doLeave();
         var buttons = {};
         if(config.enableWelcomePage)

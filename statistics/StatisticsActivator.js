@@ -5,10 +5,11 @@ var LocalStats = require("./LocalStatsCollector.js");
 var RTPStats = require("./RTPStatsCollector.js");
 var EventEmitter = require("events");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
+var XMPPEvents = require("../service/xmpp/XMPPEvents");
 
 var StatisticsActivator = function()
 {
-    var eventEmmiter = null;
+    var eventEmmiter = new EventEmitter();
 
     var localStats = null;
 
@@ -23,18 +24,11 @@ var StatisticsActivator = function()
 
     StatisticsActivatorProto.addAudioLevelListener = function(listener)
     {
-        if(eventEmmiter == null)
-        {
-            eventEmmiter = new EventEmitter();
-        }
-
         eventEmmiter.on("statistics.audioLevel", listener);
     }
 
     StatisticsActivatorProto.removeAudioLevelListener = function(listener)
     {
-        if(eventEmmiter == null)
-            return;
         eventEmmiter.removeListener("statistics.audioLevel", listener);
     }
 
@@ -42,7 +36,6 @@ var StatisticsActivator = function()
         if(eventEmmiter)
         {
             eventEmmiter.removeAllListeners("statistics.audioLevel");
-            eventEmmiter = null;
         }
         StatisticsActivator.stopLocal();
         StatisticsActivator.stopRemote();
@@ -70,6 +63,12 @@ var StatisticsActivator = function()
     StatisticsActivatorProto.start = function () {
         RTCActivator.addStreamListener(StatisticsActivator.onStreamCreated,
             StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
+        XMPPActivator.addListener(XMPPEvents.CONFERENCE_CERATED, function (event) {
+            startRemoteStats(event.peerconnection);
+        });
+        XMPPActivator.addListener(XMPPEvents.CALL_INCOMING, function (event) {
+            startRemoteStats(event.peerconnection);
+        });
     }
 
     StatisticsActivatorProto.onStreamCreated = function(stream)
@@ -77,13 +76,11 @@ var StatisticsActivator = function()
         if(!stream.isAudioStream())
             return;
 
-        if(eventEmmiter == null)
-            eventEmmiter = new EventEmitter();
         localStats = new LocalStats(stream.getOriginalStream(), 100, eventEmmiter);
         localStats.start();
     }
 
-    StatisticsActivatorProto.startRemoteStats = function (peerconnection) {
+    function startRemoteStats (peerconnection) {
         if (config.enableRtpStats)
         {
             if(rtpStats)
@@ -92,8 +89,6 @@ var StatisticsActivator = function()
                 rtpStats = null;
             }
 
-            if(eventEmmiter == null)
-                eventEmmiter = new EventEmitter();
             rtpStats = new RTPStats(peerconnection, 200, eventEmmiter);
             rtpStats.start();
         }

@@ -1,21 +1,23 @@
-var StreamEventTypes = require("../service/StreamEventTypes");
+var StreamEventTypes = require("../service/RTC/StreamEventTypes");
+var EventEmitter = require("events");
 
 var XMPPActivator = function()
 {
 
-
     function NicknameListenrer()
     {
-        this.nickname = null
+        this.nickname = null;
     }
 
     NicknameListenrer.prototype.onNicknameChanged = function (value) {
         this.nickname = value;
-    }
+    };
 
     var nicknameListener = new NicknameListenrer();
 
     var authenticatedUser = false;
+
+    var eventEmitter = new EventEmitter();
 
     function XMPPActivatorProto()
     {
@@ -23,9 +25,10 @@ var XMPPActivator = function()
 
     function setupStrophePlugins()
     {
-        require("./muc")();
-        require("./moderatemuc")();
-        require("./strophe.util")();
+        require("./muc")(eventEmitter);
+        require("./strophe.jingle")(eventEmitter);
+        require("./moderatemuc")(eventEmitter);
+        require("./strophe.util")(eventEmitter);
 
     }
 
@@ -33,9 +36,33 @@ var XMPPActivator = function()
         UIActivator.getUIService().addNicknameListener(nicknameListener.onNicknameChanged);
     }
 
+    function setupEvents() {
+        $(window).bind('beforeunload', function () {
+            if (connection && connection.connected) {
+                // ensure signout
+                $.ajax({
+                    type: 'POST',
+                    url: config.bosh,
+                    async: false,
+                    cache: false,
+                    contentType: 'application/xml',
+                    data: "<body rid='" + (connection.rid || connection._proto.rid) + "' xmlns='http://jabber.org/protocol/httpbind' sid='" + (connection.sid || connection._proto.sid) + "' type='terminate'><presence xmlns='jabber:client' type='unavailable'/></body>",
+                    success: function (data) {
+                        console.log('signed out');
+                        console.log(data);
+                    },
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        console.log('signout error', textStatus + ' (' + errorThrown + ')');
+                    }
+                });
+            }
+        });
+    }
+
     XMPPActivatorProto.start = function (jid, password, uiCredentials) {
         setupStrophePlugins();
         registerListeners();
+        setupEvents();
         connect(jid, password, uiCredentials);
         RTCActivator.addStreamListener(maybeDoJoin, StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
     }
@@ -123,6 +150,24 @@ var XMPPActivator = function()
 
     }
 
+    XMPPActivatorProto.getJingleData = function () {
+        if (connection.jingle) {
+            return connection.jingle.getJingleData();
+        }
+        return {};
+    }
+
+    XMPPActivatorProto.getLogger = function () {
+        return connection.logger;
+    }
+    
+    XMPPActivatorProto.addListener = function (event, listener) {
+        eventEmitter.on(event, listener);
+    }
+
+    XMPPActivatorProto.getMyJID = function () {
+        return connection.emuc.myroomjid;
+    }
     return XMPPActivatorProto;
 }();
 
