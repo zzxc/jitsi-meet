@@ -5,6 +5,8 @@ var XMPPEvents = {
     CONFERENCE_CERATED: "xmpp.conferenceCreated.jingle",
     CALL_TERMINATED: "xmpp.callterminated.jingle",
     CALL_INCOMING: "xmpp.callincoming.jingle",
-    FATAL_JINGLE_ERROR: "xmpp.fatalError.jingle"
+    DISPOSE_CONFERENCE: "xmpp.dispoce_confernce",
+    DISPLAY_NAME_CHANGED: "xmpp.display_name_changed"
+
 };
 module.exports = XMPPEvents;

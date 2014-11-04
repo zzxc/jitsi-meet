@@ -1,4 +1,5 @@
 var BottomToolbar = require("./toolbars/BottomToolbar");
+var Toolbar = require("./toolbars/Toolbar");
 
 var KeyboardShortcut = (function(my) {
     //maps keycode to character, id of popover for given function and function
@@ -16,20 +17,20 @@ var KeyboardShortcut = (function(my) {
         77: {
             character: "M",
             id: "mutePopover",
-            function: toggleAudio
+            function: Toolbar.toggleAudio
         },
         84: {
             character: "T",
             function: function() {
-                if(!isAudioMuted()) {
-                    toggleAudio();
+                if(!RTCActivator.getRTCService().localAudio.isMuted()) {
+                    Toolbar.toggleAudio();
                 }
             }
         },
         86: {
             character: "V",
             id: "toggleVideoPopover",
-            function: toggleVideo
+            function: Toolbar.toggleVideo
         }
     };
 
@@ -51,8 +52,8 @@ var KeyboardShortcut = (function(my) {
     window.onkeydown = function(e) {
         if($("#chatspace").css("display") === "none") {
             if(e.which === "T".charCodeAt(0)) {
-                if(isAudioMuted()) {
-                    toggleAudio();
+                if(RTCActivator.getRTCService().localAudio.isMuted()) {
+                    Toolbar.toggleAudio();
                 }
             }
         }

@@ -37,12 +37,12 @@ var StatisticsActivator = function()
         {
             eventEmmiter.removeAllListeners("statistics.audioLevel");
         }
-        StatisticsActivator.stopLocal();
-        StatisticsActivator.stopRemote();
+        stopLocal();
+        stopRemote();
 
     }
 
-    StatisticsActivatorProto.stopLocal = function()
+    function stopLocal()
     {
         if(localStats)
         {
@@ -51,7 +51,7 @@ var StatisticsActivator = function()
         }
     }
 
-    StatisticsActivatorProto.stopRemote = function()
+    function stopRemote()
     {
         if(rtpStats)
         {
@@ -68,6 +68,12 @@ var StatisticsActivator = function()
         });
         XMPPActivator.addListener(XMPPEvents.CALL_INCOMING, function (event) {
             startRemoteStats(event.peerconnection);
+        });
+        XMPPActivator.addListener(XMPPEvents.DISPOSE_CONFERENCE, function (onUnload) {
+            stopRemote();
+            if(onUnload) {
+                stopLocal();
+            }
         });
     }
 

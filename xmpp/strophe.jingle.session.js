@@ -159,7 +159,7 @@ JingleSession.prototype.accept = function () {
     this.peerconnection.setLocalDescription(new RTCSessionDescription({type: 'answer', sdp: sdp}),
         function () {
             //console.log('setLocalDescription success');
-            $(document).trigger('setLocalDescription.jingle', [self.sid]);
+            self.setLocalDescription(self.sid);
         },
         function (e) {
             console.error('setLocalDescription failed', e);
@@ -373,7 +373,7 @@ JingleSession.prototype.createdOffer = function (sdp) {
     sdp.sdp = this.localSDP.raw;
     this.peerconnection.setLocalDescription(sdp,
         function () {
-            $(document).trigger('setLocalDescription.jingle', [self.sid]);
+            self.setLocalDescription(self.sid);
             //console.log('setLocalDescription success');
         },
         function (e) {
@@ -430,7 +430,8 @@ JingleSession.prototype.setRemoteDescription = function (elem, desctype) {
         },
         function (e) {
             console.error('setRemoteDescription error', e);
-            $(document).trigger('fatalError.jingle', [self, e]);
+            messageHandler.showError(  "Sorry",
+                "Your browser version is too old. Please update and try again...");
             connection.emuc.doLeave();
         }
     );
@@ -603,7 +604,7 @@ JingleSession.prototype.createdAnswer = function (sdp, provisional) {
     sdp.sdp = this.localSDP.raw;
     this.peerconnection.setLocalDescription(sdp,
         function () {
-            $(document).trigger('setLocalDescription.jingle', [self.sid]);
+            self.setLocalDescription(self.sid);
             //console.log('setLocalDescription success');
         },
         function (e) {

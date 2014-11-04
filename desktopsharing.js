@@ -254,22 +254,12 @@ function streamSwitchDone() {
 
 function newStreamCreated(stream) {
 
-    var oldStream = connection.jingle.localVideo;
+    var oldStream = RTCActivator.getRTCService().localVideo.getOriginalStream();
 
-    connection.jingle.localVideo = stream;
     RTCActivator.getRTCService().createLocalStream(stream, "desktop");
+    RTCActivator.getRTCService().removeLocalStream(oldStream);
 
-    var conferenceHandler = getConferenceHandler();
-    if (conferenceHandler) {
-        // FIXME: will block switchInProgress on true value in case of exception
-        conferenceHandler.switchStreams(stream, oldStream, streamSwitchDone);
-    } else {
-        // We are done immediately
-        console.error("No conference handler");
-        messageHandler.showError('Error',
-            'Unable to switch video stream.');
-        streamSwitchDone();
-    }
+    XMPPActivator.switchStreams(stream, oldStream, streamSwitchDone);
 }
 
 /*

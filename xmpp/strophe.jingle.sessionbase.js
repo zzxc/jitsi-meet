@@ -16,12 +16,48 @@ function SessionBase(connection, sid){
 SessionBase.prototype.modifySources = function (successCallback) {
     var self = this;
     this.peerconnection.modifySources(function(){
-        $(document).trigger('setLocalDescription.jingle', [self.sid]);
+        self.setLocalDescription(self.sid);
         if(successCallback) {
             successCallback();
         }
     });
 };
+
+SessionBase.prototype.setLocalDescription = function (sid) {
+    // put our ssrcs into presence so other clients can identify our stream
+    var sess = connection.jingle.sessions[sid];
+    var newssrcs = [];
+    var simulcast = new Simulcast();
+    var media = simulcast.parseMedia(sess.peerconnection.localDescription);
+    media.forEach(function (media) {
+
+        // TODO(gp) maybe exclude FID streams?
+        Object.keys(media.sources).forEach(function(ssrc) {
+            newssrcs.push({
+                'ssrc': ssrc,
+                'type': media.type,
+                'direction': media.direction
+            });
+        });
+    });
+    console.log('new ssrcs', newssrcs);
+
+    // Have to clear presence map to get rid of removed streams
+    connection.emuc.clearPresenceMedia();
+
+    if (newssrcs.length > 0) {
+        for (var i = 1; i <= newssrcs.length; i ++) {
+            // Change video type to screen
+            if (newssrcs[i-1].type === 'video' && isUsingScreenStream) {
+                newssrcs[i-1].type = 'screen';
+            }
+            connection.emuc.addMediaToPresence(i,
+                newssrcs[i-1].type, newssrcs[i-1].ssrc, newssrcs[i-1].direction);
+        }
+
+        connection.emuc.sendPresence();
+    }
+}
 
 SessionBase.prototype.addSource = function (elem, fromJid) {
 
@@ -89,9 +125,6 @@ SessionBase.prototype.switchStreams = function (new_stream, oldStream, success_c
 
     self.connection.jingle.localVideo = new_stream;
 
-    self.connection.jingle.localStreams = [];
-    self.connection.jingle.localStreams.push(self.connection.jingle.localAudio);
-    self.connection.jingle.localStreams.push(self.connection.jingle.localVideo);
 
     // Conference is not active
     if(!oldSdp || !self.peerconnection) {
@@ -231,19 +264,28 @@ SessionBase.prototype.sendSSRCUpdateIq = function(sdpMediaSsrcs, sid, initiator,
 // SDP-based mute by going recvonly/sendrecv
 // FIXME: should probably black out the screen as well
 SessionBase.prototype.toggleVideoMute = function (callback) {
-
-    var ismuted = false;
-    var localVideo = connection.jingle.localVideo;
-    for (var idx = 0; idx < localVideo.getVideoTracks().length; idx++) {
-        ismuted = !localVideo.getVideoTracks()[idx].enabled;
-    }
-    for (var idx = 0; idx < localVideo.getVideoTracks().length; idx++) {
-        localVideo.getVideoTracks()[idx].enabled = !localVideo.getVideoTracks()[idx].enabled;
-    }
-
-    this.peerconnection.hardMuteVideo(!ismuted);
-    this.modifySources(callback(!ismuted));
+    var stream = RTCActivator.getRTCService().localAudio;
+    if (!stream)
+        return;
+    var ismuted = stream.mute();
+    this.peerconnection.hardMuteVideo(ismuted);
+    this.modifySources(function () {
+        connection.emuc.addVideoInfoToPresence(ismuted);
+        connection.emuc.sendPresence();
+        return callback(ismuted);
+    }());
 };
+
+SessionBase.prototype.toggleAudioMute = function (callback) {
+    var stream = RTCActivator.getRTCService().localAudio;
+    if (!stream)
+        return;
+    var audioEnabled = stream.mute();
+    // isMuted is the opposite of audioEnabled
+    connection.emuc.addAudioInfoToPresence(audioEnabled);
+    connection.emuc.sendPresence();
+    callback(audioEnabled);
+}
 
 
 SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
@@ -304,7 +346,7 @@ SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
                 // successfully set. Here we wait for up to a second for the
                 // presence to arrive.
 
-                if (!ssrc2jid[thessrc]) {
+                if (!XMPPActivator.getJIDFromSSRC(thessrc) {
                     // TODO(gp) limit wait duration to 1 sec.
                     setTimeout(function(d, s) {
                         return function() {
@@ -315,9 +357,9 @@ SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
                 }
 
                 // ok to overwrite the one from focus? might save work in colibri.js
-                console.log('associated jid', ssrc2jid[thessrc], data.peerjid);
-                if (ssrc2jid[thessrc]) {
-                    data.peerjid = ssrc2jid[thessrc];
+                console.log('associated jid', XMPPActivator.getJIDFromSSRC(thessrc), data.peerjid);
+                if (XMPPActivator.getJIDFromSSRC(thessrc)) {
+                    data.peerjid = XMPPActivator.getJIDFromSSRC(thessrc);
                 }
             }
         }
@@ -330,7 +372,7 @@ SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
         if (isVideo &&
             data.peerjid && sess.peerjid === data.peerjid &&
             data.stream.getVideoTracks().length === 0 &&
-            connection.jingle.localVideo.getVideoTracks().length > 0) {
+            RTCActivator.getRTCService().localVideo.getVideoTracks().length > 0) {
             //
             window.setTimeout(function () {
                 sendKeyframe(sess.peerconnection);
@@ -398,7 +440,7 @@ SessionBase.prototype.waitForPresence = function (data, sid) {
             // successfully set. Here we wait for up to a second for the
             // presence to arrive.
 
-            if (!ssrc2jid[thessrc]) {
+            if (!XMPPActivator.getJIDFromSSRC(thessrc)) {
                 // TODO(gp) limit wait duration to 1 sec.
                 setTimeout(function(d, s) {
                     return function() {
@@ -409,9 +451,9 @@ SessionBase.prototype.waitForPresence = function (data, sid) {
             }
 
             // ok to overwrite the one from focus? might save work in colibri.js
-            console.log('associated jid', ssrc2jid[thessrc], data.peerjid);
-            if (ssrc2jid[thessrc]) {
-                data.peerjid = ssrc2jid[thessrc];
+            console.log('associated jid', XMPPActivator.getJIDFromSSRC(thessrc), data.peerjid);
+            if (XMPPActivator.getJIDFromSSRC(thessrc)) {
+                data.peerjid = XMPPActivator.getJIDFromSSRC(thessrc);
             }
         }
     }
@@ -426,7 +468,7 @@ SessionBase.prototype.waitForPresence = function (data, sid) {
     if (isVideo &&
         data.peerjid && sess.peerjid === data.peerjid &&
         data.stream.getVideoTracks().length === 0 &&
-        connection.jingle.localVideo.getVideoTracks().length > 0) {
+        RTCActivator.getRTCService().localVideo.getVideoTracks().length > 0) {
         //
         window.setTimeout(function () {
             sendKeyframe(sess.peerconnection);

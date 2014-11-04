@@ -1,6 +1,7 @@
 var BottomToolbar = require("./BottomToolbar");
 var Prezi = require("./../prezi/prezi");
 var Etherpad = require("./../etherpad/Etherpad");
+var buttonClick = require("../UIUtil").buttonClick;
 
 var Toolbar = (function (my) {
 
@@ -8,9 +9,11 @@ var Toolbar = (function (my) {
 
     var roomUrl = null;
 
+    var recordingToken = '';
+
     var buttonHandlers = {
         "toolbar_button_mute": function () {
-            return toggleAudio();
+            return Toolbar.toggleAudio();
         },
         "toolbar_button_camera": function () {
             buttonClick("#video", "icon-camera icon-camera-disabled");
@@ -52,6 +55,7 @@ var Toolbar = (function (my) {
     }
 
     my.sharedKey = '';
+    my.preMuted = false;
 
     function setRecordingToken(token) {
         recordingToken = token;
@@ -83,46 +87,47 @@ var Toolbar = (function (my) {
 
     // Starts or stops the recording for the conference.
     function toggleRecording() {
-        if (focus === null || focus.confid === null) {
-            console.log('non-focus, or conference not yet organized: not enabling recording');
-            return;
-        }
-
-        if (!recordingToken)
+        if(!XMPPActivator.isFocus())
         {
-            messageHandler.openTwoButtonDialog(null,
-                    '<h2>Enter recording token</h2>' +
-                    '<input id="recordingToken" type="text" placeholder="token" autofocus>',
-                false,
-                "Save",
-                function (e, v, m, f) {
-                    if (v) {
-                        var token = document.getElementById('recordingToken');
-
-                        if (token.value) {
-                            setRecordingToken(Util.escapeHtml(token.value));
-                            toggleRecording();
-                        }
-                    }
-                },
-                function (event) {
-                    document.getElementById('recordingToken').focus();
-                }
-            );
-
+            console.log('non-focus: not enabling recording');
             return;
         }
 
-        var oldState = focus.recordingEnabled;
-        Toolbar.toggleRecordingButtonState();
-        focus.setRecording(!oldState,
+        XMPPActivator.setRecording(
             recordingToken,
-            function (state) {
+            function (state, oldState) {
                 console.log("New recording state: ", state);
                 if (state == oldState) //failed to change, reset the token because it might have been wrong
                 {
                     Toolbar.toggleRecordingButtonState();
                     setRecordingToken(null);
+                }
+                else
+                {
+                    Toolbar.toggleRecordingButtonState();
+                }
+            },function() {
+                if (!recordingToken) {
+                    messageHandler.openTwoButtonDialog(null,
+                            '<h2>Enter recording token</h2>' +
+                            '<input id="recordingToken" type="text" placeholder="token" autofocus>',
+                        false,
+                        "Save",
+                        function (e, v, m, f) {
+                            if (v) {
+                                var token = document.getElementById('recordingToken');
+
+                                if (token.value) {
+                                    setRecordingToken(Util.escapeHtml(token.value));
+                                    toggleRecording();
+                                }
+                            }
+                        },
+                        function (event) {
+                            document.getElementById('recordingToken').focus();
+                        }
+                    );
+
                 }
             }
         );
@@ -131,35 +136,36 @@ var Toolbar = (function (my) {
     }
 
     function hangup() {
-        disposeConference();
-        connection.emuc.doLeave();
-        var buttons = {};
-        if(config.enableWelcomePage)
-        {
-            setTimeout(function()
+        XMPPActivator.disposeConference(false, function () {
+            var buttons = {};
+            if(config.enableWelcomePage)
             {
-                window.localStorage.welcomePageDisabled = false;
-                window.location.pathname = "/";
-            }, 10000);
-
-        }
-
-        $.prompt("Session Terminated",
-            {
-                title: "You hung up the call",
-                persistent: true,
-                buttons: {
-                    "Join again": true
-                },
-                closeText: '',
-                submit: function(event, value, message, formVals)
+                setTimeout(function()
                 {
-                    window.location.reload();
-                    return false;
-                }
+                    window.localStorage.welcomePageDisabled = false;
+                    window.location.pathname = "/";
+                }, 10000);
 
             }
-        );
+
+            $.prompt("Session Terminated",
+                {
+                    title: "You hung up the call",
+                    persistent: true,
+                    buttons: {
+                        "Join again": true
+                    },
+                    closeText: '',
+                    submit: function(event, value, message, formVals)
+                    {
+                        window.location.reload();
+                        return false;
+                    }
+
+                }
+            );
+        }, true);
+
 
     }
 
@@ -188,12 +194,51 @@ var Toolbar = (function (my) {
             $("#" + k).click(buttonHandlers[k]);
     }
 
+
+    my.changeToolbarVideoIcon = function (isMuted) {
+        if (isMuted) {
+            $('#video').removeClass("icon-camera");
+            $('#video').addClass("icon-camera icon-camera-disabled");
+        } else {
+            $('#video').removeClass("icon-camera icon-camera-disabled");
+            $('#video').addClass("icon-camera");
+        }
+    }
+
+    my.toggleVideo = function () {
+        buttonClick("#video", "icon-camera icon-camera-disabled");
+
+        XMPPActivator.toggleVideoMute(
+            function (isMuted) {
+                Toolbar.changeToolbarVideoIcon(isMuted);
+
+            }
+        );
+    }
+
+    /**
+     * Mutes / unmutes audio for the local participant.
+     */
+    my.toggleAudio = function () {
+        if (!(RTCActivator.getRTCService().localAudio)) {
+            Toolbar.preMuted = true;
+            // We still click the button.
+            buttonClick("#mute", "icon-microphone icon-mic-disabled");
+            return;
+        }
+
+        XMPPActivator.toggleAudioMute(function () {
+            buttonClick("#mute", "icon-microphone icon-mic-disabled");
+        });
+
+    }
+
     /**
      * Opens the lock room dialog.
      */
     my.openLockDialog = function () {
         // Only the focus is able to set a shared key.
-        if (focus === null) {
+        if (!XMPPActivator.isFocus()) {
             if (Toolbar.sharedKey) {
                 messageHandler.openMessageDialog(null,
                         "This conversation is currently protected by" +

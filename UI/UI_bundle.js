@@ -478,20 +478,15 @@ var UIService = function() {
                 ['localVideoContainer', info.displayName + ' (me)']);
     }
 
-    UIServiceProto.prototype.onMucEntered = function (jid, info, pres) {
+    UIServiceProto.prototype.onMucEntered = function (jid, info, pres, newConference) {
         console.log('entered', jid, info);
-
-        console.log('is focus?' + focus ? 'true' : 'false');
 
         // Add Peer's container
         VideoLayout.ensurePeerContainerExists(jid);
 
-        if (focus !== null) {
-            // FIXME: this should prepare the video
-            if (focus.confid === null) {
-                console.log('make new conference with', jid);
-                Toolbar.showRecordingButton(true);
-            }
+        if(newConference)
+            console.log('make new conference with', jid);
+            Toolbar.showRecordingButton(true);
         }
         else if (Toolbar.sharedKey) {
             Toolbar.updateLockButton();

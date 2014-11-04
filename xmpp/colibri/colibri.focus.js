@@ -118,11 +118,11 @@ ColibriFocus.prototype.makeConference = function (peers, errorCallback) {
             this.connection.jingle.ice_config,
             this.connection.jingle.pc_constraints );
 
-    if(this.connection.jingle.localAudio) {
-        this.peerconnection.addStream(this.connection.jingle.localAudio);
+    if(RTCActivator.getRTCService().localAudio) {
+        this.peerconnection.addStream(RTCActivator.getRTCService().localAudio);
     }
-    if(this.connection.jingle.localVideo) {
-        this.peerconnection.addStream(this.connection.jingle.localVideo);
+    if(RTCActivator.getRTCService().localVideo) {
+        this.peerconnection.addStream(RTCActivator.getRTCService().localVideo);
     }
     this.peerconnection.oniceconnectionstatechange = function (event) {
         console.warn('ice connection state changed to', self.peerconnection.iceConnectionState);
@@ -189,7 +189,20 @@ ColibriFocus.prototype.makeConference = function (peers, errorCallback) {
 // Sends a COLIBRI message which enables or disables (according to 'state') the
 // recording on the bridge. Waits for the result IQ and calls 'callback' with
 // the new recording state, according to the IQ.
-ColibriFocus.prototype.setRecording = function(state, token, callback) {
+ColibriFocus.prototype.setRecording = function(token, callback, tokenNullCallback) {
+    if (focus === null || this.confid === null) {
+        console.log('non-focus, or conference not yet organized: not enabling recording');
+        return;
+    }
+
+    if(!token)
+    {
+        tokenNullCallback();
+        return;
+    }
+
+    var oldState = this.recordingEnabled;
+    var state = !oldState;
     var self = this;
     var elem = $iq({to: this.bridgejid, type: 'set'});
     elem.c('conference', {
@@ -206,7 +219,7 @@ ColibriFocus.prototype.setRecording = function(state, token, callback) {
             var newState = ('true' === recordingElem.attr('state'));
 
             self.recordingEnabled = newState;
-            callback(newState);
+            callback(newState, oldState);
         },
         function (error) {
             console.warn(error);
@@ -549,7 +562,7 @@ ColibriFocus.prototype.createdConference = function (result) {
                         function () {
                             console.log('setLocalDescription succeeded.');
                             // make sure our presence is updated
-                            $(document).trigger('setLocalDescription.jingle', [self.sid]);
+                            self.setLocalDescription(self.sid);
                             var elem = $iq({to: self.bridgejid, type: 'get'});
                             elem.c('conference', {xmlns: 'http://jitsi.org/protocol/colibri', id: self.confid});
                             var localSDP = new SDP(self.peerconnection.localDescription.sdp);
@@ -763,7 +776,7 @@ ColibriFocus.prototype.initiate = function (peer, isInitiator) {
     sess.initiate(peer);
     sess.colibri = this;
     // We do not announce our audio per conference peer, so only video is set here
-    sess.localVideo = this.connection.jingle.localVideo;
+    sess.localVideo = RTCActivator.getRTCService().localVideo;
     sess.media_constraints = this.connection.jingle.media_constraints;
     sess.pc_constraints = this.connection.jingle.pc_constraints;
     sess.ice_config = this.connection.jingle.ice_config;

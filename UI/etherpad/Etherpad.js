@@ -128,7 +128,7 @@ var Etherpad = (function (my) {
      */
     $(document).bind('etherpadadded.muc', function (event, jid, etherpadName) {
         console.log("Etherpad added", etherpadName);
-        if (config.etherpad_base && !focus) {
+        if (config.etherpad_base && !XMPPActivator.isFocus()) {
             Etherpad.init(etherpadName);
         }
     });

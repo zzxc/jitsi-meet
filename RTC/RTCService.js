@@ -34,11 +34,50 @@ var RTCService = function()
         return (this.stream.getAudioTracks() && this.stream.getAudioTracks().length > 0);
     }
 
+    Stream.prototype.mute = function()
+    {
+        var ismuted = false;
+        var tracks = [];
+        if(this.type = "audio")
+        {
+            tracks = this.stream.getAudioTracks();
+        }
+        else
+        {
+            tracks = this.stream.getVideoTracks();
+        }
+
+        for (var idx = 0; idx < tracks.length; idx++) {
+            ismuted = !tracks[idx].enabled;
+            tracks[idx].enabled = !tracks[idx].enabled;
+        }
+        return ismuted;
+    }
+
+    Stream.prototype.isMuted = function () {
+        var tracks = [];
+        if(this.type = "audio")
+        {
+            tracks = this.stream.getAudioTracks();
+        }
+        else
+        {
+            tracks = this.stream.getVideoTracks();
+        }
+        for (var idx = 0; idx < tracks.length; idx++) {
+            if(tracks[idx].enabled)
+                return false;
+        }
+        return true;
+    }
+
     function RTCServiceProto() {
         this.rtc = new RTC(this);
         this.rtc.obtainAudioAndVideoPermissions();
         this.localStreams = new Array();
         this.remoteStreams = new Array();
+        this.localAudio = null;
+        this.localVideo = null;
     }
 
 
@@ -56,8 +95,26 @@ var RTCService = function()
     RTCServiceProto.prototype.createLocalStream = function (stream, type) {
         var localStream =  new Stream(stream, type);
         this.localStreams.push(localStream);
+        if(type == "audio")
+        {
+            this.localAudio = localStream;
+        }
+        else
+        {
+            this.localVideo = localStream;
+        }
         return localStream;
     };
+    
+    RTCServiceProto.prototype.removeLocalStream = function (stream) {
+        for(var i = 0; i < this.localStreams.length; i++)
+        {
+            if(this.localStreams[i].getOriginalStream() === stream) {
+                delete this.localStreams[i];
+                return;
+            }
+        }
+    }
     
     RTCServiceProto.prototype.createRemoteStream = function (data, sid, thessrc) {
         var remoteStream = new MediaStream(data, sid, thessrc, eventEmitter);

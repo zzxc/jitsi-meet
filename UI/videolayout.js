@@ -9,7 +9,6 @@ var dep =
 }
 
 var VideoLayout = (function (my) {
-    var preMuted = false;
     var currentDominantSpeaker = null;
     var lastNCount = config.channelLastN;
     var lastNEndpointsCache = [];
@@ -18,6 +17,8 @@ var VideoLayout = (function (my) {
     var flipXLocalVideo = true;
     my.currentVideoWidth = null;
     my.currentVideoHeight = null;
+    var localVideoSrc = null;
+    var videoSrcToSsrc = {};
 
     var mutedAudios = {};
     /**
@@ -46,20 +47,16 @@ var VideoLayout = (function (my) {
     }
 
     my.changeLocalAudio = function(stream) {
-        connection.jingle.localAudio = stream;
-
         attachMediaStream($('#localAudio'), stream);
         document.getElementById('localAudio').autoplay = true;
         document.getElementById('localAudio').volume = 0;
-        if (preMuted) {
-            toggleAudio();
-            preMuted = false;
+        if (dep.Toolbar().preMuted) {
+            dep.Toolbar().toggleAudio();
+            dep.Toolbar().preMuted = false;
         }
     };
 
     my.changeLocalVideo = function(stream, flipX) {
-        connection.jingle.localVideo = stream;
-
         var localVideo = document.createElement('video');
         localVideo.id = 'localVideo_' + stream.id;
         localVideo.autoplay = true;
@@ -148,6 +145,24 @@ var VideoLayout = (function (my) {
     };
 
     /**
+     * Returns the JID of the user to whom given <tt>videoSrc</tt> belongs.
+     * @param videoSrc the video "src" identifier.
+     * @returns {null | String} the JID of the user to whom given <tt>videoSrc</tt>
+     *                   belongs.
+     */
+    my.getJidFromVideoSrc = function(videoSrc)
+    {
+        if (videoSrc === localVideoSrc)
+            return XMPPActivator.getMyJID();
+
+        var ssrc = videoSrcToSsrc[videoSrc];
+        if (!ssrc)
+        {
+            return null;
+        }
+        return XMPPActivator.getJIDFromSSRC(ssrc);
+    }
+    /**
      * Updates the large video with the given new video source.
      */
     my.updateLargeVideo = function(newSrc, vol) {
@@ -162,7 +177,7 @@ var VideoLayout = (function (my) {
             // changed.
             var isDesktop = isVideoSrcDesktop(newSrc);
 
-            var userJid = getJidFromVideoSrc(newSrc);
+            var userJid = VideoLayout.getJidFromVideoSrc(newSrc);
             // we want the notification to trigger even if userJid is undefined,
             // or null.
             $(document).trigger("selectedendpointchanged", [userJid]);
@@ -199,14 +214,14 @@ var VideoLayout = (function (my) {
                 if (isVisible) {
                     // Only if the large video is currently visible.
                     // Disable previous dominant speaker video.
-                    var oldJid = getJidFromVideoSrc(oldSrc);
+                    var oldJid = VideoLayout.getJidFromVideoSrc(oldSrc);
                     if (oldJid) {
                         var oldResourceJid = Strophe.getResourceFromJid(oldJid);
                         VideoLayout.enableDominantSpeaker(oldResourceJid, false);
                     }
 
                     // Enable new dominant speaker in the remote videos section.
-                    var userJid = getJidFromVideoSrc(newSrc);
+                    var userJid = VideoLayout.getJidFromVideoSrc(newSrc);
                     if (userJid)
                     {
                         var resourceJid = Strophe.getResourceFromJid(userJid);
@@ -255,7 +270,7 @@ var VideoLayout = (function (my) {
             // Do we have associations...
             var videoSsrc = videoSrcToSsrc[videoSrc];
             if (videoSsrc) {
-                var videoType = ssrc2videoType[videoSsrc];
+                var videoType = XMPPActivator.getVideoTypeFromSSRC(videoSsrc);
                 if (videoType) {
                     // Finally there...
                     isDesktop = videoType === 'screen';
@@ -272,7 +287,7 @@ var VideoLayout = (function (my) {
 
     my.handleVideoThumbClicked = function(videoSrc) {
         // Restore style for previously focused video
-        var focusJid = getJidFromVideoSrc(VideoLayout.focusedVideoSrc);
+        var focusJid = VideoLayout.getJidFromVideoSrc(VideoLayout.focusedVideoSrc);
         var oldContainer = getParticipantContainer(focusJid);
 
         if (oldContainer) {
@@ -302,7 +317,7 @@ var VideoLayout = (function (my) {
         VideoLayout.focusedVideoSrc = videoSrc;
 
         // Update focused/pinned interface.
-        var userJid = getJidFromVideoSrc(videoSrc);
+        var userJid = VideoLayout.getJidFromVideoSrc(videoSrc);
         if (userJid)
         {
             var container = getParticipantContainer(userJid);
@@ -359,7 +374,7 @@ var VideoLayout = (function (my) {
      * Shows/hides the large video.
      */
     my.setLargeVideoVisible = function(isVisible) {
-        var largeVideoJid = getJidFromVideoSrc($('#largeVideo').attr('src'));
+        var largeVideoJid = VideoLayout.getJidFromVideoSrc($('#largeVideo').attr('src'));
         var resourceJid = Strophe.getResourceFromJid(largeVideoJid);
 
         if (isVisible) {
@@ -402,7 +417,7 @@ var VideoLayout = (function (my) {
         if ($('#' + videoSpanId).length > 0) {
             // If there's been a focus change, make sure we add focus related
             // interface!!
-            if (focus && $('#remote_popupmenu_' + resourceJid).length <= 0)
+            if (XMPPActivator.isFocus() && $('#remote_popupmenu_' + resourceJid).length <= 0)
                 addRemoteVideoMenu( peerJid,
                                     document.getElementById(videoSpanId));
         }
@@ -437,7 +452,7 @@ var VideoLayout = (function (my) {
 
         // If the peerJid is null then this video span couldn't be directly
         // associated with a participant (this could happen in the case of prezi).
-        if (focus && peerJid != null)
+        if (XMPPActivator.isFocus() && peerJid != null)
             addRemoteVideoMenu(peerJid, container);
 
         remotes.appendChild(container);
@@ -770,7 +785,7 @@ var VideoLayout = (function (my) {
      * from the connection.jingle.sessions.
      */
     my.showFocusIndicator = function() {
-        if (focus !== null) {
+        if (XMPPActivator.isFocus()) {
             var indicatorSpan = $('#localVideoContainer .focusindicator');
 
             if (indicatorSpan.children().length === 0)
@@ -1352,7 +1367,7 @@ var VideoLayout = (function (my) {
             videoSpanId = 'participant_' + Strophe.getResourceFromJid(jid);
         }
 
-        if (focus) {
+        if (XMPPActivator.isFocus()) {
             mutedAudios[jid] = isMuted;
             VideoLayout.updateRemoteVideoMenu(jid, isMuted);
         }
@@ -1380,8 +1395,8 @@ var VideoLayout = (function (my) {
     /**
      * Display name changed.
      */
-    $(document).bind('displaynamechanged',
-                    function (event, jid, displayName, status) {
+    my.onDisplayNameChanged =
+                    function (jid, displayName, status) {
         if (jid === 'localVideoContainer'
             || jid === connection.emuc.myroomjid) {
             setDisplayName('localVideoContainer',
@@ -1676,7 +1691,8 @@ var VideoLayout = (function (my) {
     }
 
     $(document).bind('simulcastlayerstarted', function(event) {
-        var localVideoSelector = $('#' + 'localVideo_' + connection.jingle.localVideo.id);
+        var localVideoSelector = $('#' + 'localVideo_' +
+            dep.UIActivator().getRTCService().localVideo.getOriginalStream().localVideo.id);
         var simulcast = new Simulcast();
         var stream = simulcast.getLocalVideoStream();
 
@@ -1687,7 +1703,8 @@ var VideoLayout = (function (my) {
     });
 
     $(document).bind('simulcastlayerstopped', function(event) {
-        var localVideoSelector = $('#' + 'localVideo_' + connection.jingle.localVideo.id);
+        var localVideoSelector = $('#' + 'localVideo_' +
+            dep.UIActivator().getRTCService().localVideo.getOriginalStream().localVideo.id);
         var simulcast = new Simulcast();
         var stream = simulcast.getLocalVideoStream();
 
@@ -1753,8 +1770,8 @@ var VideoLayout = (function (my) {
                 var msidParts = msid.split(' ');
                 var selRemoteVideo = $(['#', 'remoteVideo_', session.sid, '_', msidParts[0]].join(''));
 
-                var updateLargeVideo = (ssrc2jid[videoSrcToSsrc[selRemoteVideo.attr('src')]]
-                    == ssrc2jid[videoSrcToSsrc[largeVideoNewSrc]]);
+                var updateLargeVideo = (XMPPActivator.getJIDFromSSRC(videoSrcToSsrc[selRemoteVideo.attr('src')])
+                    == XMPPActivator.getJIDFromSSRC(videoSrcToSsrc[largeVideoNewSrc]));
                 var updateFocusedVideoSrc = (selRemoteVideo.attr('src') == focusedVideoSrc);
 
                 var electedStreamUrl = webkitURL.createObjectURL(electedStream);

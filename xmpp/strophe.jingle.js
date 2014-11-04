@@ -108,7 +108,7 @@ module.exports = function(eventEmitter) {
                     // the callback should either
                     // .sendAnswer and .accept
                     // or .sendTerminate -- not necessarily synchronus
-                    activecall = sess;
+                    XMPPActivator.setActiveCall(session);
                     eventEmitter.emit(XMPPEvents.CALL_INCOMING, sess);
                     // TODO: check affiliation and/or role
                     console.log('emuc data for', sess.peerjid, connection.emuc.members[sess.peerjid]);
@@ -134,15 +134,9 @@ module.exports = function(eventEmitter) {
                     sess.terminate();
                     this.terminate(sess.sid);
                     if ($(iq).find('>jingle>reason').length) {
-                        $(document).trigger('callterminated.jingle', [
-                            sess.sid,
-                            sess.peerjid,
-                            $(iq).find('>jingle>reason>:first')[0].tagName,
-                            $(iq).find('>jingle>reason>text').text()
-                        ]);
+                       this.callTerminated($(iq).find('>jingle>reason>text').text());
                     } else {
-                        $(document).trigger('callterminated.jingle',
-                            [sess.sid, sess.peerjid]);
+                        this.callTerminated(null);
                     }
                     break;
                 case 'transport-info':
@@ -214,6 +208,13 @@ module.exports = function(eventEmitter) {
                 delete this.sessions[sid];
             }
         },
+        callTerminated: function (reason) {
+            if (connection.emuc.joined && focus == null && reason === 'kick') {
+                connection.emuc.doLeave();
+                messageHandler.openMessageDialog("Session Terminated",
+                    "Ouch! You have been kicked out of the meet!");
+            }
+        },
         // Used to terminate a session when an unavailable presence is received.
         terminateByJid: function (jid) {
             if (this.jid2session.hasOwnProperty(jid)) {
@@ -223,8 +224,7 @@ module.exports = function(eventEmitter) {
                     console.log('peer went away silently', jid);
                     delete this.sessions[sess.sid];
                     delete this.jid2session[jid];
-                    $(document).trigger('callterminated.jingle',
-                        [sess.sid, jid], 'gone');
+                    this.callTerminated( 'gone');
                 }
             }
         },
@@ -237,8 +237,7 @@ module.exports = function(eventEmitter) {
                     console.log('terminate peer with jid', sess.sid, jid);
                     delete this.sessions[sess.sid];
                     delete this.jid2session[jid];
-                    $(document).trigger('callterminated.jingle',
-                        [sess.sid, jid, 'kicked']);
+                    this.callTerminated( 'kicked');
                 }
             }
         },

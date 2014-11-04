@@ -27,11 +27,10 @@ var DataChannels =
 
             // when the data channel becomes available, tell the bridge about video
             // selections so that it can do adaptive simulcast,
-            var largeVideoSrc = $('#largeVideo').attr('src');
-            var userJid = getJidFromVideoSrc(largeVideoSrc);
+
             // we want the notification to trigger even if userJid is undefined,
             // or null.
-            onSelectedEndpointChanged(userJid);
+            onSelectedEndpointChanged(UIActivator.getUIService().getSelectedJID());
         };
 
         dataChannel.onerror = function (error) {

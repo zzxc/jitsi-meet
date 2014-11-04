@@ -25,7 +25,7 @@ var ToolbarToggler = (function(my) {
             toolbarTimeout = interfaceConfig.TOOLBAR_TIMEOUT;
         }
 
-        if (focus != null)
+        if (XMPPActivator.isFocus())
         {
 //            TODO: Enable settings functionality. Need to uncomment the settings button in index.html.
 //            $('#settingsButton').css({visibility:"visible"});

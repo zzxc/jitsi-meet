@@ -1,5 +1,6 @@
 var ContactList = require("./../ContactList.js");
 var Chat = require("./../chat/chat.js");
+var buttonClick = require("../UIUtil").buttonClick;
 
 var BottomToolbar = (function (my) {
 

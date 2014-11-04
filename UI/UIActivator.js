@@ -9,6 +9,7 @@ var Toolbar = require("./toolbars/toolbar");
 var ToolbarToggler = require("./toolbars/toolbar_toggler");
 var BottomToolbar = require("./toolbars/BottomToolbar");
 var KeyboardShortcut = require("./keyboard_shortcut");
+var XMPPEvents = require("../service/xmpp/XMPPEvents");
 
 var UIActivator = function()
 {
@@ -176,6 +177,10 @@ var UIActivator = function()
         RTCActivator.addStreamListener(function (stream) {
             VideoLayout.onRemoteStreamAdded(stream);
         }, StreamEventTypes.EVENT_TYPE_REMOTE_CREATED);
+        XMPPActivator.addListener(XMPPEvents.DISPLAY_NAME_CHANGED,
+            function (peerJid, displayName, status) {
+                uiService.onDisplayNameChanged(peerJid, displayName, status);
+            });
 
         // Listen for large video size updates
         document.getElementById('largeVideo')

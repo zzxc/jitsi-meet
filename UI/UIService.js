@@ -41,11 +41,11 @@ var UIService = function() {
             Toolbar.showRecordingButton(false);
         }
 
-        if (!focus) {
+        if (!XMPPActivator.isFocus()) {
             Toolbar.showSipCallButton(false);
         }
 
-        if (focus && config.etherpad_base) {
+        if (XMPPActivator.isFocus() && config.etherpad_base) {
             this.initEtherpad();
         }
 
@@ -58,24 +58,25 @@ var UIService = function() {
         ToolbarToggler.showToolbar();
 
         if (info.displayName)
-            $(document).trigger('displaynamechanged',
-                ['localVideoContainer', info.displayName + ' (me)']);
+            this.onDisplayNameChanged(
+                'localVideoContainer', info.displayName + ' (me)');
     }
 
-    UIServiceProto.prototype.onMucEntered = function (jid, info, pres) {
-        console.log('entered', jid, info);
+    UIServiceProto.prototype.onDisplayNameChanged = function (peerJid, displayName, status) {
+        VideoLayout.onDisplayNameChanged(peerJid, displayName, status);
+        ContactList.onDisplayNameChanged(peerJid, displayName);
+    };
 
-        console.log('is focus?' + focus ? 'true' : 'false');
+    UIServiceProto.prototype.onMucEntered = function (jid, info, pres, newConference) {
+        console.log('entered', jid, info);
 
         // Add Peer's container
         VideoLayout.ensurePeerContainerExists(jid);
 
-        if (focus !== null) {
-            // FIXME: this should prepare the video
-            if (focus.confid === null) {
-                console.log('make new conference with', jid);
-                Toolbar.showRecordingButton(true);
-            }
+        if(newConference)
+        {
+            console.log('make new conference with', jid);
+            Toolbar.showRecordingButton(true);
         }
         else if (Toolbar.sharedKey) {
             Toolbar.updateLockButton();
@@ -104,13 +105,28 @@ var UIService = function() {
         // Unlock large video
         if (VideoLayout.focusedVideoSrc)
         {
-            if (getJidFromVideoSrc(VideoLayout.focusedVideoSrc) === jid)
+            if (VideoLayout.getJidFromVideoSrc(VideoLayout.focusedVideoSrc) === jid)
             {
                 console.info("Focused video owner has left the conference");
                 VideoLayout.focusedVideoSrc = null;
             }
         }
 
+    };
+
+    UIServiceProto.prototype.showVideoForJID = function (jid) {
+        var el = $('#participant_'  + jid + '>video');
+        el.show();
+    }
+
+    UIServiceProto.prototype.hideVideoForJID = function (jid) {
+        var el = $('#participant_'  + jid + '>video');
+        el.hide();
+    }
+
+    UIServiceProto.prototype.getSelectedJID = function () {
+        var largeVideoSrc = $('#largeVideo').attr('src');
+        return VideoLayout.getJidFromVideoSrc(largeVideoSrc);
     }
     
     UIServiceProto.prototype.updateButtons = function (recording, sip) {
@@ -124,6 +140,11 @@ var UIService = function() {
             Toolbar.showSipCallButton(sip);
         }
     }
+
+    UIServiceProto.prototype.toggleAudio = function()
+    {
+        Toolbar.toggleAudio();
+    };
 
     UIServiceProto.prototype.getCredentials = function () {
         var credentials = {};

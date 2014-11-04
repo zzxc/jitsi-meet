@@ -191,7 +191,7 @@ StatsCollector.prototype.processReport = function ()
         }
 
         var ssrc = now.stat('ssrc');
-        var jid = ssrc2jid[ssrc];
+        var jid = XMPPActivator.getJIDFromSSRC(ssrc);
         if (!jid)
         {
             console.warn("No jid for ssrc: " + ssrc);

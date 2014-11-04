@@ -1,8 +1,10 @@
 var StreamEventTypes = require("../service/RTC/StreamEventTypes");
 var EventEmitter = require("events");
+var XMPPEvents = require("../service/xmpp/XMPPEvents");
 
 var XMPPActivator = function()
 {
+    var activecall = null;
 
     function NicknameListenrer()
     {
@@ -18,6 +20,8 @@ var XMPPActivator = function()
     var authenticatedUser = false;
 
     var eventEmitter = new EventEmitter();
+
+    var connection = null;
 
     function XMPPActivatorProto()
     {
@@ -56,6 +60,7 @@ var XMPPActivator = function()
                     }
                 });
             }
+            XMPPActivatorProto.disposeConference(true);
         });
     }
 
@@ -65,18 +70,27 @@ var XMPPActivator = function()
         setupEvents();
         connect(jid, password, uiCredentials);
         RTCActivator.addStreamListener(maybeDoJoin, StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
-    }
+    };
 
     XMPPActivatorProto.getNickname = function () {
         return nicknameListener.nickname;
+    };
+
+
+    function getConferenceHandler() {
+        return focus ? focus : activecall;
     }
 
+    XMPPActivatorProto.toggleAudioMute = function (callback) {
+        getConferenceHandler().toggleAudioMute(callback);
+    };
+
+
+    XMPPActivatorProto.toggleVideoMute = function (callback) {
+        getConferenceHandler().toggleVideoMute(callback);
+    };
+
     function connect(jid, password, uiCredentials) {
-        var localAudio, localVideo;
-        if (connection && connection.jingle) {
-            localAudio = connection.jingle.localAudio;
-            localVideo = connection.jingle.localVideo;
-        }
         connection = new Strophe.Connection(uiCredentials.bosh);
 
         if (nicknameListener.nickname) {
@@ -92,8 +106,6 @@ var XMPPActivator = function()
             if (!connection.jingle.pc_constraints.optional) connection.jingle.pc_constraints.optional = [];
             connection.jingle.pc_constraints.optional.push({googIPv6: true});
         }
-        if (localAudio) connection.jingle.localAudio = localAudio;
-        if (localVideo) connection.jingle.localVideo = localVideo;
 
         if(!password)
             password = uiCredentials.password;
@@ -140,7 +152,7 @@ var XMPPActivator = function()
 
     function maybeDoJoin() {
         if (connection && connection.connected && Strophe.getResourceFromJid(connection.jid) // .connected is true while connecting?
-            && (connection.jingle.localAudio || connection.jingle.localVideo)) {
+            && (RTCActivator.getRTCService().localAudio || RTCActivator.getRTCService().localVideo)) {
             var roomjid = UIActivator.getUIService().generateRoomName(authenticatedUser);
             connection.emuc.doJoin(roomjid);
         }
@@ -148,6 +160,60 @@ var XMPPActivator = function()
 
     XMPPActivatorProto.stop = function () {
 
+    };
+
+    XMPPActivatorProto.setActiveCall = function (session) {
+        activecall = session;
+    };
+
+    XMPPActivatorProto.getJIDFromSSRC = function (ssrc) {
+        return connection.emuc.ssrc2jid[ssrc];
+    };
+
+    XMPPActivatorProto.isFocus = function () {
+        return (focus !== null);
+    }
+
+    XMPPActivatorProto.setRecording = function (token, callback, tokenNullCallback) {
+        return focus.setRecording(token, callback, tokenNullCallback);
+    }
+
+    XMPPActivator.switchStreams = function(stream, oldStream, streamSwitchDone)
+    {
+        var conferenceHandler = getConferenceHandler();
+        if (conferenceHandler) {
+            // FIXME: will block switchInProgress on true value in case of exception
+            conferenceHandler.switchStreams(stream, oldStream, streamSwitchDone);
+        } else {
+            // We are done immediately
+            console.error("No conference handler");
+            messageHandler.showError('Error',
+                'Unable to switch video stream.');
+            streamSwitchDone();
+        }
+    };
+
+    XMPPActivatorProto.disposeConference = function (onUnload, callback, leaveMUC) {
+        if(leaveMUC)
+            connection.emuc.doLeave();
+        var handler = getConferenceHandler();
+        if (handler && handler.peerconnection) {
+            // FIXME: probably removing streams is not required and close() should be enough
+            if (RTCActivator.getRTCService().localAudio) {
+                handler.peerconnection.removeStream(RTCActivator.getRTCService().localAudio);
+            }
+            if (RTCActivator.getRTCService().localVideo) {
+                handler.peerconnection.removeStream(RTCActivator.getRTCService().localVideo);
+            }
+            handler.peerconnection.close();
+        }
+
+        eventEmitter.emit(XMPPEvents.DISPOSE_CONFERENCE, onUnload);
+
+        focus = null;
+        activecall = null;
+        if(callback)
+            callback();
     }
 
     XMPPActivatorProto.getJingleData = function () {
@@ -167,6 +233,10 @@ var XMPPActivator = function()
 
     XMPPActivatorProto.getMyJID = function () {
         return connection.emuc.myroomjid;
+    }
+
+    XMPPActivatorProto.getVideoTypeFromSSRC = function (ssrc) {
+        return connection.emuc.ssrc2videoType[ssrc];
     }
     return XMPPActivatorProto;
 }();

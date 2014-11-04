@@ -13,6 +13,13 @@ var UIUtil = (function (my) {
         return window.innerWidth - chatspaceWidth;
     };
 
+    /**
+     * Changes the style class of the element given by id.
+     */
+    my.buttonClick = function (id, classname) {
+        $(id).toggleClass(classname); // add the class to the clicked element
+    };
+
     return my;
 
 })(UIUtil || {});

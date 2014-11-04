@@ -5,6 +5,7 @@
 
 var ColibriFocus = require("./colibri/colibri.focus");
 var XMPPActivator = require("./XMPPActivator");
+var XMPPEvents = require("../service/xmpp/XMPPEvents");
 
 module.exports = function(eventEmitter) {
     Strophe.addConnectionPlugin('emuc', {
@@ -18,6 +19,9 @@ module.exports = function(eventEmitter) {
         joined: false,
         isOwner: false,
         sessionTerminated: false,
+        ssrc2videoType: {},
+        ssrc2jid: {},
+        focus: null,
         init: function (conn) {
             this.connection = conn;
         },
@@ -138,7 +142,8 @@ module.exports = function(eventEmitter) {
                 // new participant
                 this.members[from] = member;
                 this.list_members.push(from);
-                UIActivator.getUIService().onMucEntered(from, member, pres);
+                UIActivator.getUIService().onMucEntered(from, member, pres,
+                    (focus !==null && focus.confid === null));
                 if (focus !== null) {
                     // FIXME: this should prepare the video
                     if (focus.confid === null) {
@@ -152,7 +157,7 @@ module.exports = function(eventEmitter) {
             }
             // Always trigger presence to update bindings
             console.log('presence change from', from);
-            $(document).trigger('presence.muc', [from, member, pres]);
+            this.parsePresence(from, member, pres);
 
             // Trigger status message update
             if (member.status) {
@@ -211,7 +216,7 @@ module.exports = function(eventEmitter) {
                 console.log('everyone left');
                 // FIXME: closing the connection is a hack to avoid some
                 // problems with reinit
-                disposeConference();
+                XMPPActivator.disposeConference(false,null,false);
                 focus = new ColibriFocus(connection, config.hosts.bridge, eventEmitter);
                 this.setOwnNickname();
                 UIActivator.getUIService().updateButtons(true, false);
@@ -471,6 +476,57 @@ module.exports = function(eventEmitter) {
         },
         addBridgeIsDownToPresence: function () {
             this.presMap['bridgeIsDown'] = true;
+        },
+        parsePresence: function (jid, info, pres) {
+
+            // Remove old ssrcs coming from the jid
+            Object.keys(this.ssrc2jid).forEach(function (ssrc) {
+                if (this.ssrc2jid[ssrc] == jid) {
+                    delete this.ssrc2jid[ssrc];
+                    console.log("deleted " + ssrc + " for " + jid);
+                }
+                if (this.ssrc2videoType[ssrc] == jid) {
+                    delete this.ssrc2videoType[ssrc];
+                }
+            });
+
+            $(pres).find('>media[xmlns="http://estos.de/ns/mjs"]>source').each(function (idx, ssrc) {
+                //console.log(jid, 'assoc ssrc', ssrc.getAttribute('type'), ssrc.getAttribute('ssrc'));
+                var ssrcV = ssrc.getAttribute('ssrc');
+                this.ssrc2jid[ssrcV] = jid;
+                console.log("added " + ssrcV + " for " + jid);
+
+                var type = ssrc.getAttribute('type');
+                this.ssrc2videoType[ssrcV] = type;
+
+                // might need to update the direction if participant just went from sendrecv to recvonly
+                if (type === 'video' || type === 'screen') {
+                    switch (ssrc.getAttribute('direction')) {
+                        case 'sendrecv':
+                            UIActivator.showVideoForJID(Strophe.getResourceFromJid(jid));
+                            break;
+                        case 'recvonly':
+                            UIActivator.hideVideoForJID(Strophe.getResourceFromJid(jid));
+                            break;
+                    }
+                }
+            });
+
+            //fire display name event
+            if (info.displayName && info.displayName.length > 0)
+                eventEmitter.emit(XMPPEvents.DISPLAY_NAME_CHANGED,
+                    jid, info.displayName);
+
+            if (focus !== null && info.displayName !== null) {
+                focus.setEndpointDisplayName(jid, info.displayName);
+            }
+
+            //check if the video bridge is available
+            if($(pres).find(">bridgeIsDown").length > 0 && !bridgeIsDown) {
+                bridgeIsDown = true;
+                messageHandler.showError("Error",
+                    "The video bridge is currently unavailable.");
+            }
         }
     });
 };

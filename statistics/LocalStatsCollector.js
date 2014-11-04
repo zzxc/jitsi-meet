@@ -58,7 +58,7 @@ var LocalStatsCollector = (function() {
                 var audioLevel = TimeDomainDataToAudioLevel(array);
                 if(audioLevel != self.audioLevel) {
                     self.audioLevel = animateLevel(audioLevel, self.audioLevel);
-                    if(!isAudioMuted())
+                    if(!RTCActivator.getRTCService().localAudio.isMuted())
                         self.eventEmitter.emit("statistics.audioLevel", LocalStatsCollectorProto.LOCAL_JID,
                             self.audioLevel);
                 }

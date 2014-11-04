@@ -125,8 +125,8 @@ var ContactList = (function (my) {
     /**
      * Indicates that the display name has changed.
      */
-    $(document).bind(   'displaynamechanged',
-                        function (event, peerJid, displayName) {
+    my.onDisplayNameChanged =
+                        function (peerJid, displayName) {
         if (peerJid === 'localVideoContainer')
             peerJid = connection.emuc.myroomjid;
 
