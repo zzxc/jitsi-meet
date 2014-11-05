@@ -1,4 +1,5 @@
 var VideoLayout = require("./VideoLayout.js");
+var XMPPActivator = require("../xmpp/XMPPActivator");
 
 /**
  * Contact list.

@@ -175,6 +175,7 @@ StatsCollector.prototype.processReport = function ()
         return;
     }
 
+    var XMPPActivator = require("../xmpp/XMPPActivator");
     for (var idx in this.currentReport)
     {
         var now = this.currentReport[idx];

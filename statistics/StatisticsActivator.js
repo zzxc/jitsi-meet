@@ -15,6 +15,8 @@ var StatisticsActivator = function()
 
     var rtpStats = null;
 
+    var RTCActivator = null;
+
     function StatisticsActivatorProto()
     {
 
@@ -61,8 +63,10 @@ var StatisticsActivator = function()
     }
 
     StatisticsActivatorProto.start = function () {
+        RTCActivator = require("../RTC/RTCActivator");
         RTCActivator.addStreamListener(StatisticsActivator.onStreamCreated,
             StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
+        var XMPPActivator = require("../xmpp/XMPPActivator");
         XMPPActivator.addListener(XMPPEvents.CONFERENCE_CERATED, function (event) {
             startRemoteStats(event.peerconnection);
         });
@@ -82,7 +86,7 @@ var StatisticsActivator = function()
         if(!stream.isAudioStream())
             return;
 
-        localStats = new LocalStats(stream.getOriginalStream(), 100, eventEmmiter);
+        localStats = new LocalStats(stream.getOriginalStream(), 100, eventEmmiter, RTCActivator);
         localStats.start();
     }
 

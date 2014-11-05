@@ -2,7 +2,7 @@
 
 var JingleSession = require("./strophe.jingle.session");
 var XMPPEvents = require("../service/xmpp/XMPPEvents");
-module.exports = function(eventEmitter) {
+module.exports = function(eventEmitter, RTCActivator, XMPPActivator) {
     Strophe.addConnectionPlugin('jingle', {
         connection: null,
         sessions: {},
@@ -88,11 +88,11 @@ module.exports = function(eventEmitter) {
                 case 'session-initiate':
                     sess = new JingleSession($(iq).attr('to'), $(iq).find('jingle').attr('sid'), this.connection);
                     // configure session
-                    if (this.localAudio) {
-                        sess.localStreams.push(this.localAudio);
+                    if (RTCActivator.getRTCService().localAudio) {
+                        sess.localStreams.push(RTCActivator.getRTCService().localAudio);
                     }
-                    if (this.localVideo) {
-                        sess.localStreams.push(this.localVideo);
+                    if (RTCActivator.getRTCService().localVideo) {
+                        sess.localStreams.push(RTCActivator.getRTCService().localVideo);
                     }
                     sess.media_constraints = this.media_constraints;
                     sess.pc_constraints = this.pc_constraints;

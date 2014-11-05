@@ -2,9 +2,13 @@ var StreamEventTypes = require("../service/RTC/StreamEventTypes");
 var EventEmitter = require("events");
 var XMPPEvents = require("../service/xmpp/XMPPEvents");
 
+
 var XMPPActivator = function()
 {
     var activecall = null;
+
+    var UIActivator = null;
+    var RTCActivator = null;
 
     function NicknameListenrer()
     {
@@ -29,8 +33,8 @@ var XMPPActivator = function()
 
     function setupStrophePlugins()
     {
-        require("./muc")(eventEmitter);
-        require("./strophe.jingle")(eventEmitter);
+        require("./muc")(eventEmitter, XMPPActivator);
+        require("./strophe.jingle")(eventEmitter, RTCActivator, XMPPActivator);
         require("./moderatemuc")(eventEmitter);
         require("./strophe.util")(eventEmitter);
         require("./rayo")();
@@ -65,6 +69,8 @@ var XMPPActivator = function()
     }
 
     XMPPActivatorProto.start = function (jid, password, uiCredentials) {
+        UIActivator = require("../UI/UIActivator");
+        RTCActivator = require("../RTC/RTCActivator");
         setupStrophePlugins();
         registerListeners();
         setupEvents();

@@ -153,14 +153,14 @@ var VideoLayout = (function (my) {
     my.getJidFromVideoSrc = function(videoSrc)
     {
         if (videoSrc === localVideoSrc)
-            return XMPPActivator.getMyJID();
+            return dep.UIActivator().getXMPPActivator().getMyJID();
 
         var ssrc = videoSrcToSsrc[videoSrc];
         if (!ssrc)
         {
             return null;
         }
-        return XMPPActivator.getJIDFromSSRC(ssrc);
+        return dep.UIActivator().getXMPPActivator().getJIDFromSSRC(ssrc);
     }
     /**
      * Updates the large video with the given new video source.
@@ -265,12 +265,12 @@ var VideoLayout = (function (my) {
         var isDesktop = false;
         if (localVideoSrc === videoSrc) {
             // local video
-            isDesktop = isUsingScreenStream;
+            isDesktop = require("../desktopsharing").isUsingScreenStream();
         } else {
             // Do we have associations...
             var videoSsrc = videoSrcToSsrc[videoSrc];
             if (videoSsrc) {
-                var videoType = XMPPActivator.getVideoTypeFromSSRC(videoSsrc);
+                var videoType = dep.UIActivator().getXMPPActivator().getVideoTypeFromSSRC(videoSsrc);
                 if (videoType) {
                     // Finally there...
                     isDesktop = videoType === 'screen';
@@ -417,7 +417,7 @@ var VideoLayout = (function (my) {
         if ($('#' + videoSpanId).length > 0) {
             // If there's been a focus change, make sure we add focus related
             // interface!!
-            if (XMPPActivator.isFocus() && $('#remote_popupmenu_' + resourceJid).length <= 0)
+            if (dep.UIActivator().getXMPPActivator().isFocus() && $('#remote_popupmenu_' + resourceJid).length <= 0)
                 addRemoteVideoMenu( peerJid,
                                     document.getElementById(videoSpanId));
         }
@@ -452,7 +452,7 @@ var VideoLayout = (function (my) {
 
         // If the peerJid is null then this video span couldn't be directly
         // associated with a participant (this could happen in the case of prezi).
-        if (XMPPActivator.isFocus() && peerJid != null)
+        if (dep.UIActivator().getXMPPActivator().isFocus() && peerJid != null)
             addRemoteVideoMenu(peerJid, container);
 
         remotes.appendChild(container);
@@ -697,7 +697,7 @@ var VideoLayout = (function (my) {
                             dep.UIActivator().getUIService().setNickname(name);
                             nickname  = name;
                             window.localStorage.displayname = nickname;
-                            XMPPActivator.addToPresence("displayName", nickname);
+                            dep.UIActivator().getXMPPActivator().addToPresence("displayName", nickname);
 
                             dep.Chat().setChatConversationMode(true);
                         }
@@ -784,7 +784,7 @@ var VideoLayout = (function (my) {
      * from the connection.jingle.sessions.
      */
     my.showFocusIndicator = function() {
-        if (XMPPActivator.isFocus()) {
+        if (dep.UIActivator().getXMPPActivator().isFocus()) {
             var indicatorSpan = $('#localVideoContainer .focusindicator');
 
             if (indicatorSpan.children().length === 0)
@@ -795,7 +795,7 @@ var VideoLayout = (function (my) {
         else
         {
             // If we're only a participant the focus will be the only session we have.
-            var focusJID = XMPPActivator.getFocusJID();
+            var focusJID = dep.UIActivator().getXMPPActivator().getFocusJID();
             if(focusJID == null)
                 return;
             var focusId
@@ -939,7 +939,7 @@ var VideoLayout = (function (my) {
         var videoSpanId = null;
         var videoContainerId = null;
         if (resourceJid
-                === Strophe.getResourceFromJid(XMPPActivator.getMyJID())) {
+                === Strophe.getResourceFromJid(dep.UIActivator().getXMPPActivator().getMyJID())) {
             videoSpanId = 'localVideoWrapper';
             videoContainerId = 'localVideoContainer';
         }
@@ -987,7 +987,7 @@ var VideoLayout = (function (my) {
         if (!userJid)
             return null;
 
-        if (userJid === XMPPActivator.getMyJID())
+        if (userJid === dep.UIActivator().getXMPPActivator().getMyJID())
             return $("#localVideoContainer");
         else
             return $("#participant_" + Strophe.getResourceFromJid(userJid));
@@ -1325,7 +1325,7 @@ var VideoLayout = (function (my) {
                 event.preventDefault();
             }
             var isMute = !mutedAudios[jid];
-            XMPPActivator.setMute(jid, isMute);
+            dep.UIActivator().getXMPPActivator().setMute(jid, isMute);
             popupmenuElement.setAttribute('style', 'display:none;');
 
             if (isMute) {
@@ -1347,7 +1347,7 @@ var VideoLayout = (function (my) {
         var ejectLinkItem = document.createElement('a');
         ejectLinkItem.innerHTML = ejectIndicator + ' Kick out';
         ejectLinkItem.onclick = function(){
-            XMPPActivator.eject(jid);
+            dep.UIActivator().getXMPPActivator().eject(jid);
             popupmenuElement.setAttribute('style', 'display:none;');
         };
 
@@ -1360,14 +1360,14 @@ var VideoLayout = (function (my) {
      */
     $(document).bind('audiomuted.muc', function (event, jid, isMuted) {
         var videoSpanId = null;
-        if (jid === XMPPActivator.getMyJID()) {
+        if (jid === dep.UIActivator().getXMPPActivator().getMyJID()) {
             videoSpanId = 'localVideoContainer';
         } else {
             VideoLayout.ensurePeerContainerExists(jid);
             videoSpanId = 'participant_' + Strophe.getResourceFromJid(jid);
         }
 
-        if (XMPPActivator.isFocus()) {
+        if (dep.UIActivator().getXMPPActivator().isFocus()) {
             mutedAudios[jid] = isMuted;
             VideoLayout.updateRemoteVideoMenu(jid, isMuted);
         }
@@ -1381,7 +1381,7 @@ var VideoLayout = (function (my) {
      */
     $(document).bind('videomuted.muc', function (event, jid, isMuted) {
         var videoSpanId = null;
-        if (jid === XMPPActivator.getMyJID()) {
+        if (jid === dep.UIActivator().getXMPPActivator().getMyJID()) {
             videoSpanId = 'localVideoContainer';
         } else {
             VideoLayout.ensurePeerContainerExists(jid);
@@ -1398,7 +1398,7 @@ var VideoLayout = (function (my) {
     my.onDisplayNameChanged =
                     function (jid, displayName, status) {
         if (jid === 'localVideoContainer'
-            || jid === XMPPActivator.getMyJID()) {
+            || jid === dep.UIActivator().getXMPPActivator().getMyJID()) {
             setDisplayName('localVideoContainer',
                            displayName);
         } else {
@@ -1417,7 +1417,7 @@ var VideoLayout = (function (my) {
     $(document).bind('dominantspeakerchanged', function (event, resourceJid) {
         // We ignore local user events.
         if (resourceJid
-                === Strophe.getResourceFromJid(XMPPActivator.getMyJID()))
+                === Strophe.getResourceFromJid(dep.UIActivator().getXMPPActivator().getMyJID()))
             return;
 
         // Update the current dominant speaker.
@@ -1729,7 +1729,7 @@ var VideoLayout = (function (my) {
             var i, j, k;
 
 
-            var remoteStreams = RTCActivator.getRTCService().remoteStreams;
+            var remoteStreams = dep.UIActivator().getRTCService().remoteStreams;
             var remoteStream;
 
             if (remoteStreams) {
@@ -1761,8 +1761,8 @@ var VideoLayout = (function (my) {
                 var msidParts = msid.split(' ');
                 var selRemoteVideo = $(['#', 'remoteVideo_', remoteStream.sid, '_', msidParts[0]].join(''));
 
-                var updateLargeVideo = (XMPPActivator.getJIDFromSSRC(videoSrcToSsrc[selRemoteVideo.attr('src')])
-                    == XMPPActivator.getJIDFromSSRC(videoSrcToSsrc[largeVideoNewSrc]));
+                var updateLargeVideo = (dep.UIActivator().getXMPPActivator().getJIDFromSSRC(videoSrcToSsrc[selRemoteVideo.attr('src')])
+                    == dep.UIActivator().getXMPPActivator().getJIDFromSSRC(videoSrcToSsrc[largeVideoNewSrc]));
                 var updateFocusedVideoSrc = (selRemoteVideo.attr('src') == focusedVideoSrc);
 
                 var electedStreamUrl = webkitURL.createObjectURL(electedStream);

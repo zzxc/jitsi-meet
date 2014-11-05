@@ -30,7 +30,7 @@ var DataChannels =
 
             // we want the notification to trigger even if userJid is undefined,
             // or null.
-            onSelectedEndpointChanged(UIActivator.getUIService().getSelectedJID());
+            onSelectedEndpointChanged(require("../UI/UIActivator").getUIService().getSelectedJID());
         };
 
         dataChannel.onerror = function (error) {

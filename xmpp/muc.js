@@ -4,10 +4,10 @@
  */
 
 var ColibriFocus = require("./colibri/colibri.focus");
-var XMPPActivator = require("./XMPPActivator");
 var XMPPEvents = require("../service/xmpp/XMPPEvents");
+var UIActivator = require("../UI/UIActivator");
 
-module.exports = function(eventEmitter) {
+module.exports = function(eventEmitter, XMPPActivator) {
     Strophe.addConnectionPlugin('emuc', {
         connection: null,
         roomjid: null,

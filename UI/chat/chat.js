@@ -35,7 +35,7 @@ var Chat = (function (my) {
                     dep.UIActivator().getUIService().setNickname(val);
                     window.localStorage.displayname = val;
                     //this should be changed
-                    XMPPActivator.addToPresence("displayName", val);
+                    dep.UIActivator().getXMPPActivator().addToPresence("displayName", val);
                     Chat.setChatConversationMode(true);
 
                     return;
@@ -58,7 +58,7 @@ var Chat = (function (my) {
                 {
                     //this should be changed
                     var message = Util.escapeHtml(value);
-                    XMPPActivator.sendMessage(message, dep.UIActivator().getUIService().getNickname());
+                    dep.UIActivator().getXMPPActivator().sendMessage(message, dep.UIActivator().getUIService().getNickname());
                 }
             }
         });
@@ -83,7 +83,7 @@ var Chat = (function (my) {
     my.updateChatConversation = function (from, displayName, message) {
         var divClassName = '';
 
-        if (XMPPActivator.getMyJID() === from) {
+        if (dep.UIActivator().getXMPPActivator().getMyJID() === from) {
             divClassName = "localuser";
         }
         else {

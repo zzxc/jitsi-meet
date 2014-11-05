@@ -44,7 +44,7 @@ module.exports = function() {
         onMute: function (iq) {
             var mute = $(iq).find('mute');
             if (mute.length) {
-                UIActivator.getUIService().toggleAudio();
+                require("../UI/UIActivator").getUIService().toggleAudio();
             }
             return true;
         },

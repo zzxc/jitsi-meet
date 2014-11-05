@@ -1,4 +1,6 @@
 var SDP = require("./strophe.jingle.sdp");
+var RTCActivator = require("../RTC/RTCActivator");
+var XMPPActivator = require("./XMPPActivator");
 
 /**
  * Base class for ColibriFocus and JingleSession.
@@ -48,7 +50,7 @@ SessionBase.prototype.setLocalDescription = function (sid) {
     if (newssrcs.length > 0) {
         for (var i = 1; i <= newssrcs.length; i ++) {
             // Change video type to screen
-            if (newssrcs[i-1].type === 'video' && isUsingScreenStream) {
+            if (newssrcs[i-1].type === 'video' && require("../desktopsharing").isUsingScreenStream()) {
                 newssrcs[i-1].type = 'screen';
             }
             this.connection.emuc.addMediaToPresence(i,

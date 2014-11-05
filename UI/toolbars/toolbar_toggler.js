@@ -1,4 +1,4 @@
-var Toolbar = require("./toolbar");
+var DesktopSharing = require("../../desktopsharing");
 
 var ToolbarToggler = (function(my) {
     var toolbarTimeoutObject,
@@ -25,15 +25,23 @@ var ToolbarToggler = (function(my) {
             toolbarTimeout = interfaceConfig.TOOLBAR_TIMEOUT;
         }
 
-        if (XMPPActivator.isFocus())
+        if (require("../../xmpp/XMPPActivator").isFocus())
         {
 //            TODO: Enable settings functionality. Need to uncomment the settings button in index.html.
 //            $('#settingsButton').css({visibility:"visible"});
         }
 
         // Show/hide desktop sharing button
-        showDesktopSharingButton();
+        ToolbarToggler.showDesktopSharingButton();
     };
+
+    my.showDesktopSharingButton = function () {
+        if (DesktopSharing.isDesktopSharingEnabled()) {
+            $('#desktopsharing').css({display: "inline"});
+        } else {
+            $('#desktopsharing').css({display: "none"});
+        }
+    }
 
     /**
      * Hides the toolbar.

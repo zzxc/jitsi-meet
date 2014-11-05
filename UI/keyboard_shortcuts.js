@@ -1,5 +1,6 @@
 var BottomToolbar = require("./toolbars/BottomToolbar");
 var Toolbar = require("./toolbars/Toolbar");
+var RTCActivator = require("../RTC/RTCActivator");
 
 var KeyboardShortcut = (function(my) {
     //maps keycode to character, id of popover for given function and function

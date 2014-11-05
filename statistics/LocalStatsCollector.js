@@ -23,13 +23,14 @@ var LocalStatsCollector = (function() {
      *                                   update.
      * @constructor
      */
-    function LocalStatsCollectorProto(stream, interval, eventEmitter) {
+    function LocalStatsCollectorProto(stream, interval, eventEmitter, RTCActivator) {
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.stream = stream;
         this.intervalId = null;
         this.intervalMilis = interval;
         this.eventEmitter = eventEmitter;
         this.audioLevel = 0;
+        this.RTCActivator = RTCActivator;
     }
 
     /**
@@ -58,7 +59,7 @@ var LocalStatsCollector = (function() {
                 var audioLevel = TimeDomainDataToAudioLevel(array);
                 if(audioLevel != self.audioLevel) {
                     self.audioLevel = animateLevel(audioLevel, self.audioLevel);
-                    if(!RTCActivator.getRTCService().localAudio.isMuted())
+                    if(!self.RTCActivator.getRTCService().localAudio.isMuted())
                         self.eventEmitter.emit("statistics.audioLevel", LocalStatsCollectorProto.LOCAL_JID,
                             self.audioLevel);
                 }

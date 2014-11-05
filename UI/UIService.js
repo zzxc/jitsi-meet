@@ -14,7 +14,10 @@ var UIService = function() {
 
     var roomName = null;
 
-    function UIServiceProto() {
+    var XMPPActivator = null;
+
+    function UIServiceProto(xmpp) {
+        XMPPActivator = xmpp;
     }
 
     UIServiceProto.prototype.updateAudioLevelCanvas = function (peerJid) {

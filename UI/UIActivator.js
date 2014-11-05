@@ -8,12 +8,17 @@ var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
 var Toolbar = require("./toolbars/toolbar");
 var ToolbarToggler = require("./toolbars/toolbar_toggler");
 var BottomToolbar = require("./toolbars/BottomToolbar");
-var KeyboardShortcut = require("./keyboard_shortcut");
+var KeyboardShortcut = require("./keyboard_shortcuts");
 var XMPPEvents = require("../service/xmpp/XMPPEvents");
 
 var UIActivator = function()
 {
     var uiService = null;
+
+    var RTCActivator = null;
+
+    var XMPPActivator = null;
+
     function UIActivatorProto()
     {
 
@@ -40,7 +45,7 @@ var UIActivator = function()
     }
 
     function setupAudioLevels() {
-        StatisticsActivator.addAudioLevelListener(AudioLevels.updateAudioLevel);
+        require("../statistics/StatisticsActivator").addAudioLevelListener(AudioLevels.updateAudioLevel);
     }
 
     function setupChat()
@@ -71,11 +76,13 @@ var UIActivator = function()
     }
 
     function setupToolbars() {
-        Toolbar.init();
+        Toolbar.init(UIActivator, XMPPActivator);
         BottomToolbar.init();
     }
 
-    UIActivatorProto.start = function () {
+    UIActivatorProto.start = function (init) {
+        RTCActivator = require("../RTC/RTCActivator");
+        XMPPActivator = require("../xmpp/XMPPActivator");
         $('body').popover({ selector: '[data-toggle=popover]',
             trigger: 'click hover'});
         VideoLayout.resizeLargeVideoContainer();
@@ -131,6 +138,10 @@ var UIActivator = function()
         uiService = null;
     }
 
+    UIActivatorProto.showDesktopSharingButton = function () {
+        return ToolbarToggler.showDesktopSharingButton();
+    }
+
 
     /**
      * Populates the log data
@@ -169,7 +180,7 @@ var UIActivator = function()
                     VideoLayout.changeLocalVideo(stream.getOriginalStream(), true);
                     break;
                 case "desktop":
-                    VideoLayout.changeLocalVideo(stream, !isUsingScreenStream);
+                    VideoLayout.changeLocalVideo(stream, !require("../desktopsharing").isUsingScreenStream());
                     break;
             }
         }, StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
@@ -242,9 +253,13 @@ var UIActivator = function()
     {
         if(uiService == null)
         {
-            uiService = new UIService();
+            uiService = new UIService(XMPPActivator);
         }
         return uiService;
+    }
+
+    UIActivatorProto.getXMPPActivator = function () {
+        return XMPPActivator;
     }
 
     UIActivatorProto.chatAddError = function(errorMessage, originalText)

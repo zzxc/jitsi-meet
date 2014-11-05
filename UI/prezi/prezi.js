@@ -1,6 +1,7 @@
 var PreziPlayer = require("./PreziPlayer.js");
 var UIUtil = require("../UIUtil.js");
 var ToolbarToggler = require("../toolbars/toolbar_toggler");
+var XMPPActivator = require("../../xmpp/XMPPActivator");
 
 var Prezi = (function (my) {
     var preziPlayer = null;

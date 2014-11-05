@@ -40,6 +40,7 @@ var TraceablePeerConnection = require("../strophe.jingle.adapter");
 var SDP = require("../strophe.jingle.sdp");
 var SDPUtil = require("../strophe.jingle.sdp.util");
 var XMPPEvents = require("../../service/xmpp/XMPPEvents");
+var RTCActivator = require("../../RTC/RTCActivator");
 ColibriFocus.prototype = Object.create(SessionBase.prototype);
 function ColibriFocus(connection, bridgejid, eventEmitter) {
 

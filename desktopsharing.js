@@ -3,7 +3,7 @@
  * Indicates that desktop stream is currently in use(for toggle purpose).
  * @type {boolean}
  */
-var isUsingScreenStream = false;
+var _isUsingScreenStream = false;
 /**
  * Indicates that switch stream operation is in progress and prevent from triggering new events.
  * @type {boolean}
@@ -23,6 +23,7 @@ var obtainDesktopStream = null;
  */
 var _desktopSharingEnabled = null;
 
+var RTCActivator = null;
 /**
  * Method obtains desktop stream from WebRTC 'screen' source.
  * Flag 'chrome://flags/#enable-usermedia-screen-capture' must be enabled.
@@ -178,58 +179,6 @@ function obtainScreenFromExtension(streamCallback, failCallback) {
 }
 
 /**
- * @returns {boolean} <tt>true</tt> if desktop sharing feature is available and enabled.
- */
-function isDesktopSharingEnabled() {
-    if (_desktopSharingEnabled === null) {
-        if (obtainDesktopStream === obtainScreenFromExtension) {
-            // Parse chrome version
-            var userAgent = navigator.userAgent.toLowerCase();
-            // We can assume that user agent is chrome, because it's enforced when 'ext' streaming method is set
-            var ver = parseInt(userAgent.match(/chrome\/(\d+)\./)[1], 10);
-            console.log("Chrome version" + userAgent, ver);
-            _desktopSharingEnabled = ver >= 34;
-        } else {
-            _desktopSharingEnabled = obtainDesktopStream === obtainWebRTCScreen;
-        }
-    }
-    return _desktopSharingEnabled;
-}
-
-function showDesktopSharingButton() {
-    if (isDesktopSharingEnabled()) {
-        $('#desktopsharing').css({display: "inline"});
-    } else {
-        $('#desktopsharing').css({display: "none"});
-    }
-}
-
-/**
- * Call this method to toggle desktop sharing feature.
- * @param method pass "ext" to use chrome extension for desktop capture(chrome extension required),
- *        pass "webrtc" to use WebRTC "screen" desktop source('chrome://flags/#enable-usermedia-screen-capture'
- *        must be enabled), pass any other string or nothing in order to disable this feature completely.
- */
-function setDesktopSharing(method) {
-    // Check if we are running chrome
-    if (!navigator.webkitGetUserMedia) {
-        obtainDesktopStream = null;
-        console.info("Desktop sharing disabled");
-    } else if (method == "ext") {
-        obtainDesktopStream = obtainScreenFromExtension;
-        console.info("Using Chrome extension for desktop sharing");
-    } else if (method == "webrtc") {
-        obtainDesktopStream = obtainWebRTCScreen;
-        console.info("Using Chrome WebRTC for desktop sharing");
-    }
-
-    // Reset enabled cache
-    _desktopSharingEnabled = null;
-
-    showDesktopSharingButton();
-}
-
-/**
  * Initializes <link rel=chrome-webstore-item /> with extension id set in config.js to support inline installs.
  * Host site must be selected as main website of published extension.
  */
@@ -259,48 +208,106 @@ function newStreamCreated(stream) {
     RTCActivator.getRTCService().createLocalStream(stream, "desktop");
     RTCActivator.getRTCService().removeLocalStream(oldStream);
 
-    XMPPActivator.switchStreams(stream, oldStream, streamSwitchDone);
+    require("./xmpp/XMPPActivator").switchStreams(stream, oldStream, streamSwitchDone);
 }
 
-/*
- * Toggles screen sharing.
+/**
+ * Call this method to toggle desktop sharing feature.
+ * @param method pass "ext" to use chrome extension for desktop capture(chrome extension required),
+ *        pass "webrtc" to use WebRTC "screen" desktop source('chrome://flags/#enable-usermedia-screen-capture'
+ *        must be enabled), pass any other string or nothing in order to disable this feature completely.
  */
-function toggleScreenSharing() {
-    if (switchInProgress || !obtainDesktopStream) {
-        console.warn("Switch in progress or no method defined");
-        return;
+function setDesktopSharing(method) {
+    // Check if we are running chrome
+    if (!navigator.webkitGetUserMedia) {
+        obtainDesktopStream = null;
+        console.info("Desktop sharing disabled");
+    } else if (method == "ext") {
+        obtainDesktopStream = obtainScreenFromExtension;
+        console.info("Using Chrome extension for desktop sharing");
+    } else if (method == "webrtc") {
+        obtainDesktopStream = obtainWebRTCScreen;
+        console.info("Using Chrome WebRTC for desktop sharing");
     }
-    switchInProgress = true;
 
-    // Only the focus is able to set a shared key.
-    if (!isUsingScreenStream)
-    {
-        obtainDesktopStream(
-            function (stream) {
-                // We now use screen stream
-                isUsingScreenStream = true;
-                // Hook 'ended' event to restore camera when screen stream stops
-                stream.addEventListener('ended',
-                    function (e) {
-                        if (!switchInProgress && isUsingScreenStream) {
-                            toggleScreenSharing();
-                        }
-                    }
-                );
-                newStreamCreated(stream);
-            },
-            getSwitchStreamFailed);
-    } else {
-        // Disable screen stream
-        RTCActivator.getRTCService().getUserMediaWithConstraints(
-            ['video'],
-            function (stream) {
-                // We are now using camera stream
-                isUsingScreenStream = false;
-                newStreamCreated(stream);
-            },
-            getSwitchStreamFailed, config.resolution || '360'
-        );
-    }
+    // Reset enabled cache
+    _desktopSharingEnabled = null;
+
+    require("./UI/UIActivator").showDesktopSharingButton();
 }
 
+
+
+module.exports = {
+    /*
+     * Toggles screen sharing.
+     */
+    toggleScreenSharing: function () {
+        if (switchInProgress || !obtainDesktopStream) {
+            console.warn("Switch in progress or no method defined");
+            return;
+        }
+        switchInProgress = true;
+
+        // Only the focus is able to set a shared key.
+        if (!_isUsingScreenStream)
+        {
+            obtainDesktopStream(
+                function (stream) {
+                    // We now use screen stream
+                    _isUsingScreenStream = true;
+                    // Hook 'ended' event to restore camera when screen stream stops
+                    stream.addEventListener('ended',
+                        function (e) {
+                            if (!switchInProgress && _isUsingScreenStream) {
+                                this.toggleScreenSharing();
+                            }
+                        }
+                    );
+                    newStreamCreated(stream);
+                },
+                getSwitchStreamFailed);
+        } else {
+            // Disable screen stream
+            RTCActivator.getRTCService().getUserMediaWithConstraints(
+                ['video'],
+                function (stream) {
+                    // We are now using camera stream
+                    _isUsingScreenStream = false;
+                    newStreamCreated(stream);
+                },
+                getSwitchStreamFailed, config.resolution || '360'
+            );
+        }
+    },
+    /**
+     * @returns {boolean} <tt>true</tt> if desktop sharing feature is available and enabled.
+     */
+    isDesktopSharingEnabled: function () {
+        if (_desktopSharingEnabled === null) {
+            if (obtainDesktopStream === obtainScreenFromExtension) {
+                // Parse chrome version
+                var userAgent = navigator.userAgent.toLowerCase();
+                // We can assume that user agent is chrome, because it's enforced when 'ext' streaming method is set
+                var ver = parseInt(userAgent.match(/chrome\/(\d+)\./)[1], 10);
+                console.log("Chrome version" + userAgent, ver);
+                _desktopSharingEnabled = ver >= 34;
+            } else {
+                _desktopSharingEnabled = obtainDesktopStream === obtainWebRTCScreen;
+            }
+        }
+        return _desktopSharingEnabled;
+    },
+    init: function () {
+        RTCActivator = require("./RTC/RTCActivator");
+        // Set default desktop sharing method
+        setDesktopSharing(config.desktopSharing);
+        // Initialize Chrome extension inline installs
+        if (config.chromeExtensionId) {
+            initInlineInstalls();
+        }
+    },
+    isUsingScreenStream: function () {
+        return _isUsingScreenStream;
+    }
+};

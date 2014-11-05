@@ -96,7 +96,7 @@ var Etherpad = (function (my) {
      * Shares the Etherpad name with other participants.
      */
     function shareEtherpad() {
-        XMPPActivator.addToPresence("etherpad", etherpadName);
+        require("../../xmpp/XMPPActivator").addToPresence("etherpad", etherpadName);
     }
 
     /**
@@ -127,7 +127,7 @@ var Etherpad = (function (my) {
      */
     $(document).bind('etherpadadded.muc', function (event, jid, etherpadName) {
         console.log("Etherpad added", etherpadName);
-        if (config.etherpad_base && !XMPPActivator.isFocus()) {
+        if (config.etherpad_base && !require("../../xmpp/XMPPActivator").isFocus()) {
             Etherpad.init(etherpadName);
         }
     });

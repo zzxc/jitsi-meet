@@ -2,10 +2,16 @@ var BottomToolbar = require("./BottomToolbar");
 var Prezi = require("./../prezi/prezi");
 var Etherpad = require("./../etherpad/Etherpad");
 var buttonClick = require("../UIUtil").buttonClick;
+var DesktopStreaming = require("../../desktopsharing");
+
 
 var Toolbar = (function (my) {
 
     var toolbarTimeout = null;
+
+    var UIActivator = null;
+
+    var XMPPActivator = null
 
     var roomUrl = null;
 
@@ -39,7 +45,7 @@ var Toolbar = (function (my) {
             return Etherpad.toggleEtherpad(0);
         },
         "toolbar_button_desktopsharing": function () {
-            return toggleScreenSharing();
+            return DesktopStreaming.toggleScreenSharing();
         },
         "toolbar_button_fullScreen": function()
         {
@@ -190,7 +196,9 @@ var Toolbar = (function (my) {
     }
 
     //sets onclick handlers
-    my.init = function () {
+    my.init = function (ui, xmpp) {
+        UIActivator = ui;
+        XMPPActivator = xmpp;
         for(var k in buttonHandlers)
             $("#" + k).click(buttonHandlers[k]);
     }
@@ -221,6 +229,7 @@ var Toolbar = (function (my) {
      * Mutes / unmutes audio for the local participant.
      */
     my.toggleAudio = function () {
+        var RTCActivator = require("../../RTC/RTCActivator");
         if (!(RTCActivator.getRTCService().localAudio)) {
             Toolbar.preMuted = true;
             // We still click the button.
