@@ -216,7 +216,7 @@ StatsCollector.prototype.processReport = function ()
             audioLevel = audioLevel / 32767;
             jidStats.setSsrcAudioLevel(ssrc, audioLevel);
             //my roomjid shouldn't be global
-            if(jid != connection.emuc.myroomjid)
+            if(jid != XMPPActivator.getMyJID())
                 this.eventEmmiter.emit("statistics.audioLevel", Strophe.getResourceFromJid(jid), audioLevel);
         }
 

@@ -82,7 +82,7 @@ var CommandsProcessor = (function()
     var processTopic = function(commandArguments)
     {
         var topic = Util.escapeHtml(commandArguments);
-        connection.emuc.setSubject(topic);
+
     }
 
     /**

@@ -96,8 +96,7 @@ var Etherpad = (function (my) {
      * Shares the Etherpad name with other participants.
      */
     function shareEtherpad() {
-        connection.emuc.addEtherpadToPresence(etherpadName);
-        connection.emuc.sendPresence();
+        XMPPActivator.addToPresence("etherpad", etherpadName);
     }
 
     /**

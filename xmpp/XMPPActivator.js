@@ -33,7 +33,7 @@ var XMPPActivator = function()
         require("./strophe.jingle")(eventEmitter);
         require("./moderatemuc")(eventEmitter);
         require("./strophe.util")(eventEmitter);
-
+        require("./rayo")();
     }
 
     function registerListeners() {
@@ -76,9 +76,73 @@ var XMPPActivator = function()
         return nicknameListener.nickname;
     };
 
+    XMPPActivatorProto.addToPresence = function (name, value) {
+        switch (name)
+        {
+            case "displayName":
+                connection.emuc.addDisplayNameToPresence(value);
+                break;
+            case "etherpad":
+                connection.emuc.addEtherpadToPresence(value);
+                break;
+            case "prezi":
+                connection.emuc.addPreziToPresence(value, 0);
+                break;
+            case "preziSlide":
+                connection.emuc.addCurrentSlideToPresence(value);
+                break;
+            default :
+                console.log("Unknown tag for presence.");
+                return;
+        }
+        connection.emuc.sendPresence();
+    }
+
+    XMPPActivatorProto.setMute = function(jid, isMute)
+    {
+        connection.moderate.setMute(jid, isMute);
+    }
+
+    XMPPActivatorProto.eject = function(jid)
+    {
+        connection.moderate.eject(jid);
+    }
+    
+    XMPPActivatorProto.getPrezi = function () {
+        return connection.emuc.getPrezi(XMPPActivator.getMyJID());
+    }
+
+    XMPPActivatorProto.removeFromPresence = function(name)
+    {
+        switch (name)
+        {
+            case "prezi":
+                connection.emuc.removePreziFromPresence();
+                break;
+            default:
+                return;
+        }
+        connection.emuc.sendPresence();
+    }
+
+    XMPPActivatorProto.lockRoom = function (sharedKey) {
+        connection.emuc.lockRoom(sharedKey);
+    }
+
+    XMPPActivatorProto.getOwnJIDNode = function () {
+        return Strophe.getNodeFromJid(connection.jid);
+    }
+
+    XMPPActivatorProto.sendMessage = function (message, nickname) {
+        connection.emuc.sendMessage(message, nickname);
+    }
+
+    XMPPActivatorProto.setSubject = function (subject) {
+        connection.emuc.setSubject(subject);
+    }
 
     function getConferenceHandler() {
-        return focus ? focus : activecall;
+        return connection.emuc.focus ? connection.emuc.focus : activecall;
     }
 
     XMPPActivatorProto.toggleAudioMute = function (callback) {
@@ -171,14 +235,14 @@ var XMPPActivator = function()
     };
 
     XMPPActivatorProto.isFocus = function () {
-        return (focus !== null);
+        return (connection.emuc.focus !== null);
     }
 
     XMPPActivatorProto.setRecording = function (token, callback, tokenNullCallback) {
-        return focus.setRecording(token, callback, tokenNullCallback);
+        return connection.emuc.focus.setRecording(token, callback, tokenNullCallback);
     }
 
-    XMPPActivator.switchStreams = function(stream, oldStream, streamSwitchDone)
+    XMPPActivatorProto.switchStreams = function(stream, oldStream, streamSwitchDone)
     {
         var conferenceHandler = getConferenceHandler();
         if (conferenceHandler) {
@@ -210,7 +274,7 @@ var XMPPActivator = function()
 
         eventEmitter.emit(XMPPEvents.DISPOSE_CONFERENCE, onUnload);
 
-        focus = null;
+        connection.emuc.focus = null;
         activecall = null;
         if(callback)
             callback();
@@ -238,6 +302,21 @@ var XMPPActivator = function()
     XMPPActivatorProto.getVideoTypeFromSSRC = function (ssrc) {
         return connection.emuc.ssrc2videoType[ssrc];
     }
+
+    XMPPActivatorProto.sipDial = function (to, from, roomName)
+    {
+        return connection.rayo.dial(to, from, roomName);
+    }
+
+    XMPPActivatorProto.getFocusJID = function () {
+        if(Object.keys(connection.jingle.sessions).length == 0)
+            return null;
+        var session
+            = connection.jingle.sessions
+            [Object.keys(connection.jingle.sessions)[0]];
+        return Strophe.getResourceFromJid(session.peerjid);
+    }
+
     return XMPPActivatorProto;
 }();
 

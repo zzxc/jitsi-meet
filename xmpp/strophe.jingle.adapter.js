@@ -144,12 +144,12 @@ if (TraceablePeerConnection.prototype.__defineGetter__ !== undefined) {
 
 TraceablePeerConnection.prototype.addStream = function (stream) {
     this.trace('addStream', stream.id);
-    this.peerconnection.addStream(stream);
+    this.peerconnection.addStream(stream.getOriginalStream());
 };
 
 TraceablePeerConnection.prototype.removeStream = function (stream) {
     this.trace('removeStream', stream.id);
-    this.peerconnection.removeStream(stream);
+    this.peerconnection.removeStream(stream.getOriginalStream());
 };
 
 TraceablePeerConnection.prototype.createDataChannel = function (label, opts) {

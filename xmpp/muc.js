@@ -130,9 +130,9 @@ module.exports = function(eventEmitter) {
                 if (!this.joined) {
                     this.joined = true;
                     var noMembers = false;
-                    if (Object.keys(connection.emuc.members).length < 1) {
+                    if (Object.keys(this.members).length < 1) {
                         noMembers = true;
-                        focus = new ColibriFocus(connection, config.hosts.bridge, eventEmitter);
+                        this.focus = new ColibriFocus(this.connection, config.hosts.bridge, eventEmitter);
                         this.setOwnNickname();
                     }
                     UIActivator.getUIService().onMucJoined(from, member, noMembers);
@@ -143,15 +143,15 @@ module.exports = function(eventEmitter) {
                 this.members[from] = member;
                 this.list_members.push(from);
                 UIActivator.getUIService().onMucEntered(from, member, pres,
-                    (focus !==null && focus.confid === null));
-                if (focus !== null) {
+                    (this.focus !==null && this.focus.confid === null));
+                if (this.focus !== null) {
                     // FIXME: this should prepare the video
-                    if (focus.confid === null) {
+                    if (this.focus.confid === null) {
                         console.log('make new conference with', from);
-                        focus.makeConference(Object.keys(this.members));
+                        this.focus.makeConference(Object.keys(this.members));
                     } else {
                         console.log('invite', from, 'into conference');
-                        focus.addNewParticipant(from);
+                        this.focus.addNewParticipant(from);
                     }
                 }
             }
@@ -191,46 +191,46 @@ module.exports = function(eventEmitter) {
         leftMuc: function (jid) {
             console.log('left.muc', jid);
             UIActivator.getUIService().onMucLeft(jid);
-            connection.jingle.terminateByJid(jid);
+            this.connection.jingle.terminateByJid(jid);
 
-            if (focus == null
+            if (this.focus == null
                 // I shouldn't be the one that left to enter here.
-                && jid !== connection.emuc.myroomjid
-                && connection.emuc.myroomjid === connection.emuc.list_members[0]
+                && jid !== this.connection.emuc.myroomjid
+                && this.connection.emuc.myroomjid === this.connection.emuc.list_members[0]
                 // If our session has been terminated for some reason
                 // (kicked, hangup), don't try to become the focus
                 && !this.sessionTerminated) {
                 console.log('welcome to our new focus... myself');
-                focus = new ColibriFocus(connection, config.hosts.bridge, eventEmitter);
+                this.focus = new ColibriFocus(this.connection, config.hosts.bridge, eventEmitter);
                 this.setOwnNickname();
 
                 UIActivator.getUIService().updateButtons(null, true);
 
-                if (Object.keys(connection.emuc.members).length > 0) {
-                    focus.makeConference(Object.keys(connection.emuc.members));
+                if (Object.keys(this.members).length > 0) {
+                    this.focus.makeConference(Object.keys(this.members));
                     UIActivator.getUIService().updateButtons(true, null);
                 }
-                $(document).trigger('focusechanged.muc', [focus]);
+                $(document).trigger('focusechanged.muc', [this.focus]);
             }
-            else if (focus && Object.keys(connection.emuc.members).length === 0) {
+            else if (this.focus && Object.keys(this.connection.emuc.members).length === 0) {
                 console.log('everyone left');
                 // FIXME: closing the connection is a hack to avoid some
                 // problems with reinit
                 XMPPActivator.disposeConference(false,null,false);
-                focus = new ColibriFocus(connection, config.hosts.bridge, eventEmitter);
+                this.focus = new ColibriFocus(this.connection, config.hosts.bridge, eventEmitter);
                 this.setOwnNickname();
                 UIActivator.getUIService().updateButtons(true, false);
             }
 
-            if (connection.emuc.getPrezi(jid)) {
+            if (this.connection.emuc.getPrezi(jid)) {
                 $(document).trigger('presentationremoved.muc',
-                    [jid, connection.emuc.getPrezi(jid)]);
+                    [jid, this.connection.emuc.getPrezi(jid)]);
             }
         },
         setOwnNickname: function () {
 
             if (XMPPActivator.getNickname() !== null) {
-                focus.setEndpointDisplayName(connection.emuc.myroomjid,
+                this.focus.setEndpointDisplayName(this.connection.emuc.myroomjid,
                     XMPPActivator.getNickname());
             }
 
@@ -417,7 +417,7 @@ module.exports = function(eventEmitter) {
             }
 
             pres.up();
-            connection.send(pres);
+            this.connection.send(pres);
         },
         addDisplayNameToPresence: function (displayName) {
             this.presMap['displayName'] = displayName;
@@ -478,26 +478,26 @@ module.exports = function(eventEmitter) {
             this.presMap['bridgeIsDown'] = true;
         },
         parsePresence: function (jid, info, pres) {
-
+            var self = this;
             // Remove old ssrcs coming from the jid
             Object.keys(this.ssrc2jid).forEach(function (ssrc) {
-                if (this.ssrc2jid[ssrc] == jid) {
-                    delete this.ssrc2jid[ssrc];
+                if (self.ssrc2jid[ssrc] == jid) {
+                    delete self.ssrc2jid[ssrc];
                     console.log("deleted " + ssrc + " for " + jid);
                 }
-                if (this.ssrc2videoType[ssrc] == jid) {
-                    delete this.ssrc2videoType[ssrc];
+                if (self.ssrc2videoType[ssrc] == jid) {
+                    delete self.ssrc2videoType[ssrc];
                 }
             });
 
             $(pres).find('>media[xmlns="http://estos.de/ns/mjs"]>source').each(function (idx, ssrc) {
                 //console.log(jid, 'assoc ssrc', ssrc.getAttribute('type'), ssrc.getAttribute('ssrc'));
                 var ssrcV = ssrc.getAttribute('ssrc');
-                this.ssrc2jid[ssrcV] = jid;
+                self.ssrc2jid[ssrcV] = jid;
                 console.log("added " + ssrcV + " for " + jid);
 
                 var type = ssrc.getAttribute('type');
-                this.ssrc2videoType[ssrcV] = type;
+                self.ssrc2videoType[ssrcV] = type;
 
                 // might need to update the direction if participant just went from sendrecv to recvonly
                 if (type === 'video' || type === 'screen') {
@@ -517,8 +517,8 @@ module.exports = function(eventEmitter) {
                 eventEmitter.emit(XMPPEvents.DISPLAY_NAME_CHANGED,
                     jid, info.displayName);
 
-            if (focus !== null && info.displayName !== null) {
-                focus.setEndpointDisplayName(jid, info.displayName);
+            if (this.focus !== null && info.displayName !== null) {
+                this.focus.setEndpointDisplayName(jid, info.displayName);
             }
 
             //check if the video bridge is available

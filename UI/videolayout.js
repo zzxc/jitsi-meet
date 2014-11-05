@@ -697,8 +697,7 @@ var VideoLayout = (function (my) {
                             dep.UIActivator().getUIService().setNickname(name);
                             nickname  = name;
                             window.localStorage.displayname = nickname;
-                            connection.emuc.addDisplayNameToPresence(nickname);
-                            connection.emuc.sendPresence();
+                            XMPPActivator.addToPresence("displayName", nickname);
 
                             dep.Chat().setChatConversationMode(true);
                         }
@@ -793,13 +792,14 @@ var VideoLayout = (function (my) {
                 createFocusIndicatorElement(indicatorSpan[0]);
             }
         }
-        else if (Object.keys(connection.jingle.sessions).length > 0) {
+        else
+        {
             // If we're only a participant the focus will be the only session we have.
-            var session
-                = connection.jingle.sessions
-                    [Object.keys(connection.jingle.sessions)[0]];
+            var focusJID = XMPPActivator.getFocusJID();
+            if(focusJID == null)
+                return;
             var focusId
-                = 'participant_' + Strophe.getResourceFromJid(session.peerjid);
+                = 'participant_' + focusJID;
 
             var focusContainer = document.getElementById(focusId);
             if (!focusContainer) {
@@ -939,7 +939,7 @@ var VideoLayout = (function (my) {
         var videoSpanId = null;
         var videoContainerId = null;
         if (resourceJid
-                === Strophe.getResourceFromJid(connection.emuc.myroomjid)) {
+                === Strophe.getResourceFromJid(XMPPActivator.getMyJID())) {
             videoSpanId = 'localVideoWrapper';
             videoContainerId = 'localVideoContainer';
         }
@@ -987,7 +987,7 @@ var VideoLayout = (function (my) {
         if (!userJid)
             return null;
 
-        if (userJid === connection.emuc.myroomjid)
+        if (userJid === XMPPActivator.getMyJID())
             return $("#localVideoContainer");
         else
             return $("#participant_" + Strophe.getResourceFromJid(userJid));
@@ -1325,7 +1325,7 @@ var VideoLayout = (function (my) {
                 event.preventDefault();
             }
             var isMute = !mutedAudios[jid];
-            connection.moderate.setMute(jid, isMute);
+            XMPPActivator.setMute(jid, isMute);
             popupmenuElement.setAttribute('style', 'display:none;');
 
             if (isMute) {
@@ -1347,7 +1347,7 @@ var VideoLayout = (function (my) {
         var ejectLinkItem = document.createElement('a');
         ejectLinkItem.innerHTML = ejectIndicator + ' Kick out';
         ejectLinkItem.onclick = function(){
-            connection.moderate.eject(jid);
+            XMPPActivator.eject(jid);
             popupmenuElement.setAttribute('style', 'display:none;');
         };
 
@@ -1360,7 +1360,7 @@ var VideoLayout = (function (my) {
      */
     $(document).bind('audiomuted.muc', function (event, jid, isMuted) {
         var videoSpanId = null;
-        if (jid === connection.emuc.myroomjid) {
+        if (jid === XMPPActivator.getMyJID()) {
             videoSpanId = 'localVideoContainer';
         } else {
             VideoLayout.ensurePeerContainerExists(jid);
@@ -1381,7 +1381,7 @@ var VideoLayout = (function (my) {
      */
     $(document).bind('videomuted.muc', function (event, jid, isMuted) {
         var videoSpanId = null;
-        if (jid === connection.emuc.myroomjid) {
+        if (jid === XMPPActivator.getMyJID()) {
             videoSpanId = 'localVideoContainer';
         } else {
             VideoLayout.ensurePeerContainerExists(jid);
@@ -1398,7 +1398,7 @@ var VideoLayout = (function (my) {
     my.onDisplayNameChanged =
                     function (jid, displayName, status) {
         if (jid === 'localVideoContainer'
-            || jid === connection.emuc.myroomjid) {
+            || jid === XMPPActivator.getMyJID()) {
             setDisplayName('localVideoContainer',
                            displayName);
         } else {
@@ -1409,7 +1409,7 @@ var VideoLayout = (function (my) {
                 displayName,
                 status);
         }
-    });
+    };
 
     /**
      * On dominant speaker changed event.
@@ -1417,7 +1417,7 @@ var VideoLayout = (function (my) {
     $(document).bind('dominantspeakerchanged', function (event, resourceJid) {
         // We ignore local user events.
         if (resourceJid
-                === Strophe.getResourceFromJid(connection.emuc.myroomjid))
+                === Strophe.getResourceFromJid(XMPPActivator.getMyJID()))
             return;
 
         // Update the current dominant speaker.
@@ -1727,48 +1727,39 @@ var VideoLayout = (function (my) {
             // Get session and stream from msid.
             var session, electedStream;
             var i, j, k;
-            if (connection.jingle) {
-                var keys = Object.keys(connection.jingle.sessions);
-                for (i = 0; i < keys.length; i++) {
-                    var sid = keys[i];
+
+
+            var remoteStreams = RTCActivator.getRTCService().remoteStreams;
+            var remoteStream;
+
+            if (remoteStreams) {
+                for (j = 0; j < remoteStreams.length; j++) {
+                    remoteStream = remoteStreams[j];
 
                     if (electedStream) {
                         // stream found, stop.
                         break;
                     }
+                    var tracks = remoteStream.getOriginalStream().getVideoTracks();
+                    if (tracks) {
+                        for (k = 0; k < tracks.length; k++) {
+                            var track = tracks[k];
 
-                    session = connection.jingle.sessions[sid];
-                    if (session.remoteStreams) {
-                        for (j = 0; j < session.remoteStreams.length; j++) {
-                            var remoteStream = session.remoteStreams[j];
-
-                            if (electedStream) {
+                            if (msid === [remoteStream.id, track.id].join(' ')) {
+                                electedStream = new webkitMediaStream([track]);
                                 // stream found, stop.
                                 break;
-                            }
-                            var tracks = remoteStream.getVideoTracks();
-                            if (tracks) {
-                                for (k = 0; k < tracks.length; k++) {
-                                    var track = tracks[k];
-
-                                    if (msid === [remoteStream.id, track.id].join(' ')) {
-                                        electedStream = new webkitMediaStream([track]);
-                                        // stream found, stop.
-                                        break;
-                                    }
-                                }
                             }
                         }
                     }
                 }
             }
 
-            if (session && electedStream) {
+            if (electedStream) {
                 console.info('Switching simulcast substream.');
-                console.info([esl, primarySSRC, msid, session, electedStream]);
 
                 var msidParts = msid.split(' ');
-                var selRemoteVideo = $(['#', 'remoteVideo_', session.sid, '_', msidParts[0]].join(''));
+                var selRemoteVideo = $(['#', 'remoteVideo_', remoteStream.sid, '_', msidParts[0]].join(''));
 
                 var updateLargeVideo = (XMPPActivator.getJIDFromSSRC(videoSrcToSsrc[selRemoteVideo.attr('src')])
                     == XMPPActivator.getJIDFromSSRC(videoSrcToSsrc[largeVideoNewSrc]));

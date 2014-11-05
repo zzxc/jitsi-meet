@@ -49,8 +49,8 @@ module.exports = function() {
             return true;
         },
         eject: function (jid) {
-            connection.jingle.terminateRemoteByJid(jid, 'kick');
-            connection.emuc.kick(jid);
+            this.connection.jingle.terminateRemoteByJid(jid, 'kick');
+            this.connection.emuc.kick(jid);
         }
     });
 

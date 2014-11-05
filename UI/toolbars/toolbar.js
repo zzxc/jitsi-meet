@@ -73,7 +73,7 @@ var Toolbar = (function (my) {
                 if (v) {
                     var numberInput = document.getElementById('sipNumber');
                     if (numberInput.value) {
-                        connection.rayo.dial(
+                        XMPPActivator.sipDial(
                             numberInput.value, 'fromnumber', UIActivator.getUIService().getRoomName());
                     }
                 }
@@ -180,10 +180,11 @@ var Toolbar = (function (my) {
      * Locks / unlocks the room.
      */
     function lockRoom(lock) {
+        var key = '';
         if (lock)
-            connection.emuc.lockRoom(Toolbar.sharedKey);
-        else
-            connection.emuc.lockRoom('');
+            key = Toolbar.sharedKey;
+
+        XMPPActivator.lockRoom(key);
 
         Toolbar.updateLockButton();
     }

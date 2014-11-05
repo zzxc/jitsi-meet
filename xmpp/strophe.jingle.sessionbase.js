@@ -25,7 +25,7 @@ SessionBase.prototype.modifySources = function (successCallback) {
 
 SessionBase.prototype.setLocalDescription = function (sid) {
     // put our ssrcs into presence so other clients can identify our stream
-    var sess = connection.jingle.sessions[sid];
+    var sess = this.connection.jingle.sessions[sid];
     var newssrcs = [];
     var simulcast = new Simulcast();
     var media = simulcast.parseMedia(sess.peerconnection.localDescription);
@@ -43,7 +43,7 @@ SessionBase.prototype.setLocalDescription = function (sid) {
     console.log('new ssrcs', newssrcs);
 
     // Have to clear presence map to get rid of removed streams
-    connection.emuc.clearPresenceMedia();
+    this.connection.emuc.clearPresenceMedia();
 
     if (newssrcs.length > 0) {
         for (var i = 1; i <= newssrcs.length; i ++) {
@@ -51,11 +51,11 @@ SessionBase.prototype.setLocalDescription = function (sid) {
             if (newssrcs[i-1].type === 'video' && isUsingScreenStream) {
                 newssrcs[i-1].type = 'screen';
             }
-            connection.emuc.addMediaToPresence(i,
+            this.connection.emuc.addMediaToPresence(i,
                 newssrcs[i-1].type, newssrcs[i-1].ssrc, newssrcs[i-1].direction);
         }
 
-        connection.emuc.sendPresence();
+        this.connection.emuc.sendPresence();
     }
 }
 
@@ -269,9 +269,10 @@ SessionBase.prototype.toggleVideoMute = function (callback) {
         return;
     var ismuted = stream.mute();
     this.peerconnection.hardMuteVideo(ismuted);
+    var self = this;
     this.modifySources(function () {
-        connection.emuc.addVideoInfoToPresence(ismuted);
-        connection.emuc.sendPresence();
+        self.connection.emuc.addVideoInfoToPresence(ismuted);
+        self.connection.emuc.sendPresence();
         return callback(ismuted);
     }());
 };
@@ -282,8 +283,8 @@ SessionBase.prototype.toggleAudioMute = function (callback) {
         return;
     var audioEnabled = stream.mute();
     // isMuted is the opposite of audioEnabled
-    connection.emuc.addAudioInfoToPresence(audioEnabled);
-    connection.emuc.sendPresence();
+    this.connection.emuc.addAudioInfoToPresence(audioEnabled);
+    this.connection.emuc.sendPresence();
     callback(audioEnabled);
 }
 
@@ -322,7 +323,7 @@ SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
     }
 
     function waitForPresence(data, sid) {
-        var sess = connection.jingle.sessions[sid];
+        var sess = this.connection.jingle.sessions[sid];
 
         var thessrc;
         // look up an associated JID for a stream id
@@ -346,7 +347,7 @@ SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
                 // successfully set. Here we wait for up to a second for the
                 // presence to arrive.
 
-                if (!XMPPActivator.getJIDFromSSRC(thessrc) {
+                if (!XMPPActivator.getJIDFromSSRC(thessrc)) {
                     // TODO(gp) limit wait duration to 1 sec.
                     setTimeout(function(d, s) {
                         return function() {
@@ -378,7 +379,7 @@ SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
                 sendKeyframe(sess.peerconnection);
             }, 3000);
         }
-    }
+    };
 
 // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
     function sendKeyframe(pc) {
@@ -416,7 +417,7 @@ SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
 
 
 SessionBase.prototype.waitForPresence = function (data, sid) {
-    var sess = connection.jingle.sessions[sid];
+    var sess = this.connection.jingle.sessions[sid];
 
     var thessrc;
     // look up an associated JID for a stream id

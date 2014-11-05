@@ -46,7 +46,7 @@ var ContactList = (function (my) {
 
         var clElement = contactlist.get(0);
 
-        if (resourceJid === Strophe.getResourceFromJid(connection.emuc.myroomjid)
+        if (resourceJid === Strophe.getResourceFromJid(XMPPActivator.getMyJID())
             && $('#contactlist>ul .title')[0].nextSibling.nextSibling)
         {
             clElement.insertBefore(newContact,
@@ -128,7 +128,7 @@ var ContactList = (function (my) {
     my.onDisplayNameChanged =
                         function (peerJid, displayName) {
         if (peerJid === 'localVideoContainer')
-            peerJid = connection.emuc.myroomjid;
+            peerJid = XMPPActivator.getMyJID();
 
         var resourceJid = Strophe.getResourceFromJid(peerJid);
 
@@ -136,7 +136,7 @@ var ContactList = (function (my) {
 
         if (contactName && displayName && displayName.length > 0)
             contactName.html(displayName);
-    });
+    };
 
     return my;
 }(ContactList || {}));

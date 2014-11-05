@@ -215,18 +215,16 @@ var UIService = function() {
         roomName = roomnode + '@' + config.hosts.muc;
 
         var roomjid = roomName;
+        var tmpJid = XMPPActivator.getOwnJIDNode();
 
         if (config.useNicks) {
             var nick = window.prompt('Your nickname (optional)');
             if (nick) {
                 roomjid += '/' + nick;
             } else {
-                roomjid += '/' + Strophe.getNodeFromJid(connection.jid);
+                roomjid += '/' + tmpJid;
             }
         } else {
-
-            var tmpJid = Strophe.getNodeFromJid(connection.jid);
-
             if(!authenticatedUser)
                 tmpJid = tmpJid.substr(0, 8);
 

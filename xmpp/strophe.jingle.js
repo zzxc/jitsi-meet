@@ -108,10 +108,10 @@ module.exports = function(eventEmitter) {
                     // the callback should either
                     // .sendAnswer and .accept
                     // or .sendTerminate -- not necessarily synchronus
-                    XMPPActivator.setActiveCall(session);
+                    XMPPActivator.setActiveCall(sess);
                     eventEmitter.emit(XMPPEvents.CALL_INCOMING, sess);
                     // TODO: check affiliation and/or role
-                    console.log('emuc data for', sess.peerjid, connection.emuc.members[sess.peerjid]);
+                    console.log('emuc data for', sess.peerjid, this.connection.emuc.members[sess.peerjid]);
                     this.sessions[sess.sid].usedrip = true; // not-so-naive trickle ice
                     this.sessions[sess.sid].sendAnswer();
                     this.sessions[sess.sid].accept();
@@ -209,8 +209,8 @@ module.exports = function(eventEmitter) {
             }
         },
         callTerminated: function (reason) {
-            if (connection.emuc.joined && focus == null && reason === 'kick') {
-                connection.emuc.doLeave();
+            if (this.connection.emuc.joined && this.connection.emuc.focus == null && reason === 'kick') {
+                this.connection.emuc.doLeave();
                 messageHandler.openMessageDialog("Session Terminated",
                     "Ouch! You have been kicked out of the meet!");
             }
@@ -306,8 +306,9 @@ module.exports = function(eventEmitter) {
         },
         getJingleData: function () {
             var data = {};
-            Object.keys(connection.jingle.sessions).forEach(function (sid) {
-                var session = connection.jingle.sessions[sid];
+            var self = this;
+            Object.keys(this.connection.jingle.sessions).forEach(function (sid) {
+                var session = self.connection.jingle.sessions[sid];
                 if (session.peerconnection && session.peerconnection.updateLog) {
                     // FIXME: should probably be a .dump call
                     data["jingle_" + session.sid] = {

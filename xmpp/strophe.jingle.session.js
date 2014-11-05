@@ -432,7 +432,7 @@ JingleSession.prototype.setRemoteDescription = function (elem, desctype) {
             console.error('setRemoteDescription error', e);
             messageHandler.showError(  "Sorry",
                 "Your browser version is too old. Please update and try again...");
-            connection.emuc.doLeave();
+            this.connection.emuc.doLeave();
         }
     );
 };

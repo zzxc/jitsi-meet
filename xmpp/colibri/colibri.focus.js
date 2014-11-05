@@ -55,7 +55,7 @@ function ColibriFocus(connection, bridgejid, eventEmitter) {
      * Local XMPP resource used to join the multi user chat.
      * @type {*}
      */
-    this.myMucResource = Strophe.getResourceFromJid(connection.emuc.myroomjid);
+    this.myMucResource = Strophe.getResourceFromJid(this.connection.emuc.myroomjid);
 
     /**
      * Default channel expire value in seconds.
@@ -190,7 +190,7 @@ ColibriFocus.prototype.makeConference = function (peers, errorCallback) {
 // recording on the bridge. Waits for the result IQ and calls 'callback' with
 // the new recording state, according to the IQ.
 ColibriFocus.prototype.setRecording = function(token, callback, tokenNullCallback) {
-    if (focus === null || this.confid === null) {
+    if (this.confid === null) {
         console.log('non-focus, or conference not yet organized: not enabling recording');
         return;
     }
