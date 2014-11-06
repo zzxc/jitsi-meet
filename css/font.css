@@ -23,6 +23,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
+
 .icon-contactList:before {
     content: "\e615";
 }
@@ -103,6 +104,12 @@
 .icon-reload:before {
     content: "\e618";
 }
+
 .icon-filmstrip:before {
     content: "\e619";
+}
+
+.icon-connection:before {
+    line-height: normal;
+    content: "\e61a";
 }

@@ -24,18 +24,24 @@ var BottomToolbar = (function (my) {
     my.toggleChat = function() {
         if (ContactList.isVisible()) {
             buttonClick("#contactListButton", "active");
-            ContactList.toggleContactList();
+            $('#contactlist').css('z-index', 4);
+            setTimeout(function() {
+                $('#contactlist').css('display', 'none');
+                $('#contactlist').css('z-index', 5);
+            }, 500);
         }
 
-        buttonClick("#chatBottomButton", "active");
-
         Chat.toggleChat();
+
+        buttonClick("#chatBottomButton", "active");
     };
 
     my.toggleContactList = function() {
         if (Chat.isVisible()) {
             buttonClick("#chatBottomButton", "active");
-            Chat.toggleChat();
+            setTimeout(function() {
+                $('#chatspace').css('display', 'none');
+            }, 500);
         }
 
         buttonClick("#contactListButton", "active");
@@ -47,7 +53,6 @@ var BottomToolbar = (function (my) {
         var filmstrip = $("#remoteVideos");
         filmstrip.toggleClass("hidden");
     };
-
 
     $(document).bind("remotevideo.resized", function (event, width, height) {
         var bottom = (height - $('#bottomToolbar').outerHeight())/2 + 18;

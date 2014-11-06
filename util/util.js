@@ -70,6 +70,7 @@ var Util = (function (my) {
         element.setAttribute("data-toggle", "popover");
         element.setAttribute("data-placement", position);
         element.setAttribute("data-html", true);
+        element.setAttribute("data-container", "body");
     };
 
     return my;

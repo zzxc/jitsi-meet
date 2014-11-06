@@ -36,8 +36,8 @@ var KeyboardShortcut = (function(my) {
     };
 
     window.onkeyup = function(e) {
-        if(!($(":focus").is("input[type=text]") || $(":focus").is("textarea"))) {
-            var keycode = e.which;
+        var keycode = e.which;
+        if(!($(":focus").is("input[type=text]") || $(":focus").is("input[type=password]") || $(":focus").is("textarea"))) {
             if (typeof shortcuts[keycode] === "object") {
                 shortcuts[keycode].function();
             } else if (keycode >= "0".charCodeAt(0) && keycode <= "9".charCodeAt(0)) {
@@ -47,11 +47,14 @@ var KeyboardShortcut = (function(my) {
                     remoteVideos[videoWanted].click();
                 }
             }
+          //esc while the smileys are visible hides them
+        } else if (keycode === 27 && $('#smileysContainer').is(':visible')) {
+            Chat.toggleSmileys();
         }
     };
 
     window.onkeydown = function(e) {
-        if($("#chatspace").css("display") === "none") {
+        if(!($(":focus").is("input[type=text]") || $(":focus").is("input[type=password]") || $(":focus").is("textarea"))) {
             if(e.which === "T".charCodeAt(0)) {
                 if(RTCActivator.getRTCService().localAudio.isMuted()) {
                     Toolbar.toggleAudio();

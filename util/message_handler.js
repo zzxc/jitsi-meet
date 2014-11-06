@@ -24,11 +24,36 @@ var messageHandler = (function(my) {
      * @param leftButton the fist button's text
      * @param submitFunction function to be called on submit
      * @param loadedFunction function to be called after the prompt is fully loaded
+     * @param closeFunction function to be called after the prompt is closed
      */
-    my.openTwoButtonDialog = function(titleString, msgString, persistent, leftButton, submitFunction, loadedFunction) {
+    my.openTwoButtonDialog = function(titleString, msgString, persistent, leftButton,
+                                      submitFunction, loadedFunction, closeFunction) {
         var buttons = {};
         buttons[leftButton] = true;
         buttons.Cancel = false;
+        $.prompt(msgString, {
+            title: titleString,
+            persistent: false,
+            buttons: buttons,
+            defaultButton: 1,
+            loaded: loadedFunction,
+            submit: submitFunction,
+            close: closeFunction
+        });
+    };
+
+    /**
+     * Shows a message to the user with two buttons: first is given as a parameter and the second is Cancel.
+     *
+     * @param titleString the title of the message
+     * @param msgString the text of the message
+     * @param persistent boolean value which determines whether the message is persistent or not
+     * @param buttons object with the buttons. The keys must be the name of the button and value is the value
+     * that will be passed to submitFunction
+     * @param submitFunction function to be called on submit
+     * @param loadedFunction function to be called after the prompt is fully loaded
+     */
+    my.openDialog = function(titleString, msgString, persistent, buttons, submitFunction, loadedFunction) {
         $.prompt(msgString, {
             title: titleString,
             persistent: false,
@@ -79,6 +104,16 @@ var messageHandler = (function(my) {
             message = message || "There was some kind of error";
         }
         messageHandler.openMessageDialog(title, message);
+    };
+
+    my.notify = function(displayName, cls, message) {
+        toastr.info(
+            '<span class="nickname">' +
+                displayName +
+            '</span><br>' +
+            '<span class=' + cls + '>' +
+                message +
+            '</span>');
     };
 
     return my;

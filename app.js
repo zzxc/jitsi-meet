@@ -13,4 +13,3 @@ function init() {
 $(document).ready(function () {
     UIActivator.start(init);
 });
-

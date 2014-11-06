@@ -26,6 +26,11 @@ var VideoLayout = (function (my) {
      * @type {String}
      */
     my.focusedVideoSrc = null;
+    var largeVideoState = {
+        updateInProgress: false,
+        newSrc: ''
+    };
+    my.connectionIndicators = {};
 
     function attachMediaStream(element, stream) {
         if(browser == null)
@@ -50,10 +55,6 @@ var VideoLayout = (function (my) {
         attachMediaStream($('#localAudio'), stream);
         document.getElementById('localAudio').autoplay = true;
         document.getElementById('localAudio').volume = 0;
-        if (dep.Toolbar().preMuted) {
-            dep.Toolbar().toggleAudio();
-            dep.Toolbar().preMuted = false;
-        }
     };
 
     my.changeLocalVideo = function(stream, flipX) {
@@ -70,6 +71,11 @@ var VideoLayout = (function (my) {
         setDisplayName('localVideoContainer');
 
         dep.UIActivator().getUIService().updateAudioLevelCanvas();
+        if(!VideoLayout.connectionIndicators["localVideoContainer"]) {
+            VideoLayout.connectionIndicators["localVideoContainer"]
+                = new ConnectionIndicator($("#localVideoContainer")[0], null);
+        }
+
 
         var localVideoSelector = $('#' + localVideo.id);
         // Add click handler to both video and video wrapper elements in case
@@ -103,7 +109,8 @@ var VideoLayout = (function (my) {
             localVideoSelector.addClass("flipVideoX");
         }
         // Attach WebRTC stream
-        attachMediaStream(localVideoSelector, stream);
+        var videoStream = simulcast.getLocalVideoStream();
+        attachMediaStream(localVideoSelector, videoStream);
 
         localVideoSrc = localVideo.src;
 
@@ -169,68 +176,132 @@ var VideoLayout = (function (my) {
         console.log('hover in', newSrc);
 
         if ($('#largeVideo').attr('src') != newSrc) {
-            largeVideoNewSrc = newSrc;
 
-            var isVisible = $('#largeVideo').is(':visible');
+            // Due to the simulcast the localVideoSrc may have changed when the
+            // fadeOut event triggers. In that case the getJidFromVideoSrc and
+            // isVideoSrcDesktop methods will not function correctly.
+            //
+            // Also, again due to the simulcast, the updateLargeVideo method can
+            // be called multiple times almost simultaneously. Therefore, we
+            // store the state here and update only once.
 
-            // we need this here because after the fade the videoSrc may have
-            // changed.
-            var isDesktop = isVideoSrcDesktop(newSrc);
+            largeVideoState.newSrc = newSrc;
+            largeVideoState.isVisible = $('#largeVideo').is(':visible');
+            largeVideoState.isDesktop = isVideoSrcDesktop(newSrc);
+            largeVideoState.userJid = getJidFromVideoSrc(newSrc);
 
-            var userJid = VideoLayout.getJidFromVideoSrc(newSrc);
-            // we want the notification to trigger even if userJid is undefined,
-            // or null.
-            $(document).trigger("selectedendpointchanged", [userJid]);
+            // Screen stream is already rotated
+            largeVideoState.flipX = (newSrc === localVideoSrc) && flipXLocalVideo;
 
-            $('#largeVideo').fadeOut(300, function () {
-                var oldSrc = $(this).attr('src');
+            var oldSrc = $('#largeVideo').attr('src');
+            largeVideoState.oldJid = getJidFromVideoSrc(oldSrc);
 
-                $(this).attr('src', newSrc);
+            var userChanged = false;
+            if (largeVideoState.oldJid != largeVideoState.userJid) {
+                userChanged = true;
+                // we want the notification to trigger even if userJid is undefined,
+                // or null.
+                $(document).trigger("selectedendpointchanged", [largeVideoState.userJid]);
+            }
 
-                // Screen stream is already rotated
-                var flipX = (newSrc === localVideoSrc) && flipXLocalVideo;
+            if (!largeVideoState.updateInProgress) {
+                largeVideoState.updateInProgress = true;
 
-                var videoTransform = document.getElementById('largeVideo')
-                                        .style.webkitTransform;
+                var doUpdate = function () {
+                    if (!userChanged && largeVideoState.preload
+                        && largeVideoState.preload != null
+                        && $(largeVideoState.preload).attr('src') == newSrc) {
 
-                if (flipX && videoTransform !== 'scaleX(-1)') {
-                    document.getElementById('largeVideo').style.webkitTransform
-                        = "scaleX(-1)";
-                }
-                else if (!flipX && videoTransform === 'scaleX(-1)') {
-                    document.getElementById('largeVideo').style.webkitTransform
-                        = "none";
-                }
+                        console.info('Switching to preloaded video');
+                        var attributes = $('#largeVideo').prop("attributes");
 
-                // Change the way we'll be measuring and positioning large video
+                        // loop through largeVideo attributes and apply them on
+                        // preload.
+                        $.each(attributes, function () {
+                            if (this.name != 'id' && this.name != 'src') {
+                                largeVideoState.preload.attr(this.name, this.value);
+                            }
+                        });
 
-                getVideoSize = isDesktop
-                    ? getDesktopVideoSize
-                    : VideoLayout.getCameraVideoSize;
-                getVideoPosition = isDesktop
-                    ? getDesktopVideoPosition
-                    : VideoLayout.getCameraVideoPosition;
+                        largeVideoState.preload.appendTo($('#largeVideoContainer'));
+                        $('#largeVideo').attr('id', 'previousLargeVideo');
+                        largeVideoState.preload.attr('id', 'largeVideo');
+                        $('#previousLargeVideo').remove();
 
-                if (isVisible) {
+                        largeVideoState.preload.on('loadedmetadata', function (e) {
+                            currentVideoWidth = this.videoWidth;
+                            currentVideoHeight = this.videoHeight;
+                            VideoLayout.positionLarge(currentVideoWidth, currentVideoHeight);
+                        });
+                        largeVideoState.preload = null;
+                        largeVideoState.preload_ssrc = 0;
+                    } else {
+                        $('#largeVideo').attr('src', largeVideoState.newSrc);
+                    }
+
+                    var videoTransform = document.getElementById('largeVideo')
+                        .style.webkitTransform;
+
+                    if (largeVideoState.flipX && videoTransform !== 'scaleX(-1)') {
+                        document.getElementById('largeVideo').style.webkitTransform
+                            = "scaleX(-1)";
+                    }
+                    else if (!largeVideoState.flipX && videoTransform === 'scaleX(-1)') {
+                        document.getElementById('largeVideo').style.webkitTransform
+                            = "none";
+                    }
+
+                    // Change the way we'll be measuring and positioning large video
+
+                    getVideoSize = largeVideoState.isDesktop
+                        ? getDesktopVideoSize
+                        : VideoLayout.getCameraVideoSize;
+                    getVideoPosition = largeVideoState.isDesktop
+                        ? getDesktopVideoPosition
+                        : VideoLayout.getCameraVideoPosition;
+
+
                     // Only if the large video is currently visible.
                     // Disable previous dominant speaker video.
-                    var oldJid = VideoLayout.getJidFromVideoSrc(oldSrc);
-                    if (oldJid) {
-                        var oldResourceJid = Strophe.getResourceFromJid(oldJid);
+//<<<<<<< HEAD:UI/videolayout.js
+//                    var oldJid = VideoLayout.getJidFromVideoSrc(oldSrc);
+//                    if (oldJid) {
+//                        var oldResourceJid = Strophe.getResourceFromJid(oldJid);
+//=======
+                    if (largeVideoState.oldJid) {
+                        var oldResourceJid = Strophe.getResourceFromJid(largeVideoState.oldJid);
+//>>>>>>> master:videolayout.js
                         VideoLayout.enableDominantSpeaker(oldResourceJid, false);
                     }
 
                     // Enable new dominant speaker in the remote videos section.
-                    var userJid = VideoLayout.getJidFromVideoSrc(newSrc);
-                    if (userJid)
-                    {
-                        var resourceJid = Strophe.getResourceFromJid(userJid);
+//<<<<<<< HEAD:UI/videolayout.js
+//                    var userJid = VideoLayout.getJidFromVideoSrc(newSrc);
+//                    if (userJid)
+//                    {
+//                        var resourceJid = Strophe.getResourceFromJid(userJid);
+//=======
+                    if (largeVideoState.userJid) {
+                        var resourceJid = Strophe.getResourceFromJid(largeVideoState.userJid);
+//>>>>>>> master:videolayout.js
                         VideoLayout.enableDominantSpeaker(resourceJid, true);
                     }
 
-                    $(this).fadeIn(300);
+                    if (userChanged && largeVideoState.isVisible) {
+                        // using "this" should be ok because we're called
+                        // from within the fadeOut event.
+                        $(this).fadeIn(300);
+                    }
+
+                    largeVideoState.updateInProgress = false;
+                };
+
+                if (userChanged) {
+                    $('#largeVideo').fadeOut(300, doUpdate);
+                } else {
+                    doUpdate();
                 }
-            });
+            }
         }
     };
 
@@ -428,6 +499,8 @@ var VideoLayout = (function (my) {
             // Set default display name.
             setDisplayName(videoSpanId);
 
+            VideoLayout.connectionIndicators[videoSpanId] = new ConnectionIndicator(container, peerJid);
+
             var nickfield = document.createElement('span');
             nickfield.className = "nick";
             nickfield.appendChild(document.createTextNode(resourceJid));
@@ -502,13 +575,8 @@ var VideoLayout = (function (my) {
             // If the container is currently visible we attach the stream.
             if (!isVideo
                 || (container.offsetParent !== null && isVideo)) {
-//<<<<<<< HEAD:UI/videolayout.js
-//                attachMediaStream(sel, stream);
-//=======
-                var simulcast = new Simulcast();
                 var videoStream = simulcast.getReceivingVideoStream(stream);
                 attachMediaStream(sel, videoStream);
-//>>>>>>> master:videolayout.js
 
                 if (isVideo)
                     waitForRemoteVideo(sel, thessrc, stream);
@@ -517,7 +585,8 @@ var VideoLayout = (function (my) {
             stream.onended = function () {
                 console.log('stream ended', this);
 
-                VideoLayout.removeRemoteStreamElement(stream, container);
+                VideoLayout.removeRemoteStreamElement(
+                    stream, isVideo, container);
 
                 if (peerJid)
                     dep.ContactList().removeContact(peerJid);
@@ -567,15 +636,16 @@ var VideoLayout = (function (my) {
      * parent container.
      * 
      * @param stream the stream
+     * @param isVideo <tt>true</tt> if given <tt>stream</tt> is a video one.
      * @param container
      */
-    my.removeRemoteStreamElement = function (stream, container) {
+    my.removeRemoteStreamElement = function (stream, isVideo, container) {
         if (!container)
             return;
 
         var select = null;
         var removedVideoSrc = null;
-        if (stream.getVideoTracks().length > 0) {
+        if (isVideo) {
             select = $('#' + container.id + '>video');
             removedVideoSrc = select.get(0).src;
         }
@@ -595,8 +665,11 @@ var VideoLayout = (function (my) {
 
         if (!audioCount && !videoCount) {
             console.log("Remove whole user", container.id);
+            if(VideoLayout.connectionIndicators[container.id])
+                VideoLayout.connectionIndicators[container.id].remove();
             // Remove whole container
             container.remove();
+
             Util.playSoundNotification('userLeft');
             VideoLayout.resizeThumbnails();
         }
@@ -617,7 +690,16 @@ var VideoLayout = (function (my) {
         if (!peerContainer.is(':visible') && isShow)
             peerContainer.show();
         else if (peerContainer.is(':visible') && !isShow)
+        {
             peerContainer.hide();
+            if(VideoLayout.connectionIndicators['participant_' + resourceJid])
+                VideoLayout.connectionIndicators['participant_' + resourceJid].hide();
+        }
+
+        VideoLayout.resizeThumbnails();
+
+        ContactList.setClickable(resourceJid, isShow);
+
     };
 
     /**
@@ -691,42 +773,63 @@ var VideoLayout = (function (my) {
                     $('#editDisplayName').focus();
                     $('#editDisplayName').select();
 
-                    var inputDisplayNameHandler = function (name) {
-                        var nickname = dep.UIActivator().getUIService().getNickname();
-                        if (nickname !== name) {
-                            dep.UIActivator().getUIService().setNickname(name);
-                            nickname  = name;
-                            window.localStorage.displayname = nickname;
-                            dep.UIActivator().getXMPPActivator().addToPresence("displayName", nickname);
-
-                            dep.Chat().setChatConversationMode(true);
-                        }
-
-                        if (!$('#localDisplayName').is(":visible")) {
-                            if (nickname)
-                                $('#localDisplayName').text(nickname + " (me)");
-                            else
-                                $('#localDisplayName')
-                                    .text(defaultLocalDisplayName);
-                            $('#localDisplayName').show();
-                        }
-
-                        $('#editDisplayName').hide();
-                    };
-
+//                    var inputDisplayNameHandler = function (name) {
+//                        var nickname = dep.UIActivator().getUIService().getNickname();
+//                        if (nickname !== name) {
+//                            dep.UIActivator().getUIService().setNickname(name);
+//                            nickname  = name;
+//                            window.localStorage.displayname = nickname;
+//                            dep.UIActivator().getXMPPActivator().addToPresence("displayName", nickname);
+//
+//                            dep.Chat().setChatConversationMode(true);
+//                        }
+//
+//                        if (!$('#localDisplayName').is(":visible")) {
+//                            if (nickname)
+//                                $('#localDisplayName').text(nickname + " (me)");
+//                            else
+//                                $('#localDisplayName')
+//                                    .text(defaultLocalDisplayName);
+//                            $('#localDisplayName').show();
+//                        }
+//
+//                        $('#editDisplayName').hide();
+//                    };
                     $('#editDisplayName').one("focusout", function (e) {
-                        inputDisplayNameHandler(this.value);
+                        VideoLayout.inputDisplayNameHandler(this.value);
                     });
 
                     $('#editDisplayName').on('keydown', function (e) {
                         if (e.keyCode === 13) {
                             e.preventDefault();
-                            inputDisplayNameHandler(this.value);
+                            VideoLayout.inputDisplayNameHandler(this.value);
                         }
                     });
                 });
             }
         }
+    };
+
+    my.inputDisplayNameHandler = function (name) {
+        if (nickname !== name) {
+            nickname = name;
+            window.localStorage.displayname = nickname;
+            connection.emuc.addDisplayNameToPresence(nickname);
+            connection.emuc.sendPresence();
+
+            Chat.setChatConversationMode(true);
+        }
+
+        if (!$('#localDisplayName').is(":visible")) {
+            if (nickname)
+                $('#localDisplayName').text(nickname + " (me)");
+            else
+                $('#localDisplayName')
+                    .text(defaultLocalDisplayName);
+            $('#localDisplayName').show();
+        }
+
+        $('#editDisplayName').hide();
     };
 
     /**
@@ -831,26 +934,43 @@ var VideoLayout = (function (my) {
             }
         }
         else {
-            var audioMutedSpan = $('#' + videoSpanId + '>span.audioMuted');
+            if(videoMutedSpan.length == 0) {
+                videoMutedSpan = document.createElement('span');
+                videoMutedSpan.className = 'videoMuted';
 
-            videoMutedSpan = document.createElement('span');
-            videoMutedSpan.className = 'videoMuted';
-            if (audioMutedSpan) {
-                videoMutedSpan.right = '30px';
-            }
-            $('#' + videoSpanId)[0].appendChild(videoMutedSpan);
+                $('#' + videoSpanId)[0].appendChild(videoMutedSpan);
 
-            var mutedIndicator = document.createElement('i');
-            mutedIndicator.className = 'icon-camera-disabled';
-            Util.setTooltip(mutedIndicator,
+                var mutedIndicator = document.createElement('i');
+                mutedIndicator.className = 'icon-camera-disabled';
+                Util.setTooltip(mutedIndicator,
                     "Participant has<br/>stopped the camera.",
                     "top");
-            videoMutedSpan.appendChild(mutedIndicator);
+                videoMutedSpan.appendChild(mutedIndicator);
+            }
+
+            VideoLayout.updateMutePosition(videoSpanId);
+
         }
     };
 
+    my.updateMutePosition = function (videoSpanId) {
+        var audioMutedSpan = $('#' + videoSpanId + '>span.audioMuted');
+        var connectionIndicator = $('#' + videoSpanId + '>div.connectionindicator');
+        var videoMutedSpan = $('#' + videoSpanId + '>span.videoMuted');
+        if(connectionIndicator.length > 0
+            && connectionIndicator[0].style.display != "none") {
+            audioMutedSpan.css({right: "23px"});
+            videoMutedSpan.css({right: ((audioMutedSpan.length > 0? 23 : 0) + 30) + "px"});
+        }
+        else
+        {
+            audioMutedSpan.css({right: "0px"});
+            videoMutedSpan.css({right: (audioMutedSpan.length > 0? 30 : 0) + "px"});
+        }
+    }
     /**
      * Shows audio muted indicator over small videos.
+     * @param {string} isMuted
      */
     my.showAudioIndicator = function(videoSpanId, isMuted) {
         var audioMutedSpan = $('#' + videoSpanId + '>span.audioMuted');
@@ -862,23 +982,29 @@ var VideoLayout = (function (my) {
             }
         }
         else {
-            var videoMutedSpan = $('#' + videoSpanId + '>span.videoMuted');
-
-            audioMutedSpan = document.createElement('span');
-            audioMutedSpan.className = 'audioMuted';
-            Util.setTooltip(audioMutedSpan,
+            if(audioMutedSpan.length == 0 ) {
+                audioMutedSpan = document.createElement('span');
+                audioMutedSpan.className = 'audioMuted';
+                Util.setTooltip(audioMutedSpan,
                     "Participant is muted",
                     "top");
 
-            if (videoMutedSpan) {
-                audioMutedSpan.right = '30px';
-            }
-            $('#' + videoSpanId)[0].appendChild(audioMutedSpan);
+                $('#' + videoSpanId)[0].appendChild(audioMutedSpan);
+                var mutedIndicator = document.createElement('i');
+                mutedIndicator.className = 'icon-mic-disabled';
+                audioMutedSpan.appendChild(mutedIndicator);
 
-            var mutedIndicator = document.createElement('i');
-            mutedIndicator.className = 'icon-mic-disabled';
-            audioMutedSpan.appendChild(mutedIndicator);
+            }
+            VideoLayout.updateMutePosition(videoSpanId);
         }
+    };
+
+    /*
+     * Shows or hides the audio muted indicator over the local thumbnail video.
+     * @param {boolean} isMuted
+     */
+    my.showLocalAudioIndicator = function(isMuted) {
+        VideoLayout.showAudioIndicator('localVideoContainer', isMuted.toString());
     };
 
     /**
@@ -926,15 +1052,6 @@ var VideoLayout = (function (my) {
      * disabled
      */
     my.enableDominantSpeaker = function(resourceJid, isEnable) {
-        var displayName = resourceJid;
-        var nameSpan = $('#participant_' + resourceJid + '>span.displayname');
-        if (nameSpan.length > 0)
-            displayName = nameSpan.text();
-
-        console.log("UI enable dominant speaker",
-                    displayName,
-                    resourceJid,
-                    isEnable);
 
         var videoSpanId = null;
         var videoContainerId = null;
@@ -947,6 +1064,16 @@ var VideoLayout = (function (my) {
             videoSpanId = 'participant_' + resourceJid;
             videoContainerId = videoSpanId;
         }
+
+        var displayName = resourceJid;
+        var nameSpan = $('#' + videoContainerId + '>span.displayname');
+        if (nameSpan.length > 0)
+            displayName = nameSpan.text();
+
+        console.log("UI enable dominant speaker",
+            displayName,
+            resourceJid,
+            isEnable);
 
         videoSpan = document.getElementById(videoContainerId);
 
@@ -1027,15 +1154,15 @@ var VideoLayout = (function (my) {
        // container used for highlighting shadow.
        var availableHeight = 100;
 
-       var numvids = 0;
-       if (lastNCount && lastNCount > 0)
-           numvids = lastNCount + 1;
-       else
-           numvids = $('#remoteVideos>span:visible').length;
+        var numvids = $('#remoteVideos>span:visible').length;
+        if (lastNCount && lastNCount > 0) {
+            numvids = Math.min(lastNCount + 1, numvids);
+        }
 
        // Remove the 3px borders arround videos and border around the remote
-       // videos area
-       var availableWinWidth = videoSpaceWidth - 2 * 3 * numvids - 70;
+       // videos area and the 4 pixels between the local video and the others
+       //TODO: Find out where the 4 pixels come from and remove them
+       var availableWinWidth = videoSpaceWidth - 2 * 3 * numvids - 70 - 4;
 
        var availableWidth = availableWinWidth / numvids;
        var aspectRatio = 16.0 / 9.0;
@@ -1300,6 +1427,7 @@ var VideoLayout = (function (my) {
 //        <li><a href="#">Mute</a></li>
 //        <li><a href="#">Eject</a></li>
 //        </ul>
+
         var popupmenuElement = document.createElement('ul');
         popupmenuElement.className = 'popupmenu';
         popupmenuElement.id
@@ -1353,25 +1481,29 @@ var VideoLayout = (function (my) {
 
         ejectMenuItem.appendChild(ejectLinkItem);
         popupmenuElement.appendChild(ejectMenuItem);
+
+        var paddingSpan = document.createElement('span');
+        paddingSpan.className = 'popupmenuPadding';
+        popupmenuElement.appendChild(paddingSpan);
     }
 
     /**
      * On audio muted event.
      */
     $(document).bind('audiomuted.muc', function (event, jid, isMuted) {
-        var videoSpanId = null;
         if (jid === dep.UIActivator().getXMPPActivator().getMyJID()) {
-            videoSpanId = 'localVideoContainer';
-        } else {
-            VideoLayout.ensurePeerContainerExists(jid);
-            videoSpanId = 'participant_' + Strophe.getResourceFromJid(jid);
+            // The local mute indicator is controlled locally
+            return;
         }
+
+        VideoLayout.ensurePeerContainerExists(jid);
 
         if (dep.UIActivator().getXMPPActivator().isFocus()) {
             mutedAudios[jid] = isMuted;
             VideoLayout.updateRemoteVideoMenu(jid, isMuted);
         }
 
+        var videoSpanId = 'participant_' + Strophe.getResourceFromJid(jid);
         if (videoSpanId)
             VideoLayout.showAudioIndicator(videoSpanId, isMuted);
     });
@@ -1397,19 +1529,29 @@ var VideoLayout = (function (my) {
      */
     my.onDisplayNameChanged =
                     function (jid, displayName, status) {
+        var name = null;
         if (jid === 'localVideoContainer'
             || jid === dep.UIActivator().getXMPPActivator().getMyJID()) {
+            name = nickname;
             setDisplayName('localVideoContainer',
                            displayName);
         } else {
             VideoLayout.ensurePeerContainerExists(jid);
-
+            name = $('#participant_' + Strophe.getResourceFromJid(jid) + "_name").text();
             setDisplayName(
                 'participant_' + Strophe.getResourceFromJid(jid),
                 displayName,
                 status);
         }
-    };
+
+        if(APIConnector.isEnabled() && APIConnector.isEventEnabled("displayNameChange"))
+        {
+            if(jid === 'localVideoContainer')
+                jid = connection.emuc.myroomjid;
+            if(!name || name != displayName)
+                APIConnector.triggerEvent("displayNameChange",{jid: jid, displayname: displayName});
+        }
+    });
 
     /**
      * On dominant speaker changed event.
@@ -1476,7 +1618,6 @@ var VideoLayout = (function (my) {
             var resourceJid = VideoLayout.getPeerContainerResourceJid(element);
 
             if (resourceJid
-                && lastNEndpoints.length > 0
                 && lastNEndpoints.indexOf(resourceJid) < 0) {
                 console.log("Remove from last N", resourceJid);
                 showPeerContainer(resourceJid, false);
@@ -1500,13 +1641,8 @@ var VideoLayout = (function (my) {
                             && mediaStream.type === mediaStream.VIDEO_TYPE) {
                             var sel = $('#participant_' + resourceJid + '>video');
 
-//<<<<<<< HEAD:UI/videolayout.js
-//                            attachMediaStream(sel, mediaStream.stream);
-//=======
-                            var simulcast = new Simulcast();
                             var videoStream = simulcast.getReceivingVideoStream(mediaStream.stream);
                             attachMediaStream(sel, videoStream);
-//>>>>>>> master:videolayout.js
                             waitForRemoteVideo(
                                     sel,
                                     mediaStream.ssrc,
@@ -1690,72 +1826,83 @@ var VideoLayout = (function (my) {
         }
     }
 
-    $(document).bind('simulcastlayerstarted', function(event) {
-        var localVideoSelector = $('#' + 'localVideo_' +
-            dep.UIActivator().getRTCService().localVideo.getOriginalStream().localVideo.id);
-        var simulcast = new Simulcast();
-        var stream = simulcast.getLocalVideoStream();
+//    $(document).bind('simulcastlayerstarted', function(event) {
+//        var localVideoSelector = $('#' + 'localVideo_' +
+//            dep.UIActivator().getRTCService().localVideo.getOriginalStream().localVideo.id);
+//        var simulcast = new Simulcast();
+//        var stream = simulcast.getLocalVideoStream();
+//
+//        // Attach WebRTC stream
+//        attachMediaStream(localVideoSelector, stream);
 
-        // Attach WebRTC stream
-        attachMediaStream(localVideoSelector, stream);
+//            if (session && electedStream) {
+//                var msid = simulcast.getRemoteVideoStreamIdBySSRC(primarySSRC);
 
-        localVideoSrc = $(localVideoSelector).attr('src');
-    });
+//    $(document).bind('simulcastlayerstopped', function(event) {
+//        var localVideoSelector = $('#' + 'localVideo_' +
+//            dep.UIActivator().getRTCService().localVideo.getOriginalStream().localVideo.id);
+//        var simulcast = new Simulcast();
+//        var stream = simulcast.getLocalVideoStream();
+//
+//        // Attach WebRTC stream
+//        attachMediaStream(localVideoSelector, stream);
 
-    $(document).bind('simulcastlayerstopped', function(event) {
-        var localVideoSelector = $('#' + 'localVideo_' +
-            dep.UIActivator().getRTCService().localVideo.getOriginalStream().localVideo.id);
-        var simulcast = new Simulcast();
-        var stream = simulcast.getLocalVideoStream();
-
-        // Attach WebRTC stream
-        attachMediaStream(localVideoSelector, stream);
-
-        localVideoSrc = $(localVideoSelector).attr('src');
-    });
+//            } else {
+//                console.error('Could not find a stream or a session.', session, electedStream);
+//            }
+//        });
+//    });
 
     /**
      * On simulcast layers changed event.
      */
     $(document).bind('simulcastlayerschanged', function (event, endpointSimulcastLayers) {
-        var simulcast = new Simulcast();
         endpointSimulcastLayers.forEach(function (esl) {
 
             var primarySSRC = esl.simulcastLayer.primarySSRC;
-            var msid = simulcast.getRemoteVideoStreamIdBySSRC(primarySSRC);
+//            var msid = simulcast.getRemoteVideoStreamIdBySSRC(primarySSRC);
+//
+//            // Get session and stream from msid.
+//            var session, electedStream;
+//            var i, j, k;
+//
+//
+//            var remoteStreams = dep.UIActivator().getRTCService().remoteStreams;
+//            var remoteStream;
+//
+//            if (remoteStreams) {
+//                for (j = 0; j < remoteStreams.length; j++) {
+//                    remoteStream = remoteStreams[j];
+//
+//                    if (electedStream) {
+//                        // stream found, stop.
+//                        break;
+//                    }
+//                    var tracks = remoteStream.getOriginalStream().getVideoTracks();
+//                    if (tracks) {
+//                        for (k = 0; k < tracks.length; k++) {
+//                            var track = tracks[k];
+//
+//                            if (msid === [remoteStream.id, track.id].join(' ')) {
+//                                electedStream = new webkitMediaStream([track]);
+//                                // stream found, stop.
+//                                break;
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//
+//            if (electedStream) {
 
-            // Get session and stream from msid.
-            var session, electedStream;
-            var i, j, k;
+            // Get session and stream from primary ssrc.
+            var res = simulcast.getReceivingVideoStreamBySSRC(primarySSRC);
+            var session = res.session;
+            var electedStream = res.stream;
 
+            if (session && electedStream) {
+                var msid = simulcast.getRemoteVideoStreamIdBySSRC(primarySSRC);
 
-            var remoteStreams = dep.UIActivator().getRTCService().remoteStreams;
-            var remoteStream;
-
-            if (remoteStreams) {
-                for (j = 0; j < remoteStreams.length; j++) {
-                    remoteStream = remoteStreams[j];
-
-                    if (electedStream) {
-                        // stream found, stop.
-                        break;
-                    }
-                    var tracks = remoteStream.getOriginalStream().getVideoTracks();
-                    if (tracks) {
-                        for (k = 0; k < tracks.length; k++) {
-                            var track = tracks[k];
-
-                            if (msid === [remoteStream.id, track.id].join(' ')) {
-                                electedStream = new webkitMediaStream([track]);
-                                // stream found, stop.
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (electedStream) {
                 console.info('Switching simulcast substream.');
 
                 var msidParts = msid.split(' ');
@@ -1765,7 +1912,23 @@ var VideoLayout = (function (my) {
                     == dep.UIActivator().getXMPPActivator().getJIDFromSSRC(videoSrcToSsrc[largeVideoNewSrc]));
                 var updateFocusedVideoSrc = (selRemoteVideo.attr('src') == focusedVideoSrc);
 
-                var electedStreamUrl = webkitURL.createObjectURL(electedStream);
+                var electedStreamUrl;
+                if (largeVideoState.preload_ssrc == primarySSRC)
+                {
+                    electedStreamUrl = $(largeVideoState.preload).attr('src');
+                }
+                else
+                {
+                    if (largeVideoState.preload
+                        && largeVideoState.preload != null) {
+                        $(largeVideoState.preload).remove();
+                    }
+
+                    largeVideoState.preload_ssrc = 0;
+
+                    electedStreamUrl = webkitURL.createObjectURL(electedStream);
+                }
+
                 selRemoteVideo.attr('src', electedStreamUrl);
                 videoSrcToSsrc[selRemoteVideo.attr('src')] = primarySSRC;
 
@@ -1777,11 +1940,443 @@ var VideoLayout = (function (my) {
                     focusedVideoSrc = electedStreamUrl;
                 }
 
+                var jid = ssrc2jid[primarySSRC];
+                var videoId;
+                if(jid == connection.emuc.myroomjid)
+                {
+                    videoId = "localVideoContainer";
+                }
+                else
+                {
+                    videoId = "participant_" + Strophe.getResourceFromJid(jid);
+                }
+                var connectionIndicator = VideoLayout.connectionIndicators[videoId];
+                if(connectionIndicator)
+                    connectionIndicator.updatePopoverData();
+
             } else {
-                console.error('Could not find a stream or a session.');
+                console.error('Could not find a stream or a session.', session, electedStream);
             }
         });
     });
+
+    /**
+     * Constructs new connection indicator.
+     * @param videoContainer the video container associated with the indicator.
+     * @constructor
+     */
+    function ConnectionIndicator(videoContainer, jid)
+    {
+        this.videoContainer = videoContainer;
+        this.bandwidth = null;
+        this.packetLoss = null;
+        this.bitrate = null;
+        this.showMoreValue = false;
+        this.resolution = null;
+        this.transport = [];
+        this.popover = null;
+        this.jid = jid;
+        this.create();
+    }
+
+    /**
+     * Values for the connection quality
+     * @type {{98: string, 81: string, 64: string, 47: string, 30: string, 0: string}}
+     */
+    ConnectionIndicator.connectionQualityValues = {
+        98: "18px", //full
+        81: "15px",//4 bars
+        64: "11px",//3 bars
+        47: "7px",//2 bars
+        30: "3px",//1 bar
+        0: "0px"//empty
+    };
+
+    ConnectionIndicator.getIP = function(value)
+    {
+        return value.substring(0, value.lastIndexOf(":"));
+    };
+
+    ConnectionIndicator.getPort = function(value)
+    {
+        return value.substring(value.lastIndexOf(":") + 1, value.length);
+    };
+
+    ConnectionIndicator.getStringFromArray = function (array) {
+        var res = "";
+        for(var i = 0; i < array.length; i++)
+        {
+            res += (i == 0? "" : ", ") + array[i];
+        }
+        return res;
+    }
+    /**
+     * Generates the html content.
+     * @returns {string} the html content.
+     */
+    ConnectionIndicator.prototype.generateText = function () {
+        var downloadBitrate, uploadBitrate, packetLoss, resolution;
+
+        if(this.bitrate === null)
+        {
+            downloadBitrate = "N/A";
+            uploadBitrate = "N/A";
+        }
+        else
+        {
+            downloadBitrate = this.bitrate.download? this.bitrate.download + " Kbps" : "N/A";
+            uploadBitrate = this.bitrate.upload? this.bitrate.upload + " Kbps" : "N/A";
+        }
+
+        if(this.packetLoss === null)
+        {
+            packetLoss = "N/A";
+        }
+        else
+        {
+
+            packetLoss = "<span class='jitsipopover_green'>&darr;</span>" +
+                (this.packetLoss.download != null? this.packetLoss.download : "N/A") +
+                "% <span class='jitsipopover_orange'>&uarr;</span>" +
+                (this.packetLoss.upload != null? this.packetLoss.upload : "N/A") + "%";
+        }
+
+        var resolutionValue = null;
+        if(this.resolution)
+        {
+            var keys = Object.keys(this.resolution);
+            if(keys.length == 1)
+            {
+                for(var ssrc in this.resolution)
+                {
+                    resolutionValue = this.resolution[ssrc];
+                }
+            }
+            else if(keys.length > 1)
+            {
+                var displayedSsrc = simulcast.getReceivingSSRC(this.jid);
+                resolutionValue = this.resolution[displayedSsrc];
+            }
+        }
+
+        if(this.jid==null)
+        {
+            resolution = "";
+            for(var i in this.resolution)
+            {
+                resolutionValue = this.resolution[i];
+                if(resolutionValue)
+                {
+                    if(resolutionValue.height &&
+                        resolutionValue.width)
+                    {
+                        resolution += (resolution == ""? "" : ", ")
+                            + resolutionValue.width + "x" + resolutionValue.height;
+                    }
+                }
+            }
+        }
+        else if(!resolutionValue ||
+            !resolutionValue.height ||
+            !resolutionValue.width)
+        {
+            resolution = "N/A";
+        }
+        else
+        {
+            resolution = resolutionValue.width + "x" + resolutionValue.height;
+        }
+
+        var result = "<table style='width:100%'><tr><td><span class='jitsipopover_blue'>Bitrate:</span></td><td><span class='jitsipopover_green'>&darr;</span>" +
+            downloadBitrate + " <span class='jitsipopover_orange'>&uarr;</span>" +
+            uploadBitrate + "</td></tr><tr><td>" +
+            "<tr><td><span class='jitsipopover_blue'>Packet loss: </span></td><td>" + packetLoss  + "</td></tr><tr><td>" +
+            "<span class='jitsipopover_blue'>Resolution:</span></td><td>" + resolution + "</td></tr></table>";
+
+        if(this.videoContainer.id == "localVideoContainer")
+            result += "<div class=\"jitsipopover_showmore\" onclick = \"VideoLayout.connectionIndicators['" +
+                 this.videoContainer.id + "'].showMore()\">" + (this.showMoreValue? "Show less" : "Show More") + "</div><br />";
+
+        if(this.showMoreValue)
+        {
+            var downloadBandwidth, uploadBandwidth, transport;
+            if(this.bandwidth === null)
+            {
+                downloadBandwidth = "N/A";
+                uploadBandwidth = "N/A";
+            }
+            else
+            {
+                downloadBandwidth = this.bandwidth.download? this.bandwidth.download + " Kbps" : "N/A";
+                uploadBandwidth = this.bandwidth.upload? this.bandwidth.upload + " Kbps" : "N/A";
+            }
+
+            if(!this.transport || this.transport.length === 0)
+            {
+                transport = "<tr><td><span class='jitsipopover_blue'>Address:</span></td><td> N/A</td></tr>";
+            }
+            else
+            {
+                var data = {remoteIP: [], localIP:[], remotePort:[], localPort:[]};
+                for(var i = 0; i < this.transport.length; i++)
+                {
+                    var ip =  ConnectionIndicator.getIP(this.transport[i].ip);
+                    var port = ConnectionIndicator.getPort(this.transport[i].ip);
+                    var localIP = ConnectionIndicator.getIP(this.transport[i].localip);
+                    var localPort = ConnectionIndicator.getPort(this.transport[i].localip);
+                    if(data.remoteIP.indexOf(ip) == -1)
+                    {
+                       data.remoteIP.push(ip);
+                    }
+
+                    if(data.remotePort.indexOf(port) == -1)
+                    {
+                        data.remotePort.push(port);
+                    }
+
+                    if(data.localIP.indexOf(localIP) == -1)
+                    {
+                        data.localIP.push(localIP);
+                    }
+
+                    if(data.localPort.indexOf(localPort) == -1)
+                    {
+                        data.localPort.push(localPort);
+                    }
+
+                }
+                var localTransport = "<tr><td><span class='jitsipopover_blue'>Local address" +
+                    (data.localIP.length > 1? "es" : "") + ": </span></td><td> " +
+                     ConnectionIndicator.getStringFromArray(data.localIP) + "</td></tr>";
+                transport = "<tr><td><span class='jitsipopover_blue'>Remote address"+
+                    (data.remoteIP.length > 1? "es" : "") + ":</span></td><td> " +
+                    ConnectionIndicator.getStringFromArray(data.remoteIP) + "</td></tr>";
+                if(this.transport.length > 1)
+                {
+                    transport += "<tr><td><span class='jitsipopover_blue'>Remote ports:</span></td><td>";
+                    localTransport += "<tr><td><span class='jitsipopover_blue'>Local ports:</span></td><td>";
+                }
+                else
+                {
+                    transport += "<tr><td><span class='jitsipopover_blue'>Remote port:</span></td><td>";
+                    localTransport += "<tr><td><span class='jitsipopover_blue'>Local port:</span></td><td>";
+                }
+
+                transport += ConnectionIndicator.getStringFromArray(data.remotePort);
+                localTransport += ConnectionIndicator.getStringFromArray(data.localPort);
+                transport += "</td></tr>";
+                transport += localTransport + "</td></tr>";
+                transport +="<tr><td><span class='jitsipopover_blue'>Transport:</span></td><td>" + this.transport[0].type + "</td></tr>";
+
+            }
+
+            result += "<table  style='width:100%'><tr><td><span class='jitsipopover_blue'>Estimated bandwidth:</span> </td><td>" +
+                "<span class='jitsipopover_green'>&darr;</span>" + downloadBandwidth +
+                " <span class='jitsipopover_orange'>&uarr;</span>" +
+                uploadBandwidth + "</td></tr>";
+
+            result += transport + "</table>";
+
+        }
+
+        return result;
+    };
+
+    /**
+     * Shows or hide the additional information.
+     */
+    ConnectionIndicator.prototype.showMore = function () {
+        this.showMoreValue = !this.showMoreValue;
+        this.updatePopoverData();
+    };
+
+    /**
+     * Creates the indicator
+     */
+    ConnectionIndicator.prototype.create = function () {
+        this.connectionIndicatorContainer = document.createElement("div");
+        this.connectionIndicatorContainer.className = "connectionindicator";
+        this.connectionIndicatorContainer.style.display = "none";
+        this.videoContainer.appendChild(this.connectionIndicatorContainer);
+        this.popover = new JitsiPopover($("#" + this.videoContainer.id + " > .connectionindicator"),
+            {content: "<div class=\"connection_info\">Come back here for " +
+                "connection information once the conference starts</div>", skin: "black"});
+
+        function createIcon(classes)
+        {
+            var icon = document.createElement("span");
+            for(var i in classes)
+            {
+                icon.classList.add(classes[i]);
+            }
+            icon.appendChild(document.createElement("i")).classList.add("icon-connection");
+            return icon;
+        }
+        this.emptyIcon = this.connectionIndicatorContainer.appendChild(
+            createIcon(["connection", "connection_empty"]));
+        this.fullIcon = this.connectionIndicatorContainer.appendChild(
+            createIcon(["connection", "connection_full"]));
+
+    };
+
+    /**
+     * Removes the indicator
+     */
+    ConnectionIndicator.prototype.remove = function()
+    {
+        this.connectionIndicatorContainer.remove();
+        this.popover.forceHide();
+
+    };
+
+    /**
+     * Updates the data of the indicator
+     * @param percent the percent of connection quality
+     * @param object the statistics data.
+     */
+    ConnectionIndicator.prototype.updateConnectionQuality = function (percent, object) {
+
+        if(percent === null)
+        {
+            this.connectionIndicatorContainer.style.display = "none";
+            this.popover.forceHide();
+            return;
+        }
+        else
+        {
+            if(this.connectionIndicatorContainer.style.display == "none") {
+                this.connectionIndicatorContainer.style.display = "block";
+                VideoLayout.updateMutePosition(this.videoContainer.id);
+            }
+        }
+        this.bandwidth = object.bandwidth;
+        this.bitrate = object.bitrate;
+        this.packetLoss = object.packetLoss;
+        this.transport = object.transport;
+        if(object.resolution)
+        {
+            this.resolution = object.resolution;
+        }
+        for(var quality in ConnectionIndicator.connectionQualityValues)
+        {
+            if(percent >= quality)
+            {
+                this.fullIcon.style.width = ConnectionIndicator.connectionQualityValues[quality];
+            }
+        }
+        this.updatePopoverData();
+    };
+
+    /**
+     * Updates the resolution
+     * @param resolution the new resolution
+     */
+    ConnectionIndicator.prototype.updateResolution = function (resolution) {
+        this.resolution = resolution;
+        this.updatePopoverData();
+    };
+
+    /**
+     * Updates the content of the popover
+     */
+    ConnectionIndicator.prototype.updatePopoverData = function () {
+        this.popover.updateContent("<div class=\"connection_info\">" + this.generateText() + "</div>");
+    };
+
+    /**
+     * Hides the popover
+     */
+    ConnectionIndicator.prototype.hide = function () {
+        this.popover.forceHide();
+    };
+
+    /**
+     * Hides the indicator
+     */
+    ConnectionIndicator.prototype.hideIndicator = function () {
+        this.connectionIndicatorContainer.style.display = "none";
+        if(this.popover)
+            this.popover.forceHide();
+    };
+
+    /**
+     * Updates the data for the indicator
+     * @param id the id of the indicator
+     * @param percent the percent for connection quality
+     * @param object the data
+     */
+    function updateStatsIndicator(id, percent, object) {
+        if(VideoLayout.connectionIndicators[id])
+            VideoLayout.connectionIndicators[id].updateConnectionQuality(percent, object);
+    }
+
+    /**
+     * Updates local stats
+     * @param percent
+     * @param object
+     */
+    my.updateLocalConnectionStats = function (percent, object) {
+        var resolution = null;
+        if(object.resolution !== null)
+        {
+            resolution = object.resolution;
+            object.resolution = resolution[connection.emuc.myroomjid];
+            delete resolution[connection.emuc.myroomjid];
+        }
+        updateStatsIndicator("localVideoContainer", percent, object);
+        for(var jid in resolution)
+        {
+            if(resolution[jid] === null)
+                continue;
+            var id = 'participant_' + Strophe.getResourceFromJid(jid);
+            if(VideoLayout.connectionIndicators[id])
+            {
+                VideoLayout.connectionIndicators[id].updateResolution(resolution[jid]);
+            }
+        }
+
+    };
+
+    /**
+     * Updates remote stats.
+     * @param jid the jid associated with the stats
+     * @param percent the connection quality percent
+     * @param object the stats data
+     */
+    my.updateConnectionStats = function (jid, percent, object) {
+        var resourceJid = Strophe.getResourceFromJid(jid);
+
+        var videoSpanId = 'participant_' + resourceJid;
+        updateStatsIndicator(videoSpanId, percent, object);
+    };
+
+    /**
+     * Removes the connection
+     * @param jid
+     */
+    my.removeConnectionIndicator = function (jid) {
+        if(VideoLayout.connectionIndicators['participant_' + Strophe.getResourceFromJid(jid)])
+            VideoLayout.connectionIndicators['participant_' + Strophe.getResourceFromJid(jid)].remove();
+    };
+
+    /**
+     * Hides the connection indicator
+     * @param jid
+     */
+    my.hideConnectionIndicator = function (jid) {
+        if(VideoLayout.connectionIndicators['participant_' + Strophe.getResourceFromJid(jid)])
+            VideoLayout.connectionIndicators['participant_' + Strophe.getResourceFromJid(jid)].hide();
+    };
+
+    /**
+     * Hides all the indicators
+     */
+    my.onStatsStop = function () {
+        for(var indicator in VideoLayout.connectionIndicators)
+        {
+            VideoLayout.connectionIndicators[indicator].hideIndicator();
+        }
+    };
 
     return my;
 }(VideoLayout || {}));

@@ -237,7 +237,6 @@ function setDesktopSharing(method) {
 }
 
 
-
 module.exports = {
     /*
      * Toggles screen sharing.

@@ -339,6 +339,12 @@ SDPUtil = {
                 }
                 break;
         }
+        if (cand.getAttribute('protocol').toLowerCase() == 'tcp') {
+            line += 'tcptype';
+            line += ' ';
+            line += cand.getAttribute('tcptype');
+            line += ' ';
+        }
         line += 'generation';
         line += ' ';
         line += cand.getAttribute('generation') || '0';

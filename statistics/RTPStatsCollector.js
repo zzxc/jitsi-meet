@@ -1,34 +1,15 @@
 /* global ssrc2jid */
-
 /**
- * Function object which once created can be used to calculate moving average of
- * given period. Example for SMA3:</br>
- * var sma3 = new SimpleMovingAverager(3);
- * while(true) // some update loop
- * {
- *   var currentSma3Value = sma3(nextInputValue);
- * }
- *
- * @param period moving average period that will be used by created instance.
- * @returns {Function} SMA calculator function of given <tt>period</tt>.
- * @constructor
+ * Calculates packet lost percent using the number of lost packets and the
+ * number of all packet.
+ * @param lostPackets the number of lost packets
+ * @param totalPackets the number of all packets.
+ * @returns {number} packet loss percent
  */
-function SimpleMovingAverager(period)
-{
-    var nums = [];
-    return function (num)
-    {
-        nums.push(num);
-        if (nums.length > period)
-            nums.splice(0, 1);
-        var sum = 0;
-        for (var i in nums)
-            sum += nums[i];
-        var n = period;
-        if (nums.length < period)
-            n = nums.length;
-        return (sum / n);
-    };
+function calculatePacketLoss(lostPackets, totalPackets) {
+    if(!totalPackets || totalPackets <= 0 || !lostPackets || lostPackets <= 0)
+        return 0;
+    return Math.round((lostPackets/totalPackets)*100);
 }
 
 /**
@@ -39,7 +20,29 @@ function PeerStats()
 {
     this.ssrc2Loss = {};
     this.ssrc2AudioLevel = {};
+    this.ssrc2bitrate = {};
+    this.ssrc2resolution = {};
 }
+
+/**
+ * The bandwidth
+ * @type {{}}
+ */
+PeerStats.bandwidth = {};
+
+/**
+ * The bit rate
+ * @type {{}}
+ */
+PeerStats.bitrate = {};
+
+
+
+/**
+ * The packet loss rate
+ * @type {{}}
+ */
+PeerStats.packetLoss = null;
 
 /**
  * Sets packets loss rate for given <tt>ssrc</tt> that blong to the peer
@@ -50,6 +53,33 @@ function PeerStats()
 PeerStats.prototype.setSsrcLoss = function (ssrc, lossRate)
 {
     this.ssrc2Loss[ssrc] = lossRate;
+};
+
+/**
+ * Sets resolution for given <tt>ssrc</tt> that belong to the peer
+ * represented by this instance.
+ * @param ssrc audio or video RTP stream SSRC.
+ * @param resolution new resolution value to be set.
+ */
+PeerStats.prototype.setSsrcResolution = function (ssrc, resolution)
+{
+    if(resolution === null && this.ssrc2resolution[ssrc])
+    {
+        delete this.ssrc2resolution[ssrc];
+    }
+    else if(resolution !== null)
+        this.ssrc2resolution[ssrc] = resolution;
+};
+
+/**
+ * Sets the bit rate for given <tt>ssrc</tt> that blong to the peer
+ * represented by this instance.
+ * @param ssrc audio or video RTP stream SSRC.
+ * @param bitrate new bitrate value to be set.
+ */
+PeerStats.prototype.setSsrcBitrate = function (ssrc, bitrate)
+{
+    this.ssrc2bitrate[ssrc] = bitrate;
 };
 
 /**
@@ -67,48 +97,37 @@ PeerStats.prototype.setSsrcAudioLevel = function (ssrc, audioLevel)
 };
 
 /**
- * Calculates average packet loss for all streams that belong to the peer
- * represented by this instance.
- * @returns {number} average packet loss for all streams that belong to the peer
- *                   represented by this instance.
+ * Array with the transport information.
+ * @type {Array}
  */
-PeerStats.prototype.getAvgLoss = function ()
-{
-    var self = this;
-    var avg = 0;
-    var count = Object.keys(this.ssrc2Loss).length;
-    Object.keys(this.ssrc2Loss).forEach(
-        function (ssrc)
-        {
-            avg += self.ssrc2Loss[ssrc];
-        }
-    );
-    return count > 0 ? avg / count : 0;
-};
+PeerStats.transport = [];
 
 /**
  * <tt>StatsCollector</tt> registers for stats updates of given
  * <tt>peerconnection</tt> in given <tt>interval</tt>. On each update particular
  * stats are extracted and put in {@link PeerStats} objects. Once the processing
- * is done <tt>updateCallback</tt> is called with <tt>this</tt> instance as
- * an event source.
+ * is done <tt>audioLevelsUpdateCallback</tt> is called with <tt>this</tt>
+ * instance as an event source.
  *
  * @param peerconnection webRTC peer connection object.
  * @param interval stats refresh interval given in ms.
- * @param {function(StatsCollector)} updateCallback the callback called on stats
- *                                   update.
+ * @param {function(StatsCollector)} audioLevelsUpdateCallback the callback
+ * called on stats update.
  * @constructor
  */
-function StatsCollector(peerconnection, interval, eventEmmiter)
+function StatsCollector(peerconnection, audioLevelsInterval, statsInterval)
 {
     this.peerconnection = peerconnection;
-    this.baselineReport = null;
-    this.currentReport = null;
-    this.intervalId = null;
+    this.baselineAudioLevelsReport = null;
+    this.currentAudioLevelsReport = null;
+    this.currentStatsReport = null;
+    this.baselineStatsReport = null;
+    this.audioLevelsIntervalId = null;
     // Updates stats interval
-    this.intervalMilis = interval;
-    // Use SMA 3 to average packet loss changes over time
-    this.sma3 = new SimpleMovingAverager(3);
+    this.audioLevelsIntervalMilis = audioLevelsInterval;
+
+    this.statsIntervalId = null;
+    this.statsIntervalMilis = statsInterval;
     // Map of jids to PeerStats
     this.jid2stats = {};
 
@@ -122,10 +141,12 @@ module.exports = StatsCollector;
  */
 StatsCollector.prototype.stop = function ()
 {
-    if (this.intervalId)
+    if (this.audioLevelsIntervalId)
     {
-        clearInterval(this.intervalId);
-        this.intervalId = null;
+        clearInterval(this.audioLevelsIntervalId);
+        this.audioLevelsIntervalId = null;
+        clearInterval(this.statsIntervalId);
+        this.statsIntervalId = null;
     }
 };
 
@@ -145,7 +166,7 @@ StatsCollector.prototype.errorCallback = function (error)
 StatsCollector.prototype.start = function ()
 {
     var self = this;
-    this.intervalId = setInterval(
+    this.audioLevelsIntervalId = setInterval(
         function ()
         {
             // Interval updates
@@ -154,37 +175,301 @@ StatsCollector.prototype.start = function ()
                 {
                     var results = report.result();
                     //console.error("Got interval report", results);
-                    self.currentReport = results;
-                    self.processReport();
-                    self.baselineReport = self.currentReport;
+                    self.currentAudioLevelsReport = results;
+                    self.processAudioLevelReport();
+                    self.baselineAudioLevelsReport =
+                        self.currentAudioLevelsReport;
                 },
                 self.errorCallback
             );
         },
-        self.intervalMilis
+        self.audioLevelsIntervalMilis
     );
+
+    this.statsIntervalId = setInterval(
+        function () {
+            // Interval updates
+            self.peerconnection.getStats(
+                function (report)
+                {
+                    var results = report.result();
+                    //console.error("Got interval report", results);
+                    self.currentStatsReport = results;
+                    self.processStatsReport();
+                    self.baselineStatsReport = self.currentStatsReport;
+                },
+                self.errorCallback
+            );
+        },
+        self.statsIntervalMilis
+    );
+};
+
+
+/**
+ * Stats processing logic.
+ */
+StatsCollector.prototype.processStatsReport = function () {
+    if (!this.baselineStatsReport) {
+        return;
+    }
+
+    var XMPPActivator = require("../xmpp/XMPPActivator");
+    for (var idx in this.currentStatsReport) {
+        var now = this.currentStatsReport[idx];
+        if (now.stat('googAvailableReceiveBandwidth') ||
+            now.stat('googAvailableSendBandwidth'))
+        {
+            PeerStats.bandwidth = {
+                "download": Math.round(
+                        (now.stat('googAvailableReceiveBandwidth')) / 1000),
+                "upload": Math.round(
+                        (now.stat('googAvailableSendBandwidth')) / 1000)
+            };
+        }
+
+        if(now.type == 'googCandidatePair')
+        {
+            var ip = now.stat('googRemoteAddress');
+            var type = now.stat("googTransportType");
+            var localIP = now.stat("googLocalAddress");
+            var active = now.stat("googActiveConnection");
+            if(!ip || !type || !localIP || active != "true")
+                continue;
+            var addressSaved = false;
+            for(var i = 0; i < PeerStats.transport.length; i++)
+            {
+                if(PeerStats.transport[i].ip == ip &&
+                    PeerStats.transport[i].type == type &&
+                    PeerStats.transport[i].localip == localIP)
+                {
+                    addressSaved = true;
+                }
+            }
+            if(addressSaved)
+                continue;
+            PeerStats.transport.push({localip: localIP, ip: ip, type: type});
+            continue;
+        }
+
+        if (now.type != 'ssrc') {
+            continue;
+        }
+
+        var before = this.baselineStatsReport[idx];
+        if (!before) {
+            console.warn(now.stat('ssrc') + ' not enough data');
+            continue;
+        }
+
+        var ssrc = now.stat('ssrc');
+        var jid = XMPPActivator.getJIDFromSSRC(ssrc);
+        if (!jid)
+        {
+            console.warn("No jid for ssrc: " + ssrc);
+            continue;
+        }
+
+        var jidStats = this.jid2stats[jid];
+        if (!jidStats) {
+            jidStats = new PeerStats();
+            this.jid2stats[jid] = jidStats;
+        }
+
+/**<<<<<<< HEAD:statistics/RTPStatsCollector.js
+        // Audio level
+        var audioLevel = now.stat('audioInputLevel');
+        if (!audioLevel)
+            audioLevel = now.stat('audioOutputLevel');
+        if (audioLevel)
+        {
+            // TODO: can't find specs about what this value really is,
+            // but it seems to vary between 0 and around 32k.
+            audioLevel = audioLevel / 32767;
+            jidStats.setSsrcAudioLevel(ssrc, audioLevel);
+            //my roomjid shouldn't be global
+            if(jid != XMPPActivator.getMyJID())
+                this.eventEmmiter.emit("statistics.audioLevel", Strophe.getResourceFromJid(jid), audioLevel);
+        }
+=======
+>>>>>>> master:rtp_sts.js**/
+
+        var isDownloadStream = true;
+        var key = 'packetsReceived';
+        if (!now.stat(key))
+        {
+            isDownloadStream = false;
+            key = 'packetsSent';
+            if (!now.stat(key))
+            {
+                console.error("No packetsReceived nor packetSent stat found");
+                this.stop();
+                return;
+            }
+        }
+        var packetsNow = now.stat(key);
+        if(!packetsNow || packetsNow < 0)
+            packetsNow = 0;
+
+        var packetsBefore = before.stat(key);
+        if(!packetsBefore || packetsBefore < 0)
+            packetsBefore = 0;
+        var packetRate = packetsNow - packetsBefore;
+        if(!packetRate || packetRate < 0)
+            packetRate = 0;
+        var currentLoss = now.stat('packetsLost');
+        if(!currentLoss || currentLoss < 0)
+            currentLoss = 0;
+        var previousLoss = before.stat('packetsLost');
+        if(!previousLoss || previousLoss < 0)
+            previousLoss = 0;
+        var lossRate = currentLoss - previousLoss;
+        if(!lossRate || lossRate < 0)
+            lossRate = 0;
+        var packetsTotal = (packetRate + lossRate);
+
+        jidStats.setSsrcLoss(ssrc,
+            {"packetsTotal": packetsTotal,
+                "packetsLost": lossRate,
+                "isDownloadStream": isDownloadStream});
+
+        var bytesReceived = 0, bytesSent = 0;
+        if(now.stat("bytesReceived"))
+        {
+            bytesReceived = now.stat("bytesReceived") -
+                before.stat("bytesReceived");
+        }
+
+        if(now.stat("bytesSent"))
+        {
+            bytesSent = now.stat("bytesSent") - before.stat("bytesSent");
+        }
+
+        var time = Math.round((now.timestamp - before.timestamp) / 1000);
+        if(bytesReceived <= 0 || time <= 0)
+        {
+            bytesReceived = 0;
+        }
+        else
+        {
+            bytesReceived = Math.round(((bytesReceived * 8) / time) / 1000);
+        }
+
+        if(bytesSent <= 0 || time <= 0)
+        {
+            bytesSent = 0;
+        }
+        else
+        {
+            bytesSent = Math.round(((bytesSent * 8) / time) / 1000);
+        }
+
+        jidStats.setSsrcBitrate(ssrc, {
+            "download": bytesReceived,
+            "upload": bytesSent});
+        var resolution = {height: null, width: null};
+        if(now.stat("googFrameHeightReceived") &&
+            now.stat("googFrameWidthReceived"))
+        {
+            resolution.height = now.stat("googFrameHeightReceived");
+            resolution.width = now.stat("googFrameWidthReceived");
+        }
+        else if(now.stat("googFrameHeightSent") &&
+            now.stat("googFrameWidthSent"))
+        {
+            resolution.height = now.stat("googFrameHeightSent");
+            resolution.width = now.stat("googFrameWidthSent");
+        }
+
+        if(resolution.height && resolution.width)
+        {
+            jidStats.setSsrcResolution(ssrc, resolution);
+        }
+        else
+        {
+            jidStats.setSsrcResolution(ssrc, null);
+        }
+
+
+    }
+
+    var self = this;
+    // Jid stats
+    var totalPackets = {download: 0, upload: 0};
+    var lostPackets = {download: 0, upload: 0};
+    var bitrateDownload = 0;
+    var bitrateUpload = 0;
+    var resolutions = {};
+    Object.keys(this.jid2stats).forEach(
+        function (jid)
+        {
+            Object.keys(self.jid2stats[jid].ssrc2Loss).forEach(
+                function (ssrc)
+                {
+                    var type = "upload";
+                    if(self.jid2stats[jid].ssrc2Loss[ssrc].isDownloadStream)
+                        type = "download";
+                    totalPackets[type] +=
+                        self.jid2stats[jid].ssrc2Loss[ssrc].packetsTotal;
+                    lostPackets[type] +=
+                        self.jid2stats[jid].ssrc2Loss[ssrc].packetsLost;
+                }
+            );
+            Object.keys(self.jid2stats[jid].ssrc2bitrate).forEach(
+                function (ssrc) {
+                    bitrateDownload +=
+                        self.jid2stats[jid].ssrc2bitrate[ssrc].download;
+                    bitrateUpload +=
+                        self.jid2stats[jid].ssrc2bitrate[ssrc].upload;
+                }
+            );
+            resolutions[jid] = self.jid2stats[jid].ssrc2resolution;
+        }
+    );
+
+    PeerStats.bitrate = {"upload": bitrateUpload, "download": bitrateDownload};
+
+    PeerStats.packetLoss = {
+        total:
+            calculatePacketLoss(lostPackets.download + lostPackets.upload,
+                totalPackets.download + totalPackets.upload),
+        download:
+            calculatePacketLoss(lostPackets.download, totalPackets.download),
+        upload:
+            calculatePacketLoss(lostPackets.upload, totalPackets.upload)
+    };
+    this.statsUpdateCallback(
+        {
+            "bitrate": PeerStats.bitrate,
+            "packetLoss": PeerStats.packetLoss,
+            "bandwidth": PeerStats.bandwidth,
+            "resolution": resolutions,
+            "transport": PeerStats.transport
+        });
+    PeerStats.transport = [];
+
 };
 
 /**
  * Stats processing logic.
  */
-StatsCollector.prototype.processReport = function ()
+StatsCollector.prototype.processAudioLevelReport = function ()
 {
-    if (!this.baselineReport)
+    if (!this.baselineAudioLevelsReport)
     {
         return;
     }
 
-    var XMPPActivator = require("../xmpp/XMPPActivator");
-    for (var idx in this.currentReport)
+    for (var idx in this.currentAudioLevelsReport)
     {
-        var now = this.currentReport[idx];
+        var now = this.currentAudioLevelsReport[idx];
+
         if (now.type != 'ssrc')
         {
             continue;
         }
 
-        var before = this.baselineReport[idx];
+        var before = this.baselineAudioLevelsReport[idx];
         if (!before)
         {
             console.warn(now.stat('ssrc') + ' not enough data');
@@ -192,7 +477,7 @@ StatsCollector.prototype.processReport = function ()
         }
 
         var ssrc = now.stat('ssrc');
-        var jid = XMPPActivator.getJIDFromSSRC(ssrc);
+        var jid = ssrc2jid[ssrc];
         if (!jid)
         {
             console.warn("No jid for ssrc: " + ssrc);
@@ -216,76 +501,11 @@ StatsCollector.prototype.processReport = function ()
             // but it seems to vary between 0 and around 32k.
             audioLevel = audioLevel / 32767;
             jidStats.setSsrcAudioLevel(ssrc, audioLevel);
-            //my roomjid shouldn't be global
-            if(jid != XMPPActivator.getMyJID())
-                this.eventEmmiter.emit("statistics.audioLevel", Strophe.getResourceFromJid(jid), audioLevel);
+            if(jid != connection.emuc.myroomjid)
+                this.audioLevelsUpdateCallback(jid, audioLevel);
         }
 
-        var key = 'packetsReceived';
-        if (!now.stat(key))
-        {
-            key = 'packetsSent';
-            if (!now.stat(key))
-            {
-                console.error("No packetsReceived nor packetSent stat found");
-                this.stop();
-                return;
-            }
-        }
-        var packetsNow = now.stat(key);
-        var packetsBefore = before.stat(key);
-        var packetRate = packetsNow - packetsBefore;
-
-        var currentLoss = now.stat('packetsLost');
-        var previousLoss = before.stat('packetsLost');
-        var lossRate = currentLoss - previousLoss;
-
-        var packetsTotal = (packetRate + lossRate);
-        var lossPercent;
-
-        if (packetsTotal > 0)
-            lossPercent = lossRate / packetsTotal;
-        else
-            lossPercent = 0;
-
-        //console.info(jid + " ssrc: " + ssrc + " " + key + ": " + packetsNow);
-
-        jidStats.setSsrcLoss(ssrc, lossPercent);
     }
 
-    var self = this;
-    // Jid stats
-    var allPeersAvg = 0;
-    var jids = Object.keys(this.jid2stats);
-    jids.forEach(
-        function (jid)
-        {
-            var peerAvg = self.jid2stats[jid].getAvgLoss(
-                function (avg)
-                {
-                    //console.info(jid + " stats: " + (avg * 100) + " %");
-                    allPeersAvg += avg;
-                }
-            );
-        }
-    );
 
-    if (jids.length > 1)
-    {
-        // Our streams loss is reported as 0 always, so -1 to length
-        allPeersAvg = allPeersAvg / (jids.length - 1);
-
-        /**
-         * Calculates number of connection quality bars from 4(hi) to 0(lo).
-         */
-        var outputAvg = self.sma3(allPeersAvg);
-        // Linear from 4(0%) to 0(25%).
-        var quality = Math.round(4 - outputAvg * 16);
-        quality = Math.max(quality, 0); // lower limit 0
-        quality = Math.min(quality, 4); // upper limit 4
-        // TODO: quality can be used to indicate connection quality using 4 step
-        // bar indicator
-        //console.info("Loss SMA3: " + outputAvg + " Q: " + quality);
-    }
 };
-

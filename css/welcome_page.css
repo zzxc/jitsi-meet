@@ -63,7 +63,7 @@
 }
 
 #enter_room_field {
-    font-size: 18px;
+    font-size: 15px;
     padding: 15px 0px 10px 10px;
     border: none;
     -webkit-appearance: none;
@@ -121,33 +121,6 @@
     width: 100%;
     position: absolute;
     margin-top: 290px;
-}
-
-#jitsi_logo
-{
-    background-image:url(../images/watermark.png);
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-position: center left;
-    width: 186px;
-    height: 74px;
-    position: absolute;
-    top: 15px;
-    left: 30px;
-}
-
-#brand_logo
-{
-    background-image:url(../images/rightwatermark.png);
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-position: center left;
-    width: 215px;
-    height: 55px;
-    position: absolute;
-    top: 15px;
-    right: 30px;
-
 }
 
 #brand_header
@@ -228,4 +201,5 @@
     float:  left;
     cursor: pointer;
     text-align: center;
+    display: none;
 }

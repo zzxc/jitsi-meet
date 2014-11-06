@@ -20,6 +20,7 @@
     border:1px solid transparent;
     z-index: 5;
     transition: bottom 2s;
+    overflow: visible !important;
 }
 
 #remotevideos.hidden {
@@ -55,6 +56,7 @@
     -webkit-animation-name: greyPulse;
     -webkit-animation-duration: 2s;
     -webkit-animation-iteration-count: 1;
+    overflow: visible !important;
 }
 
 #remoteVideos .videocontainer:hover {
@@ -195,6 +197,59 @@
     border-radius:20px;
 }
 
+.connectionindicator
+{
+    display: inline-block;
+    position: absolute;
+    top: 7px;
+    right: 0;
+    padding: 0px 5px;
+    z-index: 3;
+    width: 18px;
+    height: 13px;
+}
+
+.connection.connection_empty
+{
+    color: #8B8B8B;/*#FFFFFF*/
+    overflow: hidden;
+}
+
+.connection.connection_full
+{
+    color: #FFFFFF;/*#15A1ED*/
+    overflow: hidden;
+}
+
+.connection
+{
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    font-size: 8pt;
+    border: 0px;
+    width: 18px;
+    height: 13px;
+}
+
+.connection_info
+{
+    float: left;
+    padding-bottom: 5px;
+}
+
+.connection_info > table
+{
+    white-space: nowrap;
+}
+
+.connection_info, .connection_info > table
+{
+    text-align: left;
+    font-size: 11px;
+    color: #ffffff;
+}
+
 #localVideoContainer>span.status:hover,
 #localVideoContainer>span.displayname:hover {
     cursor: text;
@@ -231,7 +286,6 @@
     position: absolute;
     color: #FFFFFF;
     top: 0;
-    right: 0;
     padding: 8px 5px;
     width: 25px;
     font-size: 8pt;
@@ -280,19 +334,23 @@
     left:0;
     right:0;
     z-index:10;
+    pointer-events: none;
 }
 
 #toolbar {
     display:inline-block;
     position:relative;
+    margin-top:5px;
     margin-left:auto;
     margin-right:auto;
-    height:39px;
+    padding-left:2px;
+    padding-right:2px;
+    height:38px;
     width:auto;
-    background: linear-gradient(to bottom, rgba(103,103,103,.65) , rgba(0,0,0,.65));
-    -webkit-box-shadow: 0 0 2px #000000, 0 0 10px #000000;
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
+    background-color: rgba(0,0,0,0.8); 
+    border: 1px solid rgba(256, 256, 256, 0.2);
+    border-radius: 6px;
+    pointer-events: auto;
 }
 
 #subject {
@@ -308,29 +366,6 @@
     border-bottom-left-radius: 12px;
     border-bottom-right-radius: 12px;
     display: none;
-}
-
-.watermark {
-    display: block;
-    position: absolute;
-    top: 15;
-    width: 20%;
-    height: 10%;
-    background-size: contain;
-    background-repeat: no-repeat;
-    z-index: 2;
-}
-
-#leftwatermark {
-    left: 15;
-    background-image:url(../images/watermark.png);
-    background-position: center left;
-}
-
-#rightwatermark {
-    right: 15;
-    background-image:url(../images/rightwatermark.png);
-    background-position: center right;
 }
 
 .audiolevel {

@@ -131,12 +131,10 @@ if (TraceablePeerConnection.prototype.__defineGetter__ !== undefined) {
     TraceablePeerConnection.prototype.__defineGetter__('signalingState', function() { return this.peerconnection.signalingState; });
     TraceablePeerConnection.prototype.__defineGetter__('iceConnectionState', function() { return this.peerconnection.iceConnectionState; });
     TraceablePeerConnection.prototype.__defineGetter__('localDescription', function() {
-        var simulcast = new Simulcast();
         var publicLocalDescription = simulcast.reverseTransformLocalDescription(this.peerconnection.localDescription);
         return publicLocalDescription;
     });
     TraceablePeerConnection.prototype.__defineGetter__('remoteDescription', function() {
-        var simulcast = new Simulcast();
         var publicRemoteDescription = simulcast.reverseTransformRemoteDescription(this.peerconnection.remoteDescription);
         return publicRemoteDescription;
     });
@@ -159,7 +157,6 @@ TraceablePeerConnection.prototype.createDataChannel = function (label, opts) {
 
 TraceablePeerConnection.prototype.setLocalDescription = function (description, successCallback, failureCallback) {
     var self = this;
-    var simulcast = new Simulcast();
     description = simulcast.transformLocalDescription(description);
     this.trace('setLocalDescription', dumpSDP(description));
     this.peerconnection.setLocalDescription(description,
@@ -181,7 +178,6 @@ TraceablePeerConnection.prototype.setLocalDescription = function (description, s
 
 TraceablePeerConnection.prototype.setRemoteDescription = function (description, successCallback, failureCallback) {
     var self = this;
-    var simulcast = new Simulcast();
     description = simulcast.transformRemoteDescription(description);
     this.trace('setRemoteDescription', dumpSDP(description));
     this.peerconnection.setRemoteDescription(description,
@@ -447,7 +443,6 @@ TraceablePeerConnection.prototype.createAnswer = function (successCallback, fail
     this.trace('createAnswer', JSON.stringify(constraints, null, ' '));
     this.peerconnection.createAnswer(
         function (answer) {
-            var simulcast = new Simulcast();
             answer = simulcast.transformAnswer(answer);
             self.trace('createAnswerOnSuccess', dumpSDP(answer));
             successCallback(answer);
