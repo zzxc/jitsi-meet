@@ -1,4 +1,258 @@
+var BottomToolbar = require("./BottomToolbar");
+var Prezi = require("./../prezi/prezi");
+var Etherpad = require("./../etherpad/Etherpad");
+var buttonClick = require("../UIUtil").buttonClick;
+var DesktopStreaming = require("../../desktopsharing");
+
+
 var Toolbar = (function (my) {
+    var toolbarTimeout = null;
+
+    var UIActivator = null;
+
+    var XMPPActivator = null
+
+    var roomUrl = null;
+
+    var recordingToken = '';
+
+    var buttonHandlers = {
+        "toolbar_button_mute": function () {
+            return Toolbar.toggleAudio();
+        },
+        "toolbar_button_camera": function () {
+            buttonClick("#video", "icon-camera icon-camera-disabled");
+            return toggleVideo();
+        },
+        "toolbar_button_record": function () {
+            return toggleRecording();
+        }
+        ,
+        "toolbar_button_security": function () {
+            return Toolbar.openLockDialog();
+        },
+        "toolbar_button_link": function () {
+            return Toolbar.openLinkDialog();
+        },
+        "toolbar_button_chat": function () {
+            return BottomToolbar.toggleChat();
+        },
+        "toolbar_button_prezi": function () {
+            return Prezi.openPreziDialog();
+        },
+        "toolbar_button_etherpad": function () {
+            return Etherpad.toggleEtherpad(0);
+        },
+        "toolbar_button_desktopsharing": function () {
+            return DesktopStreaming.toggleScreenSharing();
+        },
+        "toolbar_button_fullScreen": function()
+        {
+            buttonClick("#fullScreen", "icon-full-screen icon-exit-full-screen");
+            return Toolbar.toggleFullScreen();
+        },
+        "toolbar_button_sip": function () {
+            return callSipButtonClicked();
+        },
+        "toolbar_button_hangup": function () {
+            return hangup();
+        }
+    }
+
+    my.sharedKey = '';
+    my.preMuted = false;
+
+
+    function setRecordingToken(token) {
+        recordingToken = token;
+    }
+
+    function callSipButtonClicked()
+    {
+        messageHandler.openTwoButtonDialog(null,
+                '<h2>Enter SIP number</h2>' +
+                '<input id="sipNumber" type="text"' +
+                ' value="' + config.defaultSipNumber + '" autofocus>',
+            false,
+            "Dial",
+            function (e, v, m, f) {
+                if (v) {
+                    var numberInput = document.getElementById('sipNumber');
+                    if (numberInput.value) {
+                        XMPPActivator.sipDial(
+                            numberInput.value, 'fromnumber', UIActivator.getUIService().getRoomName());
+                    }
+                }
+            },
+            function (event) {
+                document.getElementById('sipNumber').focus();
+            }
+        );
+    }
+
+
+    // Starts or stops the recording for the conference.
+    function toggleRecording() {
+        if(!XMPPActivator.isFocus())
+        {
+            console.log('non-focus: not enabling recording');
+            return;
+        }
+
+        XMPPActivator.setRecording(
+            recordingToken,
+            function (state, oldState) {
+                console.log("New recording state: ", state);
+                if (state == oldState) //failed to change, reset the token because it might have been wrong
+                {
+                    Toolbar.toggleRecordingButtonState();
+                    setRecordingToken(null);
+                }
+                else
+                {
+                    Toolbar.toggleRecordingButtonState();
+                }
+            },function() {
+                if (!recordingToken) {
+                    messageHandler.openTwoButtonDialog(null,
+                            '<h2>Enter recording token</h2>' +
+                            '<input id="recordingToken" type="text" placeholder="token" autofocus>',
+                        false,
+                        "Save",
+                        function (e, v, m, f) {
+                            if (v) {
+                                var token = document.getElementById('recordingToken');
+
+                                if (token.value) {
+                                    setRecordingToken(Util.escapeHtml(token.value));
+                                    toggleRecording();
+                                }
+                            }
+                        },
+                        function (event) {
+                            document.getElementById('recordingToken').focus();
+                        }
+                    );
+
+                }
+            }
+        );
+
+
+    }
+
+    function hangup() {
+        XMPPActivator.disposeConference(false, function () {
+            var buttons = {};
+            if(config.enableWelcomePage)
+            {
+                setTimeout(function()
+                {
+                    window.localStorage.welcomePageDisabled = false;
+                    window.location.pathname = "/";
+                }, 10000);
+
+            }
+
+            $.prompt("Session Terminated",
+                {
+                    title: "You hung up the call",
+                    persistent: true,
+                    buttons: {
+                        "Join again": true
+                    },
+                    closeText: '',
+                    submit: function(event, value, message, formVals)
+                    {
+                        window.location.reload();
+                        return false;
+                    }
+
+                }
+            );
+        }, true);
+
+
+    }
+
+    /**
+     * Sets the shared key.
+     */
+    my.setSharedKey = function(sKey) {
+        Toolbar.sharedKey = sKey;
+    }
+
+    /**
+     * Locks / unlocks the room.
+     */
+    function lockRoom(lock) {
+        var key = '';
+        if (lock)
+            key = Toolbar.sharedKey;
+
+        XMPPActivator.lockRoom(key, function () {
+            if (Toolbar.sharedKey) {
+                console.log('set room password');
+                Toolbar.lockLockButton();
+            }
+            else {
+                console.log('removed room password');
+                Toolbar.unlockLockButton();
+            }
+        }, function () {
+            Toolbar.setSharedKey('');
+        });
+
+    }
+
+    //sets onclick handlers
+    my.init = function (ui, xmpp) {
+        UIActivator = ui;
+        XMPPActivator = xmpp;
+        for(var k in buttonHandlers)
+            $("#" + k).click(buttonHandlers[k]);
+    };
+
+
+    my.changeToolbarVideoIcon = function (isMuted) {
+        if (isMuted) {
+            $('#video').removeClass("icon-camera");
+            $('#video').addClass("icon-camera icon-camera-disabled");
+        } else {
+            $('#video').removeClass("icon-camera icon-camera-disabled");
+            $('#video').addClass("icon-camera");
+        }
+    }
+
+    my.toggleVideo = function () {
+        buttonClick("#video", "icon-camera icon-camera-disabled");
+
+        XMPPActivator.toggleVideoMute(
+            function (isMuted) {
+                Toolbar.changeToolbarVideoIcon(isMuted);
+
+            }
+        );
+    }
+
+    /**
+     * Mutes / unmutes audio for the local participant.
+     */
+    my.toggleAudio = function () {
+        var RTCActivator = require("../../RTC/RTCActivator");
+        if (!(RTCActivator.getRTCService().localAudio)) {
+            Toolbar.preMuted = true;
+            // We still click the button.
+            buttonClick("#mute", "icon-microphone icon-mic-disabled");
+            return;
+        }
+
+        XMPPActivator.toggleAudioMute(function () {
+            buttonClick("#mute", "icon-microphone icon-mic-disabled");
+        });
+
+    }
+
 
     /**
      * Disables and enables some of the buttons.
@@ -15,8 +269,8 @@ var Toolbar = (function (my) {
      */
     my.openLockDialog = function () {
         // Only the focus is able to set a shared key.
-        if (focus === null) {
-            if (sharedKey) {
+        if (!XMPPActivator.isFocus()) {
+            if (Toolbar.sharedKey) {
                 messageHandler.openMessageDialog(null,
                         "This conversation is currently protected by" +
                         " a password. Only the owner of the conference" +
@@ -32,14 +286,14 @@ var Toolbar = (function (my) {
                     "Password");
             }
         } else {
-            if (sharedKey) {
+            if (Toolbar.sharedKey) {
                 messageHandler.openTwoButtonDialog(null,
                     "Are you sure you would like to remove your password?",
                     false,
                     "Remove",
                     function (e, v) {
                         if (v) {
-                            setSharedKey('');
+                            Toolbar.setSharedKey('');
                             lockRoom(false);
                         }
                     });
@@ -55,7 +309,7 @@ var Toolbar = (function (my) {
                             var lockKey = document.getElementById('lockKey');
 
                             if (lockKey.value) {
-                                setSharedKey(Util.escapeHtml(lockKey.value));
+                                Toolbar.setSharedKey(Util.escapeHtml(lockKey.value));
                                 lockRoom(true);
                             }
                         }
@@ -67,6 +321,21 @@ var Toolbar = (function (my) {
             }
         }
     };
+
+    /**
+     * Updates the room invite url.
+     */
+    my.updateRoomUrl = function(newRoomUrl) {
+        roomUrl = newRoomUrl;
+
+        // If the invite dialog has been already opened we update the information.
+        var inviteLink = document.getElementById('inviteLinkRef');
+        if (inviteLink) {
+            inviteLink.value = roomUrl;
+            inviteLink.select();
+            document.getElementById('jqi_state0_buttonInvite').disabled = false;
+        }
+    }
 
     /**
      * Opens the invite link dialog.
@@ -110,11 +379,11 @@ var Toolbar = (function (my) {
             return;
 
         var sharedKeyText = "";
-        if (sharedKey && sharedKey.length > 0) {
+        if (Toolbar.sharedKey && Toolbar.sharedKey.length > 0) {
             sharedKeyText =
                 "This conference is password protected. Please use the " +
                 "following pin when joining:%0D%0A%0D%0A" +
-                sharedKey + "%0D%0A%0D%0A";
+                Toolbar.sharedKey + "%0D%0A%0D%0A";
         }
 
         var conferenceName = roomUrl.substring(roomUrl.lastIndexOf('/') + 1);

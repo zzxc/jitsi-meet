@@ -1,3 +1,6 @@
+var VideoLayout = require("./VideoLayout.js");
+var XMPPActivator = require("../xmpp/XMPPActivator");
+
 /**
  * Contact list.
  */
@@ -49,7 +52,7 @@ var ContactList = (function (my) {
                 var videoContainer = $("#participant_" + jid);
                 if (videoContainer.length > 0) {
                     videoContainer.click();
-                } else if (jid == Strophe.getResourceFromJid(connection.emuc.myroomjid)) {
+                } else if (jid == Strophe.getResourceFromJid(XMPPActivator.getMyJID())) {
                     $("#localVideoContainer").click();
                 }
             }
@@ -60,7 +63,7 @@ var ContactList = (function (my) {
 
         var clElement = contactlist.get(0);
 
-        if (resourceJid === Strophe.getResourceFromJid(connection.emuc.myroomjid)
+        if (resourceJid === Strophe.getResourceFromJid(XMPPActivator.getMyJID())
             && $('#contactlist>ul .title')[0].nextSibling.nextSibling)
         {
             clElement.insertBefore(newContact,
@@ -99,89 +102,28 @@ var ContactList = (function (my) {
         var videospace = $('#videospace');
 
         var chatSize = (ContactList.isVisible()) ? [0, 0] : Chat.getChatSize();
-        var videospaceWidth = window.innerWidth - chatSize[0];
-        var videospaceHeight = window.innerHeight;
-        var videoSize
-            = getVideoSize(null, null, videospaceWidth, videospaceHeight);
-        var videoWidth = videoSize[0];
-        var videoHeight = videoSize[1];
-        var videoPosition = getVideoPosition(videoWidth,
-                                             videoHeight,
-                                             videospaceWidth,
-                                             videospaceHeight);
-        var horizontalIndent = videoPosition[0];
-        var verticalIndent = videoPosition[1];
+        VideoLayout.resizeVideoSpace(contactlist, chatSize, ContactList.isVisible());
 
-        var thumbnailSize = VideoLayout.calculateThumbnailSize(videospaceWidth);
-        var thumbnailsWidth = thumbnailSize[0];
-        var thumbnailsHeight = thumbnailSize[1];
-        var completeFunction = ContactList.isVisible() ?
-            function() {} : function () { contactlist.trigger('shown');};
-
-        videospace.animate({right: chatSize[0],
-                            width: videospaceWidth,
-                            height: videospaceHeight},
-                            {queue: false,
-                            duration: 500,
-                            complete: completeFunction
-                            });
-
-        $('#remoteVideos').animate({height: thumbnailsHeight},
-                                    {queue: false,
-                                    duration: 500});
-
-        $('#remoteVideos>span').animate({height: thumbnailsHeight,
-                                        width: thumbnailsWidth},
-                                        {queue: false,
-                                        duration: 500,
-                                        complete: function() {
-                                            $(document).trigger(
-                                                    "remotevideo.resized",
-                                                    [thumbnailsWidth,
-                                                     thumbnailsHeight]);
-                                        }});
-
-        $('#largeVideoContainer').animate({ width: videospaceWidth,
-                                            height: videospaceHeight},
-                                            {queue: false,
-                                             duration: 500
-                                            });
-
-        $('#largeVideo').animate({  width: videoWidth,
-                                    height: videoHeight,
-                                    top: verticalIndent,
-                                    bottom: verticalIndent,
-                                    left: horizontalIndent,
-                                    right: horizontalIndent},
-                                    {   queue: false,
-                                        duration: 500
-                                    });
-
-        if (ContactList.isVisible()) {
-            $("#toast-container").animate({right: '12px'},
-                {queue: false,
-                    duration: 500});
-            $('#contactlist').hide("slide", { direction: "right",
-                                            queue: false,
-                                            duration: 500});
-        } else {
-            // Undock the toolbar when the chat is shown and if we're in a 
-            // video mode.
-            if (VideoLayout.isLargeVideoVisible())
-                ToolbarToggler.dockToolbar(false);
-
-
-            $("#toast-container").animate({right: '212px'},
-                {queue: false,
-                    duration: 500});
-            $('#contactlist').show("slide", { direction: "right",
-                                            queue: false,
-                                            duration: 500});
-
+        if (!ContactList.isVisible()) {
             //stop the glowing of the contact list icon
             setVisualNotification(false);
         }
     };
+
+    /**
+     * Returns the size of the chat.
+     */
+    my.getContactListSize = function () {
+        var availableHeight = window.innerHeight;
+        var availableWidth = window.innerWidth;
+
+        var chatWidth = 200;
+        if (availableWidth * 0.2 < 200)
+            chatWidth = availableWidth * 0.2;
+
+        return [chatWidth, availableHeight];
+    };
+
 
     /**
      * Updates the number of participants in the contact list button and sets
@@ -256,18 +198,18 @@ var ContactList = (function (my) {
     /**
      * Indicates that the display name has changed.
      */
-    $(document).bind(   'displaynamechanged',
-                        function (event, peerJid, displayName) {
-        if (peerJid === 'localVideoContainer')
-            peerJid = connection.emuc.myroomjid;
+    my.onDisplayNameChanged =
+        function (peerJid, displayName) {
+            if (peerJid === 'localVideoContainer')
+                peerJid = XMPPActivator.getMyJID();
 
-        var resourceJid = Strophe.getResourceFromJid(peerJid);
+            var resourceJid = Strophe.getResourceFromJid(peerJid);
 
-        var contactName = $('#contactlist #' + resourceJid + '>p');
+            var contactName = $('#contactlist #' + resourceJid + '>p');
 
-        if (contactName && displayName && displayName.length > 0)
-            contactName.text(displayName);
-    });
+            if (contactName && displayName && displayName.length > 0)
+                contactName.text(displayName);
+        };
 
     my.setClickable = function(resourceJid, isClickable) {
         var contact = $('#contactlist>ul>li[id="' + resourceJid + '"]');
@@ -280,3 +222,5 @@ var ContactList = (function (my) {
 
     return my;
 }(ContactList || {}));
+
+module.exports = ContactList
