@@ -2,7 +2,7 @@ var AudioLevels = require("./audiolevels/AudioLevels.js");
 var Etherpad = require("./etherpad/Etherpad.js");
 var VideoLayout = require("./VideoLayout.js");
 var Toolbar = require("./toolbars/toolbar.js");
-var ToolbarToggler = require("./toolbars/toolbar_toggler.js");
+var ToolbarToggler = require("./toolbars/toolbartoggler.js");
 var ContactList = require("./ContactList");
 var EventEmitter = require("events");
 

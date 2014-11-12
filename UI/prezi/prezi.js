@@ -1,6 +1,6 @@
 var PreziPlayer = require("./PreziPlayer.js");
 var UIUtil = require("../UIUtil.js");
-var ToolbarToggler = require("../toolbars/toolbar_toggler");
+var ToolbarToggler = require("../toolbars/toolbartoggler");
 var XMPPActivator = require("../../xmpp/XMPPActivator");
 
 var Prezi = (function (my) {
@@ -102,7 +102,7 @@ var Prezi = (function (my) {
                             if (preziUrl.value)
                             {
                                 var urlValue
-                                    = encodeURI(Util.escapeHtml(preziUrl.value));
+                                    = encodeURI(require("../../util/util").escapeHtml(preziUrl.value));
 
                                 if (urlValue.indexOf('http://prezi.com/') != 0
                                     && urlValue.indexOf('https://prezi.com/') != 0)

@@ -244,3 +244,5 @@ SessionBase.prototype.toggleVideoMute = function (callback) {
         this.peerconnection.hardMuteVideo(!ismuted);
     this.modifySources(callback(!ismuted));
 };
+
+module.exports=SessionBase;

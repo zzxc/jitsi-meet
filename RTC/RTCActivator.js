@@ -18,7 +18,7 @@ var RTCActivator = (function()
     }
 
     function onConferenceCreated(event) {
-        var DataChannels = require("./data_channels");
+        var DataChannels = require("./datachannels");
         DataChannels.bindDataChannelListener(event.peerconnection);
     }
 

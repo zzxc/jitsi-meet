@@ -7,6 +7,9 @@ var dep = {
         return require("../UIActivator");
     }
 };
+
+var Util = require("../../util/util");
+
 /**
  * Chat related user interface.
  */

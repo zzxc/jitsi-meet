@@ -3,6 +3,7 @@ var Prezi = require("./../prezi/prezi");
 var Etherpad = require("./../etherpad/Etherpad");
 var buttonClick = require("../UIUtil").buttonClick;
 var DesktopStreaming = require("../../desktopsharing");
+var Util = require("../../util/util");
 
 
 var Toolbar = (function (my) {
@@ -533,3 +534,6 @@ var Toolbar = (function (my) {
 
     return my;
 }(Toolbar || {}));
+
+
+module.exports = Toolbar;

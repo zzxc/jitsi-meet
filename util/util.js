@@ -75,3 +75,5 @@ var Util = (function (my) {
 
     return my;
 }(Util || {}));
+
+module.exports = Util;

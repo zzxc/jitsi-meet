@@ -6,9 +6,9 @@ var Etherpad = require("./etherpad/Etherpad.js");
 var Chat = require("./chat/Chat.js");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
 var Toolbar = require("./toolbars/toolbar");
-var ToolbarToggler = require("./toolbars/toolbar_toggler");
+var ToolbarToggler = require("./toolbars/toolbartoggler");
 var BottomToolbar = require("./toolbars/BottomToolbar");
-var KeyboardShortcut = require("./keyboard_shortcuts");
+var KeyboardShortcut = require("./keyboardshortcuts");
 var XMPPEvents = require("../service/xmpp/XMPPEvents");
 
 var UIActivator = function()
@@ -76,7 +76,7 @@ var UIActivator = function()
     }
 
     function setupToolbars() {
-        Toolbar.init(UIActivator, XMPPActivator);
+        Toolbar.init(UIActivatorProto, XMPPActivator);
         BottomToolbar.init();
     }
 
@@ -102,7 +102,7 @@ var UIActivator = function()
         setupToolbars();
         setupChat();
 
-        document.title = brand.appName;
+        document.title = interfaceConfig.appName;
 
         $("#downloadlog").click(function (event) {
             dump(event.target);
@@ -129,6 +129,29 @@ var UIActivator = function()
                 $('#settings').hide();
                 init();
             };
+        }
+
+        toastr.options = {
+            "closeButton": true,
+            "debug": false,
+            "positionClass": "notification-bottom-right",
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "2000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut",
+            "reposition": function() {
+                if(Chat.isVisible() || ContactList.isVisible()) {
+                    $("#toast-container").addClass("toast-bottom-right-center");
+                } else {
+                    $("#toast-container").removeClass("toast-bottom-right-center");
+                }
+            },
+            "newestOnTop": false
         }
 
     }

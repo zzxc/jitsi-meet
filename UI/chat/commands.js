@@ -81,7 +81,7 @@ var CommandsProcessor = (function()
      */
     var processTopic = function(commandArguments)
     {
-        var topic = Util.escapeHtml(commandArguments);
+        var topic = require("../../util/util").escapeHtml(commandArguments);
 
     }
 

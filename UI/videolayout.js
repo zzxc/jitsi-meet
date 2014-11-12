@@ -5,8 +5,10 @@ var dep =
     "Chat": function(){ return require("./chat/Chat")},
     "UIUtil": function(){ return require("./UIUtil.js")},
     "ContactList": function(){ return require("./ContactList")},
-    "Toolbar": function(){ return require("./toolbars/toolbar_toggler")}
+    "Toolbar": function(){ return require("./toolbars/toolbartoggler")}
 }
+var Util = require("../util/util");
+var JitsiPopover = require("./JitsiPopover");
 
 var VideoLayout = (function (my) {
     var currentDominantSpeaker = null;
@@ -811,13 +813,14 @@ var VideoLayout = (function (my) {
     };
 
     my.inputDisplayNameHandler = function (name) {
+        var nickname = dep.UIActivator().getUIService().getNickname();
         if (nickname !== name) {
-            nickname = name;
+            dep.UIActivator().getUIService().setNickname(name);
+            nickname  = name;
             window.localStorage.displayname = nickname;
-            connection.emuc.addDisplayNameToPresence(nickname);
-            connection.emuc.sendPresence();
+            dep.UIActivator().getXMPPActivator().addToPresence("displayName", nickname);
 
-            Chat.setChatConversationMode(true);
+            dep.Chat().setChatConversationMode(true);
         }
 
         if (!$('#localDisplayName').is(":visible")) {
@@ -1547,11 +1550,11 @@ var VideoLayout = (function (my) {
         if(APIConnector.isEnabled() && APIConnector.isEventEnabled("displayNameChange"))
         {
             if(jid === 'localVideoContainer')
-                jid = connection.emuc.myroomjid;
+                jid = dep.UIActivator().getXMPPActivator().getMyJID();
             if(!name || name != displayName)
                 APIConnector.triggerEvent("displayNameChange",{jid: jid, displayname: displayName});
         }
-    });
+    };
 
     /**
      * On dominant speaker changed event.
@@ -1913,7 +1916,7 @@ var VideoLayout = (function (my) {
 
                 var jid = ssrc2jid[primarySSRC];
                 var videoId;
-                if(jid == connection.emuc.myroomjid)
+                if(jid == dep.UIActivator().getXMPPActivator().getMyJID())
                 {
                     videoId = "localVideoContainer";
                 }
@@ -2291,8 +2294,8 @@ var VideoLayout = (function (my) {
         if(object.resolution !== null)
         {
             resolution = object.resolution;
-            object.resolution = resolution[connection.emuc.myroomjid];
-            delete resolution[connection.emuc.myroomjid];
+            object.resolution = resolution[dep.UIActivator().getXMPPActivator().getMyJID()];
+            delete resolution[dep.UIActivator().getXMPPActivator().getMyJID()];
         }
         updateStatsIndicator("localVideoContainer", percent, object);
         for(var jid in resolution)

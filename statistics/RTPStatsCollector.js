@@ -501,7 +501,7 @@ StatsCollector.prototype.processAudioLevelReport = function ()
             // but it seems to vary between 0 and around 32k.
             audioLevel = audioLevel / 32767;
             jidStats.setSsrcAudioLevel(ssrc, audioLevel);
-            if(jid != connection.emuc.myroomjid)
+            if(jid != require("../xmpp/XMPPActivator").getMyJID())
                 this.audioLevelsUpdateCallback(jid, audioLevel);
         }
 

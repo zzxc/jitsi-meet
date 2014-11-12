@@ -33,7 +33,7 @@ var XMPPActivator = function()
 
     function setupStrophePlugins()
     {
-        require("./muc")(eventEmitter, XMPPActivator);
+        require("./strophe.emuc")(eventEmitter, XMPPActivator);
         require("./strophe.jingle")(eventEmitter, RTCActivator, XMPPActivator);
         require("./moderatemuc")(eventEmitter);
         require("./strophe.util")(eventEmitter);
@@ -241,7 +241,7 @@ var XMPPActivator = function()
     };
 
     XMPPActivatorProto.isFocus = function () {
-        return (connection.emuc.focus !== null);
+        return (connection && connection.emuc.focus !== null);
     }
 
     XMPPActivatorProto.setRecording = function (token, callback, tokenNullCallback) {
