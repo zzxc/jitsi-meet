@@ -9,6 +9,7 @@ var dep =
 }
 var Util = require("../util/util");
 var JitsiPopover = require("./JitsiPopover");
+var simulcast = require("../simulcast/SimulcastService");
 
 var VideoLayout = (function (my) {
     var currentDominantSpeaker = null;
@@ -190,13 +191,13 @@ var VideoLayout = (function (my) {
             largeVideoState.newSrc = newSrc;
             largeVideoState.isVisible = $('#largeVideo').is(':visible');
             largeVideoState.isDesktop = isVideoSrcDesktop(newSrc);
-            largeVideoState.userJid = getJidFromVideoSrc(newSrc);
+            largeVideoState.userJid = VideoLayout.getJidFromVideoSrc(newSrc);
 
             // Screen stream is already rotated
             largeVideoState.flipX = (newSrc === localVideoSrc) && flipXLocalVideo;
 
             var oldSrc = $('#largeVideo').attr('src');
-            largeVideoState.oldJid = getJidFromVideoSrc(oldSrc);
+            largeVideoState.oldJid = VideoLayout.getJidFromVideoSrc(oldSrc);
 
             var userChanged = false;
             if (largeVideoState.oldJid != largeVideoState.userJid) {
@@ -1667,7 +1668,6 @@ var VideoLayout = (function (my) {
         if (stream.id === 'mixedmslabel') return;
 
         if (selector[0].currentTime > 0) {
-            var simulcast = new Simulcast();
             var videoStream = simulcast.getReceivingVideoStream(stream);
             attachMediaStream(selector, videoStream); // FIXME: why do i have to do this for FF?
 
@@ -1677,6 +1677,7 @@ var VideoLayout = (function (my) {
                 videoSrcToSsrc[selector.attr('src')] = ssrc;
             } else {
                 console.warn("No ssrc given for video", selector);
+                messageHandler.showError('Warning', 'No ssrc was given for the video.');
             }
 
             videoActive(selector);
@@ -1827,6 +1828,48 @@ var VideoLayout = (function (my) {
 //        });
 //    });
 
+
+    $(document).bind('simulcastlayerschanging', function (event, endpointSimulcastLayers) {
+        endpointSimulcastLayers.forEach(function (esl) {
+            var primarySSRC = esl.simulcastLayer.primarySSRC;
+
+            // Get session and stream from primary ssrc.
+            var res = simulcast.getReceivingVideoStreamBySSRC(primarySSRC);
+            var sid = res.sid;
+            var electedStream = res.stream;
+
+            if (sid && electedStream) {
+                var msid = simulcast.getRemoteVideoStreamIdBySSRC(primarySSRC);
+
+                console.info([esl, primarySSRC, msid, sid, electedStream]);
+
+                var msidParts = msid.split(' ');
+                var selRemoteVideo = $(['#', 'remoteVideo_', sid, '_', msidParts[0]].join(''));
+
+                var preload = (dep.UIActivator().getXMPPActivator().getJIDFromSSRC(videoSrcToSsrc[selRemoteVideo.attr('src')])
+                    == dep.UIActivator().getXMPPActivator().getJIDFromSSRC(videoSrcToSsrc[largeVideoState.newSrc]));
+
+                if (preload) {
+                    if (largeVideoState.preload)
+                    {
+                        $(largeVideoState.preload).remove();
+                    }
+                    console.info('Preloading remote video');
+                    largeVideoState.preload = $('<video autoplay></video>');
+                    // ssrcs are unique in an rtp session
+                    largeVideoState.preload_ssrc = primarySSRC;
+
+                    var electedStreamUrl = webkitURL.createObjectURL(electedStream);
+                    largeVideoState.preload
+                        .attr('src', electedStreamUrl);
+                }
+
+            } else {
+                console.error('Could not find a stream or a session.', sid, electedStream);
+            }
+        });
+    });
+
     /**
      * On simulcast layers changed event.
      */
@@ -1834,57 +1877,23 @@ var VideoLayout = (function (my) {
         endpointSimulcastLayers.forEach(function (esl) {
 
             var primarySSRC = esl.simulcastLayer.primarySSRC;
-//            var msid = simulcast.getRemoteVideoStreamIdBySSRC(primarySSRC);
-//
-//            // Get session and stream from msid.
-//            var session, electedStream;
-//            var i, j, k;
-//
-//
-//            var remoteStreams = dep.UIActivator().getRTCService().remoteStreams;
-//            var remoteStream;
-//
-//            if (remoteStreams) {
-//                for (j = 0; j < remoteStreams.length; j++) {
-//                    remoteStream = remoteStreams[j];
-//
-//                    if (electedStream) {
-//                        // stream found, stop.
-//                        break;
-//                    }
-//                    var tracks = remoteStream.getOriginalStream().getVideoTracks();
-//                    if (tracks) {
-//                        for (k = 0; k < tracks.length; k++) {
-//                            var track = tracks[k];
-//
-//                            if (msid === [remoteStream.id, track.id].join(' ')) {
-//                                electedStream = new webkitMediaStream([track]);
-//                                // stream found, stop.
-//                                break;
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//
-//            if (electedStream) {
 
             // Get session and stream from primary ssrc.
             var res = simulcast.getReceivingVideoStreamBySSRC(primarySSRC);
-            var session = res.session;
+            var sid = res.sid;
             var electedStream = res.stream;
 
-            if (session && electedStream) {
+            if (sid && electedStream) {
                 var msid = simulcast.getRemoteVideoStreamIdBySSRC(primarySSRC);
 
                 console.info('Switching simulcast substream.');
 
                 var msidParts = msid.split(' ');
-                var selRemoteVideo = $(['#', 'remoteVideo_', remoteStream.sid, '_', msidParts[0]].join(''));
+                var selRemoteVideo = $(['#', 'remoteVideo_', sid, '_', msidParts[0]].join(''));
 
                 var updateLargeVideo = (dep.UIActivator().getXMPPActivator().getJIDFromSSRC(videoSrcToSsrc[selRemoteVideo.attr('src')])
                     == dep.UIActivator().getXMPPActivator().getJIDFromSSRC(videoSrcToSsrc[largeVideoNewSrc]));
-                var updateFocusedVideoSrc = (selRemoteVideo.attr('src') == focusedVideoSrc);
+                var updateFocusedVideoSrc = (selRemoteVideo.attr('src') == VideoLayout.focusedVideoSrc);
 
                 var electedStreamUrl;
                 if (largeVideoState.preload_ssrc == primarySSRC)
@@ -1911,10 +1920,10 @@ var VideoLayout = (function (my) {
                 }
 
                 if (updateFocusedVideoSrc) {
-                    focusedVideoSrc = electedStreamUrl;
+                    VideoLayout.focusedVideoSrc = electedStreamUrl;
                 }
 
-                var jid = ssrc2jid[primarySSRC];
+                var jid = dep.UIActivator().getXMPPActivator().getJIDFromSSRC(primarySSRC);
                 var videoId;
                 if(jid == dep.UIActivator().getXMPPActivator().getMyJID())
                 {
@@ -1929,7 +1938,7 @@ var VideoLayout = (function (my) {
                     connectionIndicator.updatePopoverData();
 
             } else {
-                console.error('Could not find a stream or a session.', session, electedStream);
+                console.error('Could not find a stream or a session.', electedStream);
             }
         });
     });

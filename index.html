@@ -11,7 +11,6 @@
     <meta itemprop="image" content="/images/jitsilogo.png"/>
     <script src="libs/jquery-2.1.1.min.js"></script>
     <script src="config.js?v=5"></script><!-- adapt to your needs, i.e. set hosts and bosh path -->
-    <script src="simulcast.js?v=1"></script><!-- simulcast handling -->
     <script src="libs/strophe/strophe.min.js?v=1"></script>
     <script src="libs/jquery-ui.js"></script>
     <script src="libs/tooltip.js?v=1"></script><!-- bootstrap tooltip lib -->
@@ -153,7 +152,9 @@
                     <div class="header_button_separator"></div>
                     <span class="toolbar_span">
                         <a class="button" data-toggle="popover" id="toolbar_button_chat" data-placement="bottom" data-content="Open / close chat">
-                            <i id="chatButton" class="icon-chat"></i>
+                            <i id="chatButton" class="icon-chat">
+                                <span id="unreadMessages"></span>
+                            </i>
                         </a>
                     </span>
                     <div class="header_button_separator"></div>
@@ -231,7 +232,9 @@
             <span id="bottomToolbar">
                 <span class="bottomToolbar_span">
                     <a class="bottomToolbarButton" data-container="body" data-toggle="popover" id="bottomtoolbar_button_chat" data-placement="top" data-content="Open / close chat">
-                        <i id="chatBottomButton" class="icon-chat-simple"></i>
+                        <i id="chatBottomButton" class="icon-chat-simple">
+                            <span id="bottomUnreadMessages"></span>
+                        </i>
                     </a>
                 </span>
                 <div class="bottom_button_separator"></div>

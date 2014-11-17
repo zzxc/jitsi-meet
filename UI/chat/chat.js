@@ -9,6 +9,7 @@ var dep = {
 };
 
 var Util = require("../../util/util");
+var CommandsProcessor = require("./commands");
 
 /**
  * Chat related user interface.

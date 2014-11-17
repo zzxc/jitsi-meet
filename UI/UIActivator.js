@@ -41,7 +41,7 @@ var UIActivator = function()
     {
         $("#toolbar_etherpad").click(function () {
             Etherpad.toggleEtherpad(0);
-        })
+        });
     }
 
     function setupAudioLevels() {

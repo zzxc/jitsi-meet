@@ -1,4 +1,5 @@
 var SDP = require("./strophe.jingle.sdp");
+var simulcast = require("../simulcast/SimulcastService");
 
 function TraceablePeerConnection(ice_config, constraints) {
     var self = this;

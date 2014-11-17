@@ -1,3 +1,7 @@
+var SDP = require("./strophe.jingle.sdp");
+var RTCActivator = require("../RTC/RTCActivator");
+var XMPPActivator = require("./XMPPActivator");
+
 /**
  * Base class for ColibriFocus and JingleSession.
  * @param connection Strophe connection object
@@ -13,14 +17,49 @@ function SessionBase(connection, sid){
 
 SessionBase.prototype.modifySources = function (successCallback) {
     var self = this;
-    if(this.peerconnection)
-        this.peerconnection.modifySources(function(){
-            $(document).trigger('setLocalDescription.jingle', [self.sid]);
-            if(successCallback) {
-                successCallback();
-            }
-        });
+    this.peerconnection.modifySources(function(){
+        self.setLocalDescription(self.sid);
+        if(successCallback) {
+            successCallback();
+        }
+    });
 };
+
+SessionBase.prototype.setLocalDescription = function (sid) {
+    // put our ssrcs into presence so other clients can identify our stream
+    var sess = this.connection.jingle.sessions[sid];
+    var newssrcs = [];
+    var media = require("../simulcast/SimulcastService").parseMedia(
+        sess.peerconnection.localDescription);
+    media.forEach(function (media) {
+
+        // TODO(gp) maybe exclude FID streams?
+        Object.keys(media.sources).forEach(function(ssrc) {
+            newssrcs.push({
+                'ssrc': ssrc,
+                'type': media.type,
+                'direction': media.direction
+            });
+        });
+    });
+    console.log('new ssrcs', newssrcs);
+
+    // Have to clear presence map to get rid of removed streams
+    this.connection.emuc.clearPresenceMedia();
+
+    if (newssrcs.length > 0) {
+        for (var i = 1; i <= newssrcs.length; i ++) {
+            // Change video type to screen
+            if (newssrcs[i-1].type === 'video' && require("../desktopsharing").isUsingScreenStream()) {
+                newssrcs[i-1].type = 'screen';
+            }
+            this.connection.emuc.addMediaToPresence(i,
+                newssrcs[i-1].type, newssrcs[i-1].ssrc, newssrcs[i-1].direction);
+        }
+
+        this.connection.emuc.sendPresence();
+    }
+}
 
 SessionBase.prototype.addSource = function (elem, fromJid) {
 
@@ -85,12 +124,6 @@ SessionBase.prototype.switchStreams = function (new_stream, oldStream, success_c
         self.peerconnection.removeStream(oldStream);
         self.peerconnection.addStream(new_stream);
     }
-
-    self.connection.jingle.localVideo = new_stream;
-
-    self.connection.jingle.localStreams = [];
-    self.connection.jingle.localStreams.push(self.connection.jingle.localAudio);
-    self.connection.jingle.localStreams.push(self.connection.jingle.localVideo);
 
     // Conference is not active
     if(!oldSdp || !self.peerconnection) {
@@ -230,19 +263,250 @@ SessionBase.prototype.sendSSRCUpdateIq = function(sdpMediaSsrcs, sid, initiator,
 // SDP-based mute by going recvonly/sendrecv
 // FIXME: should probably black out the screen as well
 SessionBase.prototype.toggleVideoMute = function (callback) {
-
-    var ismuted = false;
-    var localVideo = connection.jingle.localVideo;
-    for (var idx = 0; idx < localVideo.getVideoTracks().length; idx++) {
-        ismuted = !localVideo.getVideoTracks()[idx].enabled;
-    }
-    for (var idx = 0; idx < localVideo.getVideoTracks().length; idx++) {
-        localVideo.getVideoTracks()[idx].enabled = !localVideo.getVideoTracks()[idx].enabled;
-    }
-
-    if(this.peerconnection)
-        this.peerconnection.hardMuteVideo(!ismuted);
-    this.modifySources(callback(!ismuted));
+    var stream = RTCActivator.getRTCService().localAudio;
+    if (!stream)
+        return;
+    var ismuted = stream.mute();
+    this.peerconnection.hardMuteVideo(ismuted);
+    var self = this;
+    this.modifySources(function () {
+        self.connection.emuc.addVideoInfoToPresence(ismuted);
+        self.connection.emuc.sendPresence();
+        return callback(ismuted);
+    }());
 };
+
+SessionBase.prototype.toggleAudioMute = function (callback) {
+    var stream = RTCActivator.getRTCService().localAudio;
+    if (!stream)
+        return;
+    var audioEnabled = stream.mute();
+    // isMuted is the opposite of audioEnabled
+    this.connection.emuc.addAudioInfoToPresence(audioEnabled);
+    this.connection.emuc.sendPresence();
+    callback(audioEnabled);
+}
+
+
+SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
+    switch (session.peerconnection.iceConnectionState) {
+        case 'checking':
+            session.timeChecking = (new Date()).getTime();
+            session.firstconnect = true;
+            break;
+        case 'completed': // on caller side
+        case 'connected':
+            if (session.firstconnect) {
+                session.firstconnect = false;
+                var metadata = {};
+                metadata.setupTime = (new Date()).getTime() - session.timeChecking;
+                session.peerconnection.getStats(function (res) {
+                    res.result().forEach(function (report) {
+                        if (report.type == 'googCandidatePair' && report.stat('googActiveConnection') == 'true') {
+                            metadata.localCandidateType = report.stat('googLocalCandidateType');
+                            metadata.remoteCandidateType = report.stat('googRemoteCandidateType');
+
+                            // log pair as well so we can get nice pie charts
+                            metadata.candidatePair = report.stat('googLocalCandidateType') + ';' + report.stat('googRemoteCandidateType');
+
+                            if (report.stat('googRemoteAddress').indexOf('[') === 0) {
+                                metadata.ipv6 = true;
+                            }
+                        }
+                    });
+//                    trackUsage('iceConnected', metadata);
+                    require("../util/tracking.js")('iceConnected', metadata);
+                });
+            }
+            break;
+    }
+
+    function waitForPresence(data, sid) {
+        var sess = this.connection.jingle.sessions[sid];
+
+        var thessrc;
+        // look up an associated JID for a stream id
+        if (data.stream.id.indexOf('mixedmslabel') === -1) {
+            // look only at a=ssrc: and _not_ at a=ssrc-group: lines
+            var ssrclines
+                = SDPUtil.find_lines(sess.peerconnection.remoteDescription.sdp, 'a=ssrc:');
+            ssrclines = ssrclines.filter(function (line) {
+                // NOTE(gp) previously we filtered on the mslabel, but that property
+                // is not always present.
+                // return line.indexOf('mslabel:' + data.stream.label) !== -1;
+                return line.indexOf('msid:' + data.stream.id) !== -1;
+            });
+            if (ssrclines.length) {
+                thessrc = ssrclines[0].substring(7).split(' ')[0];
+
+                // We signal our streams (through Jingle to the focus) before we set
+                // our presence (through which peers associate remote streams to
+                // jids). So, it might arrive that a remote stream is added but
+                // ssrc2jid is not yet updated and thus data.peerjid cannot be
+                // successfully set. Here we wait for up to a second for the
+                // presence to arrive.
+
+                if (!XMPPActivator.getJIDFromSSRC(thessrc)) {
+                    // TODO(gp) limit wait duration to 1 sec.
+                    setTimeout(function(d, s) {
+                        return function() {
+                            waitForPresence(d, s);
+                        }
+                    }(data, sid), 250);
+                    return;
+                }
+
+                // ok to overwrite the one from focus? might save work in colibri.js
+                console.log('associated jid', XMPPActivator.getJIDFromSSRC(thessrc), data.peerjid);
+                if (XMPPActivator.getJIDFromSSRC(thessrc)) {
+                    data.peerjid = XMPPActivator.getJIDFromSSRC(thessrc);
+                }
+            }
+        }
+
+        var isVideo = data.stream.getVideoTracks().length > 0;
+
+        RTCActivator.getRTCService().createRemoteStream(data, sid, thessrc);
+
+        // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
+        if (isVideo &&
+            data.peerjid && sess.peerjid === data.peerjid &&
+            data.stream.getVideoTracks().length === 0 &&
+            RTCActivator.getRTCService().localVideo.getVideoTracks().length > 0) {
+            //
+            window.setTimeout(function () {
+                sendKeyframe(sess.peerconnection);
+            }, 3000);
+        }
+    };
+
+// an attempt to work around https://github.com/jitsi/jitmeet/issues/32
+    function sendKeyframe(pc) {
+        console.log('sendkeyframe', pc.iceConnectionState);
+        if (pc.iceConnectionState !== 'connected') return; // safe...
+        pc.setRemoteDescription(
+            pc.remoteDescription,
+            function () {
+                pc.createAnswer(
+                    function (modifiedAnswer) {
+                        pc.setLocalDescription(
+                            modifiedAnswer,
+                            function () {
+                                // noop
+                            },
+                            function (error) {
+                                console.log('triggerKeyframe setLocalDescription failed', error);
+                                messageHandler.showError();
+                            }
+                        );
+                    },
+                    function (error) {
+                        console.log('triggerKeyframe createAnswer failed', error);
+                        messageHandler.showError();
+                    }
+                );
+            },
+            function (error) {
+                console.log('triggerKeyframe setRemoteDescription failed', error);
+                messageHandler.showError();
+            }
+        );
+    }
+}
+
+
+SessionBase.prototype.waitForPresence = function (data, sid) {
+    var sess = this.connection.jingle.sessions[sid];
+
+    var thessrc;
+    // look up an associated JID for a stream id
+    if (data.stream.id.indexOf('mixedmslabel') === -1) {
+        // look only at a=ssrc: and _not_ at a=ssrc-group: lines
+        var ssrclines
+            = SDPUtil.find_lines(sess.peerconnection.remoteDescription.sdp, 'a=ssrc:');
+        ssrclines = ssrclines.filter(function (line) {
+            // NOTE(gp) previously we filtered on the mslabel, but that property
+            // is not always present.
+            // return line.indexOf('mslabel:' + data.stream.label) !== -1;
+            return line.indexOf('msid:' + data.stream.id) !== -1;
+        });
+        if (ssrclines.length) {
+            thessrc = ssrclines[0].substring(7).split(' ')[0];
+
+            // We signal our streams (through Jingle to the focus) before we set
+            // our presence (through which peers associate remote streams to
+            // jids). So, it might arrive that a remote stream is added but
+            // ssrc2jid is not yet updated and thus data.peerjid cannot be
+            // successfully set. Here we wait for up to a second for the
+            // presence to arrive.
+
+            if (!XMPPActivator.getJIDFromSSRC(thessrc)) {
+                // TODO(gp) limit wait duration to 1 sec.
+                setTimeout(function(d, s) {
+                    return function() {
+                        waitForPresence(d, s);
+                    }
+                }(data, sid), 250);
+                return;
+            }
+
+            // ok to overwrite the one from focus? might save work in colibri.js
+            console.log('associated jid', XMPPActivator.getJIDFromSSRC(thessrc), data.peerjid);
+            if (XMPPActivator.getJIDFromSSRC(thessrc)) {
+                data.peerjid = XMPPActivator.getJIDFromSSRC(thessrc);
+            }
+        }
+    }
+
+    var isVideo = data.stream.getVideoTracks().length > 0;
+
+
+    // TODO this must be done with listeners
+    RTCActivator.getRTCService().createRemoteStream(data, sid, thessrc);
+
+    // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
+    if (isVideo &&
+        data.peerjid && sess.peerjid === data.peerjid &&
+        data.stream.getVideoTracks().length === 0 &&
+        RTCActivator.getRTCService().localVideo.getVideoTracks().length > 0) {
+        //
+        window.setTimeout(function () {
+            sendKeyframe(sess.peerconnection);
+        }, 3000);
+    }
+}
+
+// an attempt to work around https://github.com/jitsi/jitmeet/issues/32
+function sendKeyframe(pc) {
+    console.log('sendkeyframe', pc.iceConnectionState);
+    if (pc.iceConnectionState !== 'connected') return; // safe...
+    pc.setRemoteDescription(
+        pc.remoteDescription,
+        function () {
+            pc.createAnswer(
+                function (modifiedAnswer) {
+                    pc.setLocalDescription(
+                        modifiedAnswer,
+                        function () {
+                            // noop
+                        },
+                        function (error) {
+                            console.log('triggerKeyframe setLocalDescription failed', error);
+                            messageHandler.showError();
+                        }
+                    );
+                },
+                function (error) {
+                    console.log('triggerKeyframe createAnswer failed', error);
+                    messageHandler.showError();
+                }
+            );
+        },
+        function (error) {
+            console.log('triggerKeyframe setRemoteDescription failed', error);
+            messageHandler.showError();
+        }
+    );
+}
 
 module.exports=SessionBase;

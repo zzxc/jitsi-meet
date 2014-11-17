@@ -186,7 +186,7 @@ RTC.prototype.getUserMediaWithConstraints
 
             // We currently do not support FF, as it doesn't have multistream support.
             && !isFF) {
-            var simulcast = new Simulcast();
+            var simulcast = require("../simulcast/SimulcastService");
             simulcast.getUserMedia(constraints, function (stream) {
                     console.log('onUserMediaSuccess');
                     success_callback(stream);

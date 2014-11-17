@@ -96,3 +96,6 @@ var CommandsProcessor = (function()
 
     return CommandsPrototype;
 })();
+
+
+module.exports = CommandsProcessor;

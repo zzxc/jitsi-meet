@@ -13,7 +13,7 @@ var RTCService = function()
         this.stream = stream;
         this.eventEmitter = eventEmitter;
         this.type = type;
-        eventEmitter.emit(StreamEventTypes.EVENT_TYPE_LOCAL_CREATED, this);
+
         var self = this;
         this.stream.onended = function()
         {
@@ -103,6 +103,7 @@ var RTCService = function()
         {
             this.localVideo = localStream;
         }
+        eventEmitter.emit(StreamEventTypes.EVENT_TYPE_LOCAL_CREATED, localStream);
         return localStream;
     };
     

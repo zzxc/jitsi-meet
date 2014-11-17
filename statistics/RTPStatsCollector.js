@@ -115,7 +115,7 @@ PeerStats.transport = [];
  * called on stats update.
  * @constructor
  */
-function StatsCollector(peerconnection, audioLevelsInterval, statsInterval)
+function StatsCollector(peerconnection, audioLevelsInterval, statsInterval, eventEmitter)
 {
     this.peerconnection = peerconnection;
     this.baselineAudioLevelsReport = null;
@@ -131,7 +131,7 @@ function StatsCollector(peerconnection, audioLevelsInterval, statsInterval)
     // Map of jids to PeerStats
     this.jid2stats = {};
 
-    this.eventEmmiter = eventEmmiter;
+    this.eventEmitter = eventEmitter;
 }
 
 module.exports = StatsCollector;

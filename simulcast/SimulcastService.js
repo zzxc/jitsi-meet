@@ -166,3 +166,5 @@ $(document).bind('stopsimulcastlayer', function (event, simulcastLayer) {
     var ssrc = simulcastLayer.primarySSRC;
     simulcast._setLocalVideoStreamEnabled(ssrc, false);
 });
+
+module.exports = simulcast;

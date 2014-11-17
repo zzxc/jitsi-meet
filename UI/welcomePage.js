@@ -4,7 +4,7 @@ var RoomNameGenerator = require("../util/roomname_generator");
 
 function setupWelcomePage() {
     $("#domain_name").text(window.location.protocol + "//" + window.location.host + "/");
-    $("span[name='appName']").text(brand.appName);
+    $("span[name='appName']").text(interfaceConfig.appName);
     $("#enter_room_button").click(function()
     {
         enter_room();

@@ -387,9 +387,9 @@ module.exports = function(eventEmitter, XMPPActivator) {
             pres.up();
 
             // Send XEP-0115 'c' stanza that contains our capabilities info
-            if (connection.caps) {
-                connection.caps.node = config.clientNode;
-                pres.c('c', connection.caps.generateCapsAttrs()).up();
+            if (this.connection.caps) {
+                this.connection.caps.node = config.clientNode;
+                pres.c('c', this.connection.caps.generateCapsAttrs()).up();
             }
 
             if (this.presMap['bridgeIsDown']) {

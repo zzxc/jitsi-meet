@@ -3,6 +3,7 @@
 var SessionBase = require("./strophe.jingle.sessionbase");
 var TraceablePeerConnection = require("./strophe.jingle.adapter");
 var SDP = require("./strophe.jingle.sdp");
+var simulcast = require("../simulcast/SimulcastService");
 
 JingleSession.prototype = Object.create(SessionBase.prototype);
 function JingleSession(me, sid, connection) {
