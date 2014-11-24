@@ -2,7 +2,6 @@
 var Replacement = require("./Replacement.js");
 var dep = {
     "VideoLayout": function(){ return require("../VideoLayout")},
-    "Toolbar": function(){return require("../toolbars/Toolbar")},
     "UIActivator": function () {
         return require("../UIActivator");
     }
@@ -165,15 +164,17 @@ var Chat = (function (my) {
         var chatspace = $('#chatspace');
 
         var chatSize = (chatspace.is(":visible")) ? [0, 0] : Chat.getChatSize();
-        dep.VideoLayout().resizeVideoSpace(chatspace, chatSize, chatspace.is(":visible"));
+        dep.VideoLayout().resizeVideoSpace(chatspace, chatSize, chatspace.is(":visible"),
+            function () {
 
-// Check in master
-        // Request the focus in the nickname field or the chat input field.
-        if ($('#nickname').css('visibility') === 'visible') {
-            $('#nickinput').focus();
-        } else {
-            $('#usermsg').focus();
-        }
+                // Request the focus in the nickname field or the chat input field.
+                if ($('#nickname').css('visibility') === 'visible') {
+                    $('#nickinput').focus();
+                } else {
+                    $('#usermsg').focus();
+                }
+            });
+        Chat.resizeChat();
     };
 
     /**
@@ -297,7 +298,7 @@ var Chat = (function (my) {
             unreadMsgElement.innerHTML = unreadMessages.toString();
             unreadMsgBottomElement.innerHTML = unreadMessages.toString();
 
-            dep.Toolbar().dockToolbar(true);
+            require("../toolbars/Toolbar").dockToolbar(true);
 
             var chatButtonElement
                 = document.getElementById('chatButton').parentNode;

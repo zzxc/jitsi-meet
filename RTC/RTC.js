@@ -102,8 +102,8 @@ RTC.prototype.getUserMediaWithConstraints
     }
     if (constraints.video) {
         constraints.video.optional.push(
-            {googNoiseReduction: true}
-        );
+            {googNoiseReduction: false}
+        ); // chrome 37 workaround for issue 3807, reenable in M38
         if (um.indexOf('video') >= 0) {
             constraints.video.optional.push(
                 {googLeakyBucket: true}

@@ -5,7 +5,7 @@ var dep =
     "Chat": function(){ return require("./chat/Chat")},
     "UIUtil": function(){ return require("./UIUtil.js")},
     "ContactList": function(){ return require("./ContactList")},
-    "Toolbar": function(){ return require("./toolbars/toolbartoggler")}
+    "ToolbarToggler": function(){ return require("./toolbars/toolbartoggler")}
 }
 var Util = require("../util/util");
 var JitsiPopover = require("./JitsiPopover");
@@ -14,6 +14,8 @@ var simulcast = require("../simulcast/SimulcastService");
 var VideoLayout = (function (my) {
     var currentDominantSpeaker = null;
     var lastNCount = config.channelLastN;
+    var localLastNCount = config.channelLastN;
+    var localLastNSet = [];
     var lastNEndpointsCache = [];
     var largeVideoNewSrc = '';
     var browser = null;
@@ -22,6 +24,7 @@ var VideoLayout = (function (my) {
     my.currentVideoHeight = null;
     var localVideoSrc = null;
     var videoSrcToSsrc = {};
+
 
     var mutedAudios = {};
     /**
@@ -776,28 +779,6 @@ var VideoLayout = (function (my) {
                     $('#editDisplayName').focus();
                     $('#editDisplayName').select();
 
-//                    var inputDisplayNameHandler = function (name) {
-//                        var nickname = dep.UIActivator().getUIService().getNickname();
-//                        if (nickname !== name) {
-//                            dep.UIActivator().getUIService().setNickname(name);
-//                            nickname  = name;
-//                            window.localStorage.displayname = nickname;
-//                            dep.UIActivator().getXMPPActivator().addToPresence("displayName", nickname);
-//
-//                            dep.Chat().setChatConversationMode(true);
-//                        }
-//
-//                        if (!$('#localDisplayName').is(":visible")) {
-//                            if (nickname)
-//                                $('#localDisplayName').text(nickname + " (me)");
-//                            else
-//                                $('#localDisplayName')
-//                                    .text(defaultLocalDisplayName);
-//                            $('#localDisplayName').show();
-//                        }
-//
-//                        $('#editDisplayName').hide();
-//                    };
                     $('#editDisplayName').one("focusout", function (e) {
                         VideoLayout.inputDisplayNameHandler(this.value);
                     });
@@ -934,6 +915,7 @@ var VideoLayout = (function (my) {
 
         if (isMuted === 'false') {
             if (videoMutedSpan.length > 0) {
+                videoMutedSpan.popover('hide');
                 videoMutedSpan.remove();
             }
         }
@@ -1618,13 +1600,86 @@ var VideoLayout = (function (my) {
 
         lastNEndpointsCache = lastNEndpoints;
 
+
+        // Say A, B, C, D, E, and F are in a conference and LastN = 3.
+        //
+        // If LastN drops to, say, 2, because of adaptivity, then E should see
+        // thumbnails for A, B and C. A and B are in E's server side LastN set,
+        // so E sees them. C is only in E's local LastN set.
+        //
+        // If F starts talking and LastN = 3, then E should see thumbnails for
+        // F, A, B. B gets "ejected" from E's server side LastN set, but it
+        // enters E's local LastN ejecting C.
+
+        // Increase the local LastN set size, if necessary.
+        if (lastNCount > localLastNCount) {
+            localLastNCount = lastNCount;
+        }
+
+        // Update the local LastN set preserving the order in which the
+        // endpoints appeared in the LastN/local LastN set.
+
+        var nextLocalLastNSet = lastNEndpoints.slice(0);
+        for (var i = 0; i < localLastNSet.length; i++) {
+            if (nextLocalLastNSet.length >= localLastNCount) {
+                break;
+            }
+
+            var resourceJid = localLastNSet[i];
+            if (nextLocalLastNSet.indexOf(resourceJid) === -1) {
+                nextLocalLastNSet.push(resourceJid);
+            }
+        }
+
+        localLastNSet = nextLocalLastNSet;
+
         $('#remoteVideos>span').each(function( index, element ) {
             var resourceJid = VideoLayout.getPeerContainerResourceJid(element);
 
+            var isReceived = true;
             if (resourceJid
-                && lastNEndpoints.indexOf(resourceJid) < 0) {
+                && lastNEndpoints.indexOf(resourceJid) < 0
+                && localLastNSet.indexOf(resourceJid) < 0) {
                 console.log("Remove from last N", resourceJid);
-                showPeerContainer(resourceJid, false);
+                showPeerContainer(resourceJid, 'hide');
+                isReceived = false;
+            } else if (resourceJid
+                && $('#participant_' + resourceJid).is(':visible')
+                && lastNEndpoints.indexOf(resourceJid) < 0
+                && localLastNSet.indexOf(resourceJid) >= 0) {
+                showPeerContainer(resourceJid, 'avatar');
+                isReceived = false;
+            }
+
+            if (!isReceived) {
+                // resourceJid has dropped out of the server side lastN set, so
+                // it is no longer being received. If resourceJid was being
+                // displayed in the large video we have to switch to another
+                // user.
+                var largeVideoResource = VideoLayout.getLargeVideoResource();
+                if (resourceJid === largeVideoResource) {
+                    var resource, container, src;
+                    var myResource
+                        = Strophe.getResourceFromJid(dep.UIActivator().getXMPPActivator().getMyJID());
+
+                    // Find out which endpoint to show in the large video.
+                    for (var i = 0; i < lastNEndpoints.length; i++) {
+                        resource = lastNEndpoints[i];
+                        if (!resource || resource === myResource)
+                            continue;
+
+                        container = $("#participant_" + resource);
+                        if (container.length == 0)
+                            continue;
+
+                        src = $('video', container).attr('src');
+                        if (!src)
+                            continue;
+
+                        VideoLayout.updateLargeVideo(src);
+                        break;
+                    }
+                }
             }
         });
 
@@ -1715,7 +1770,7 @@ var VideoLayout = (function (my) {
         }
     };
 
-    my.resizeVideoSpace = function(rightColumnEl, rightColumnSize, isVisible)
+    my.resizeVideoSpace = function(rightColumnEl, rightColumnSize, isVisible, rightColumnComplete)
     {
         var videospace = $('#videospace');
 
@@ -1779,7 +1834,7 @@ var VideoLayout = (function (my) {
             });
 
         if (isVisible) {
-            $("#toast-container").animate({right: '12px'},
+            $("#toast-container").animate({right: '5px'},
                 {queue: false,
                     duration: 500});
             rightColumnEl.hide("slide", { direction: "right",
@@ -1790,14 +1845,15 @@ var VideoLayout = (function (my) {
             // Undock the toolbar when the chat is shown and if we're in a
             // video mode.
             if (VideoLayout.isLargeVideoVisible())
-                dep.Toolbar().dockToolbar(false);
+                dep.ToolbarToggler().dockToolbar(false);
 
-            $("#toast-container").animate({right: '212px'},
+            $("#toast-container").animate({right: (rightColumnSize[0] + 5) + 'px'},
                 {queue: false,
                     duration: 500});
             rightColumnEl.show("slide", { direction: "right",
                 queue: false,
-                duration: 500});
+                duration: 500,
+                completeFunction: rightColumnComplete});
         }
     }
 

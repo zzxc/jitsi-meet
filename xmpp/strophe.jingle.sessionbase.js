@@ -314,7 +314,6 @@ SessionBase.prototype.onIceConnectionStateChange = function (sid, session) {
                             }
                         }
                     });
-//                    trackUsage('iceConnected', metadata);
                     require("../util/tracking.js")('iceConnected', metadata);
                 });
             }

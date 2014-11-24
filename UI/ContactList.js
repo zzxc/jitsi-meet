@@ -99,10 +99,9 @@ var ContactList = (function (my) {
      */
     my.toggleContactList = function () {
         var contactlist = $('#contactlist');
-        var videospace = $('#videospace');
 
-        var chatSize = (ContactList.isVisible()) ? [0, 0] : Chat.getChatSize();
-        VideoLayout.resizeVideoSpace(contactlist, chatSize, ContactList.isVisible());
+        var chatSize = (ContactList.isVisible()) ? [0, 0] : require("./chat/chat").getChatSize();
+        VideoLayout.resizeVideoSpace(contactlist, chatSize, ContactList.isVisible(), function () {});
 
         if (!ContactList.isVisible()) {
             //stop the glowing of the contact list icon
