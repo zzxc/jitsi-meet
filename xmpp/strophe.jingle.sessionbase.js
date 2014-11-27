@@ -17,12 +17,13 @@ function SessionBase(connection, sid){
 
 SessionBase.prototype.modifySources = function (successCallback) {
     var self = this;
-    this.peerconnection.modifySources(function(){
-        self.setLocalDescription(self.sid);
-        if(successCallback) {
-            successCallback();
-        }
-    });
+    if(this.peerconnection)
+        this.peerconnection.modifySources(function(){
+            self.setLocalDescription(self.sid);
+            if(successCallback) {
+                successCallback();
+            }
+        });
 };
 
 SessionBase.prototype.setLocalDescription = function (sid) {
@@ -267,7 +268,8 @@ SessionBase.prototype.toggleVideoMute = function (callback) {
     if (!stream)
         return;
     var ismuted = stream.mute();
-    this.peerconnection.hardMuteVideo(ismuted);
+    if(this.peerconnection)
+        this.peerconnection.hardMuteVideo(ismuted);
     var self = this;
     this.modifySources(function () {
         self.connection.emuc.addVideoInfoToPresence(ismuted);

@@ -269,27 +269,14 @@ var VideoLayout = (function (my) {
 
                     // Only if the large video is currently visible.
                     // Disable previous dominant speaker video.
-//<<<<<<< HEAD:UI/videolayout.js
-//                    var oldJid = VideoLayout.getJidFromVideoSrc(oldSrc);
-//                    if (oldJid) {
-//                        var oldResourceJid = Strophe.getResourceFromJid(oldJid);
-//=======
                     if (largeVideoState.oldJid) {
                         var oldResourceJid = Strophe.getResourceFromJid(largeVideoState.oldJid);
-//>>>>>>> master:videolayout.js
                         VideoLayout.enableDominantSpeaker(oldResourceJid, false);
                     }
 
                     // Enable new dominant speaker in the remote videos section.
-//<<<<<<< HEAD:UI/videolayout.js
-//                    var userJid = VideoLayout.getJidFromVideoSrc(newSrc);
-//                    if (userJid)
-//                    {
-//                        var resourceJid = Strophe.getResourceFromJid(userJid);
-//=======
                     if (largeVideoState.userJid) {
                         var resourceJid = Strophe.getResourceFromJid(largeVideoState.userJid);
-//>>>>>>> master:videolayout.js
                         VideoLayout.enableDominantSpeaker(resourceJid, true);
                     }
 
