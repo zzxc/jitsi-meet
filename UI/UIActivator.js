@@ -305,6 +305,30 @@ var UIActivator = function()
 
     }
 
+    UIActivatorProto.changeDisplayName = function (value) {
+        return VideoLayout.inputDisplayNameHandler(value);
+    }
+
+    UIActivatorProto.toggleAudio = function () {
+        return Toolbar.toggleAudio();
+    }
+
+    UIActivatorProto.toggleVideo = function () {
+        return Toolbar.toggleVideo();
+    }
+
+    UIActivatorProto.toggleFilmStrip = function () {
+        return BottomToolbar.toggleFilmStrip();
+    }
+
+    UIActivatorProto.toggleChat = function () {
+        return BottomToolbar.toggleChat();
+    }
+
+    UIActivatorProto.toggleContactList = function () {
+        return BottomToolbar.toggleContactList();
+    }
+
     return UIActivatorProto;
 }();
 

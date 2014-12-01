@@ -6,6 +6,7 @@
 var ColibriFocus = require("./colibri/colibri.focus");
 var XMPPEvents = require("../service/xmpp/XMPPEvents");
 var UIActivator = require("../UI/UIActivator");
+var APIConnector = require("../api/APIConnector");
 
 module.exports = function(eventEmitter, XMPPActivator) {
     Strophe.addConnectionPlugin('emuc', {

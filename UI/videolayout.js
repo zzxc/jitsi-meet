@@ -1517,6 +1517,7 @@ var VideoLayout = (function (my) {
                 status);
         }
 
+        var APIConnector = require("../api/APIConnector");
         if(APIConnector.isEnabled() && APIConnector.isEventEnabled("displayNameChange"))
         {
             if(jid === 'localVideoContainer')
