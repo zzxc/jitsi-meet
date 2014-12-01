@@ -438,7 +438,7 @@ StatsCollector.prototype.processStatsReport = function () {
         upload:
             calculatePacketLoss(lostPackets.upload, totalPackets.upload)
     };
-    this.statsUpdateCallback(
+    this.eventEmitter.emit("statistics.connectionstats",
         {
             "bitrate": PeerStats.bitrate,
             "packetLoss": PeerStats.packetLoss,

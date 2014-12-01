@@ -111,7 +111,7 @@ module.exports = function(eventEmitter, XMPPActivator) {
                 Strophe.forEachChild(stats[0], "stat", function (el) {
                     statsObj[el.getAttribute("name")] = el.getAttribute("value");
                 });
-                ConnectionQuality.updateRemoteStats(from, statsObj);
+                eventEmitter.emit(XMPPEvents.REMOTE_STATS, from, statsObj);
             }
 
             // Parse status.

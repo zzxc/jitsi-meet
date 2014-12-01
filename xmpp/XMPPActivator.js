@@ -97,6 +97,9 @@ var XMPPActivator = function()
             case "preziSlide":
                 connection.emuc.addCurrentSlideToPresence(value);
                 break;
+            case "connectionQuality":
+                connection.emuc.addConnectionInfoToPresence(value);
+                break;
             default :
                 console.log("Unknown tag for presence.");
                 return;
@@ -315,12 +318,16 @@ var XMPPActivator = function()
     }
 
     XMPPActivatorProto.getFocusJID = function () {
-        if(Object.keys(connection.jingle.sessions).length == 0)
+        if(Object.keys(connection.jingle.sessions).length === 0)
             return null;
         var session
             = connection.jingle.sessions
             [Object.keys(connection.jingle.sessions)[0]];
         return Strophe.getResourceFromJid(session.peerjid);
+    }
+
+    XMPPActivatorProto.addConnectionQualityListener = function (listener) {
+        eventEmitter.on(XMPPEvents.REMOTE_STATS, listener);
     }
 
     return XMPPActivatorProto;

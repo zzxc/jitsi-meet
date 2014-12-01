@@ -34,14 +34,34 @@ var StatisticsActivator = function()
         eventEmmiter.removeListener("statistics.audioLevel", listener);
     }
 
+    StatisticsActivatorProto.addConnectionStatsListener = function(listener)
+    {
+        eventEmmiter.on("statistics.connectionstats", listener);
+    }
+
+    StatisticsActivatorProto.removeConnectionStatsListener = function(listener)
+    {
+        eventEmmiter.removeListener("statistics.connectionstats", listener);
+    }
+
+
+    StatisticsActivatorProto.addRemoteStatsStopListener = function(listener)
+    {
+        eventEmmiter.on("statistics.stop", listener);
+    }
+
+    StatisticsActivatorProto.removeRemoteStatsStopListener = function(listener)
+    {
+        eventEmmiter.removeListener("statistics.stop", listener);
+    }
+
     StatisticsActivatorProto.stop = function () {
-        if(eventEmmiter)
-        {
-            eventEmmiter.removeAllListeners("statistics.audioLevel");
-        }
         stopLocal();
         stopRemote();
-
+        if(eventEmmiter)
+        {
+            eventEmmiter.removeAllListeners();
+        }
     }
 
     function stopLocal()
@@ -58,6 +78,7 @@ var StatisticsActivator = function()
         if(rtpStats)
         {
             rtpStats.stop();
+            eventEmmiter.emit("statistics.stop");
             rtpStats = null;
         }
     }
