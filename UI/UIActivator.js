@@ -45,7 +45,7 @@ var UIActivator = function()
     }
 
     function setupAudioLevels() {
-        require("../statistics/StatisticsActivator").addAudioLevelListener(AudioLevels.updateAudioLevel);
+        require("../statistics/StatisticsService").addAudioLevelListener(AudioLevels.updateAudioLevel);
     }
 
     function setupChat()
@@ -299,6 +299,15 @@ var UIActivator = function()
         return Chat.updateChatConversation(from, displayName, message);
     }
 
+
+    UIActivatorProto.updateConnectionQuality = function(percent, stats)
+    {
+        VideoLayout.updateConnectionQuality(percent, stats);
+    }
+
+    UIActivatorProto.onStatsStop = function () {
+        VideoLayout.onStatsStop();
+    }
 
     UIActivatorProto.addNicknameListener = function(listener)
     {

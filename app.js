@@ -3,10 +3,16 @@
 var UIActivator = require("./UI/UIActivator");
 var APIConnector = require("./api/APIConnector");
 function init() {
-    require("./statistics/StatisticsActivator").start();
+    var StatisticsService = require("./statistics/StatisticsService");
+    StatisticsService.start();
     require("./RTC/RTCActivator").start();
     var uiCredentials = UIActivator.getUIService().getCredentials();
-    require("./xmpp/XMPPActivator").start(null, null, uiCredentials);
+    var XMPPActivator = require("./xmpp/XMPPActivator");
+    XMPPActivator.start(null, null, uiCredentials);
+    require("./connectionquality")(UIActivator,
+        XMPPActivator,
+        XMPPActivator,
+        StatisticsService);
     require("./desktopsharing").init();
 }
 

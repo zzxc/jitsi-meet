@@ -175,7 +175,7 @@ var AudioLevels = (function(my) {
      */
     function getVideoSpanId(resourceJid) {
         var videoSpanId = null;
-        if (resourceJid === require("../../statistics/StatisticsActivator").LOCAL_JID)
+        if (resourceJid === require("../../statistics/StatisticsService").LOCAL_JID)
             videoSpanId = 'localVideoContainer';
         else
             videoSpanId = 'participant_' + resourceJid;
