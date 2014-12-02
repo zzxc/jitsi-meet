@@ -43,7 +43,7 @@ function startRemoteStats (peerconnection) {
             rtpStats = null;
         }
 
-        rtpStats = new RTPStats(peerconnection, 200, eventEmitter);
+        rtpStats = new RTPStats(peerconnection, 200, 2000, eventEmitter);
         rtpStats.start();
     }
 

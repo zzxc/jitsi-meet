@@ -2121,8 +2121,8 @@ var VideoLayout = (function (my) {
             "<span class='jitsipopover_blue'>Resolution:</span></td><td>" + resolution + "</td></tr></table>";
 
         if(this.videoContainer.id == "localVideoContainer")
-            result += "<div class=\"jitsipopover_showmore\" onclick = \"VideoLayout.connectionIndicators['" +
-                 this.videoContainer.id + "'].showMore()\">" + (this.showMoreValue? "Show less" : "Show More") + "</div><br />";
+            result += "<div class=\"jitsipopover_showmore\" onclick = \"window.expandConnectionIndicator('" +
+                 this.videoContainer.id + "')\">" + (this.showMoreValue? "Show less" : "Show More") + "</div><br />";
 
         if(this.showMoreValue)
         {
@@ -2209,6 +2209,9 @@ var VideoLayout = (function (my) {
         return result;
     };
 
+    window.expandConnectionIndicator = function (id) {
+        VideoLayout.connectionIndicators[id].showMore();
+    }
     /**
      * Shows or hide the additional information.
      */
@@ -2308,6 +2311,7 @@ var VideoLayout = (function (my) {
      */
     ConnectionIndicator.prototype.updatePopoverData = function () {
         this.popover.updateContent("<div class=\"connection_info\">" + this.generateText() + "</div>");
+
     };
 
     /**

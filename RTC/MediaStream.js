@@ -40,6 +40,11 @@ var MediaStream = (function() {
             MediaStream.prototype.getAudioTracks = function () { return []; };
     }
 
+    MediaStreamProto.prototype.getOriginalStream = function()
+    {
+        return this.stream;
+    }
+
     return MediaStreamProto;
 })();
 

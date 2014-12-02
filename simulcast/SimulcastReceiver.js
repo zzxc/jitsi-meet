@@ -186,17 +186,18 @@ SimulcastReceiver.prototype.getReceivingSSRC = function (jid) {
 SimulcastReceiver.prototype.getReceivingVideoStreamBySSRC = function (ssrc)
 {
     var electedStream;
-    var j, k;
+    var j, k, remoteStream, mediaStream;
 
     var remoteStreams = require("../RTC/RTCActivator").getRTCService().remoteStreams;
     if (remoteStreams) {
         for (j = 0; j < remoteStreams.length; j++) {
-            var remoteStream = remoteStreams[j].getOriginalStream();
-
             if (electedStream) {
                 // stream found, stop.
                 break;
             }
+
+            mediaStream = remoteStreams[j];
+            remoteStream = remoteStreams[j].getOriginalStream();
             var tracks = remoteStream.getVideoTracks();
             if (tracks) {
                 for (k = 0; k < tracks.length; k++) {
@@ -214,7 +215,7 @@ SimulcastReceiver.prototype.getReceivingVideoStreamBySSRC = function (ssrc)
     }
 
     return {
-        sid: remoteStreams[j].sid,
+        sid: mediaStream.sid,
         stream: electedStream
     };
 };

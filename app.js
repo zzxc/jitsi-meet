@@ -1,7 +1,6 @@
 /* jshint -W117 */
 /* application specific logic */
 var UIActivator = require("./UI/UIActivator");
-var APIConnector = require("./api/APIConnector");
 function init() {
     var StatisticsService = require("./statistics/StatisticsService");
     StatisticsService.start();
@@ -18,12 +17,14 @@ function init() {
 
 
 $(document).ready(function () {
+    var APIConnector = require("./api/APIConnector");
     if(APIConnector.isEnabled())
-        APIConnector.init(UIActivator);
+        APIConnector.init();
     UIActivator.start(init);
 });
 
 $(window).on("beforeunload", function () {
+    var APIConnector = require("./api/APIConnector");
     if(APIConnector.isEnabled())
         APIConnector.dispose();
 });

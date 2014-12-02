@@ -276,24 +276,6 @@ StatsCollector.prototype.processStatsReport = function () {
             this.jid2stats[jid] = jidStats;
         }
 
-/**<<<<<<< HEAD:statistics/RTPStatsCollector.js
-        // Audio level
-        var audioLevel = now.stat('audioInputLevel');
-        if (!audioLevel)
-            audioLevel = now.stat('audioOutputLevel');
-        if (audioLevel)
-        {
-            // TODO: can't find specs about what this value really is,
-            // but it seems to vary between 0 and around 32k.
-            audioLevel = audioLevel / 32767;
-            jidStats.setSsrcAudioLevel(ssrc, audioLevel);
-            //my roomjid shouldn't be global
-            if(jid != XMPPActivator.getMyJID())
-                this.eventEmmiter.emit("statistics.audioLevel", Strophe.getResourceFromJid(jid), audioLevel);
-        }
-=======
->>>>>>> master:rtp_sts.js**/
-
         var isDownloadStream = true;
         var key = 'packetsReceived';
         if (!now.stat(key))
@@ -477,7 +459,7 @@ StatsCollector.prototype.processAudioLevelReport = function ()
         }
 
         var ssrc = now.stat('ssrc');
-        var jid = ssrc2jid[ssrc];
+        var jid = require("../xmpp/XMPPActivator").getJIDFromSSRC(ssrc);
         if (!jid)
         {
             console.warn("No jid for ssrc: " + ssrc);
@@ -502,7 +484,8 @@ StatsCollector.prototype.processAudioLevelReport = function ()
             audioLevel = audioLevel / 32767;
             jidStats.setSsrcAudioLevel(ssrc, audioLevel);
             if(jid != require("../xmpp/XMPPActivator").getMyJID())
-                this.audioLevelsUpdateCallback(jid, audioLevel);
+                this.eventEmitter.emit("statistics.audioLevel",
+                    Strophe.getResourceFromJid(jid), audioLevel);
         }
 
     }

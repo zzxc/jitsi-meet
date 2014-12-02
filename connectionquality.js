@@ -78,7 +78,7 @@ var ConnectionQuality = {
      */
     updateLocalStats: function (data) {
         stats = data;
-        VideoLayout.updateLocalConnectionStats(100 - stats.packetLoss.total,stats);
+        statsListener.updateLocalConnectionStats(100 - stats.packetLoss.total,stats);
         if(sendIntervalId == null)
         {
             startSendingStats();

@@ -172,7 +172,7 @@ var UIService = function() {
 
     UIServiceProto.prototype.dispose = function()
     {
-        eventEmitter.removeAllListeners("statistics.audioLevel");
+        eventEmitter.removeAllListeners("statistics.audioLevel");///???
     }
 
     UIServiceProto.prototype.setNickname = function(value)

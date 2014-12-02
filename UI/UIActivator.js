@@ -102,7 +102,7 @@ var UIActivator = function()
         setupToolbars();
         setupChat();
 
-        document.title = interfaceConfig.appName;
+        document.title = interfaceConfig.APP_NAME;
 
         $("#downloadlog").click(function (event) {
             dump(event.target);
@@ -305,8 +305,22 @@ var UIActivator = function()
         VideoLayout.updateConnectionQuality(percent, stats);
     }
 
+    UIActivatorProto.updateLocalConnectionStats = function(percent, stats)
+    {
+        VideoLayout.updateLocalConnectionStats(percent, stats);
+    }
+
+    UIActivatorProto.updateConnectionStats = function(jid, percent, stats)
+    {
+        VideoLayout.updateConnectionStats(jid, percent, stats);
+    }
+
     UIActivatorProto.onStatsStop = function () {
         VideoLayout.onStatsStop();
+    }
+
+    UIActivatorProto.expandConnectionIndicator = function (id) {
+        VideoLayout.connectionIndicators[id].showMore();
     }
 
     UIActivatorProto.addNicknameListener = function(listener)
