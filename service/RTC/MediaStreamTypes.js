@@ -1,3 +1,7 @@
-/**
- * Created by hristo on 12/4/14.
- */
+var MediaStreamType = {
+    VIDEO_TYPE: "Video",
+
+    AUDIO_TYPE: "Audio"
+};
+
+module.exports = MediaStreamType;

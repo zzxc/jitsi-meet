@@ -75,7 +75,7 @@ var RTCService = function()
         this.rtc = new RTC(this);
         this.rtc.obtainAudioAndVideoPermissions();
         this.localStreams = new Array();
-        this.remoteStreams = new Array();
+        this.remoteStreams = {};
         this.localAudio = null;
         this.localVideo = null;
     }
@@ -119,7 +119,8 @@ var RTCService = function()
     
     RTCServiceProto.prototype.createRemoteStream = function (data, sid, thessrc) {
         var remoteStream = new MediaStream(data, sid, thessrc, eventEmitter);
-        this.remoteStreams.push(remoteStream);
+        this.remoteStreams[remoteStream.peerjid] = {};
+        this.remoteStreams[remoteStream.peerjid][remoteStream.type] = remoteStream;
         return remoteStream;
     }
 

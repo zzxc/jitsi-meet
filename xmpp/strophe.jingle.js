@@ -88,7 +88,7 @@ module.exports = function(eventEmitter, RTCActivator, XMPPActivator) {
                 case 'session-initiate':
                     sess = new JingleSession($(iq).attr('to'), $(iq).find('jingle').attr('sid'), this.connection);
                     // configure session
-                    if (RTCActivator.getRTCService().localAudio) {
+                    if (RTCActivator.getRTCService().localAudio != RTCActivator.getRTCService().localVideo) {
                         sess.localStreams.push(RTCActivator.getRTCService().localAudio);
                     }
                     if (RTCActivator.getRTCService().localVideo) {
@@ -173,11 +173,11 @@ module.exports = function(eventEmitter, RTCActivator, XMPPActivator) {
                 Math.random().toString(36).substr(2, 12), // random string
                 this.connection);
             // configure session
-            if (this.localAudio) {
-                sess.localStreams.push(this.localAudio);
+            if (RTCActivator.getRTCService().localAudio  != RTCActivator.getRTCService().localVideo) {
+                sess.localStreams.push(RTCActivator.getRTCService().localAudio);
             }
-            if (this.localVideo) {
-                sess.localStreams.push(this.localVideo);
+            if (RTCActivator.getRTCService().localVideo) {
+                sess.localStreams.push(RTCActivator.getRTCService().localVideo);
             }
             sess.media_constraints = this.media_constraints;
             sess.pc_constraints = this.pc_constraints;

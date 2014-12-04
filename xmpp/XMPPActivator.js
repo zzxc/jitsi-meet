@@ -330,6 +330,10 @@ var XMPPActivator = function()
         eventEmitter.on(XMPPEvents.REMOTE_STATS, listener);
     }
 
+    XMPPActivatorProto.findJidFromResource = function (resource) {
+        return connection.emuc.findJidFromResource(resource);
+    }
+
     return XMPPActivatorProto;
 }();
 
