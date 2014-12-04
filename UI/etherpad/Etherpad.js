@@ -1,8 +1,9 @@
-/* global $, config, Prezi, Util, connection, setLargeVideoVisible, dockToolbar */
 var Prezi = require("../prezi/Prezi.js");
 var UIUtil = require("../UIUtil.js");
 var ToolbarToggler = require("../toolbars/toolbartoggler");
 
+/* global $, config, connection, dockToolbar, Moderator, Prezi,
+   setLargeVideoVisible, ToolbarToggler, Util, VideoLayout */
 var Etherpad = (function (my) {
     var etherpadName = null;
     var etherpadIFrame = null;
@@ -165,7 +166,7 @@ var Etherpad = (function (my) {
      */
     $(document).bind('etherpadadded.muc', function (event, jid, etherpadName) {
         console.log("Etherpad added", etherpadName);
-        if (config.etherpad_base && !require("../../xmpp/XMPPActivator").isFocus()) {
+        if (config.etherpad_base && !Moderator.isModerator()) {
             Etherpad.init(etherpadName);
         }
     });
@@ -173,6 +174,7 @@ var Etherpad = (function (my) {
     /**
      * On focus changed event.
      */
+    // FIXME: there is no such event as 'focusechanged.muc'
     $(document).bind('focusechanged.muc', function (event, focus) {
         console.log("Focus changed");
         if (config.etherpad_base)

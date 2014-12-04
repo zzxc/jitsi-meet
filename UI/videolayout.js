@@ -53,6 +53,10 @@ var VideoLayout = (function (my) {
         UIUtil.attachMediaStream($('#localAudio'), stream);
         document.getElementById('localAudio').autoplay = true;
         document.getElementById('localAudio').volume = 0;
+        if (preMuted) {
+            setAudioMuted(true);
+            preMuted = false;
+        }
     };
 
     my.changeLocalVideo = function(stream, flipX) {
@@ -537,9 +541,10 @@ var VideoLayout = (function (my) {
         if ($('#' + videoSpanId).length > 0) {
             // If there's been a focus change, make sure we add focus related
             // interface!!
-            if (dep.UIActivator().getXMPPActivator().isFocus() && $('#remote_popupmenu_' + resourceJid).length <= 0)
-                addRemoteVideoMenu( peerJid,
-                                    document.getElementById(videoSpanId));
+            if (Moderator.isModerator() && $('#remote_popupmenu_' + resourceJid).length <= 0) {
+                addRemoteVideoMenu(peerJid,
+                    document.getElementById(videoSpanId));
+            }
         }
         else {
             var container =
@@ -574,7 +579,7 @@ var VideoLayout = (function (my) {
 
         // If the peerJid is null then this video span couldn't be directly
         // associated with a participant (this could happen in the case of prezi).
-        if (dep.UIActivator().getXMPPActivator().isFocus() && peerJid != null)
+        if (Moderator.isModerator() && peerJid !== null)
             addRemoteVideoMenu(peerJid, container);
 
         remotes.appendChild(container);
@@ -947,43 +952,48 @@ var VideoLayout = (function (my) {
     };
 
     /**
-     * Shows a visual indicator for the focus of the conference.
-     * Currently if we're not the owner of the conference we obtain the focus
-     * from the connection.jingle.sessions.
+     * Shows a visual indicator for the moderator of the conference.
      */
-    my.showFocusIndicator = function() {
-        if (dep.UIActivator().getXMPPActivator().isFocus()) {
+    my.showModeratorIndicator = function () {
+        if (Moderator.isModerator()) {
             var indicatorSpan = $('#localVideoContainer .focusindicator');
 
             if (indicatorSpan.children().length === 0)
             {
-                createFocusIndicatorElement(indicatorSpan[0]);
+                createModeratorIndicatorElement(indicatorSpan[0]);
             }
-        }
-        else
-        {
-            // If we're only a participant the focus will be the only session we have.
-            var focusJID = dep.UIActivator().getXMPPActivator().getFocusJID();
-            if(focusJID == null)
-                return;
-            var focusId
-                = 'participant_' + focusJID;
+            else
+            {
+            Object.keys(connection.emuc.members).forEach(function (jid) {
+                var member = connection.emuc.members[jid];
+                if (member.role === 'moderator') {
+                    var moderatorId
+                        = 'participant_' + Strophe.getResourceFromJid(jid);
 
-            var focusContainer = document.getElementById(focusId);
-            if (!focusContainer) {
-                console.error("No focus container!");
-                return;
-            }
-            var indicatorSpan = $('#' + focusId + ' .focusindicator');
+                    var moderatorContainer
+                        = document.getElementById(moderatorId);
 
-            if (!indicatorSpan || indicatorSpan.length === 0) {
-                indicatorSpan = document.createElement('span');
-                indicatorSpan.className = 'focusindicator';
+                    if (Strophe.getResourceFromJid(jid) === 'focus') {
+                        // Skip server side focus
+                        return;
+                    }
+                    if (!moderatorContainer) {
+                        console.error("No moderator container for " + jid);
+                        return;
+                    }
+                    var indicatorSpan
+                        = $('#' + moderatorId + ' .focusindicator');
 
-                focusContainer.appendChild(indicatorSpan);
+                    if (!indicatorSpan || indicatorSpan.length === 0) {
+                        indicatorSpan = document.createElement('span');
+                        indicatorSpan.className = 'focusindicator';
 
-                createFocusIndicatorElement(indicatorSpan);
-            }
+                        moderatorContainer.appendChild(indicatorSpan);
+
+                        createModeratorIndicatorElement(indicatorSpan);
+                    }
+                }
+            });
         }
     };
 
@@ -1378,15 +1388,15 @@ var VideoLayout = (function (my) {
     }
 
     /**
-     * Creates the element indicating the focus of the conference.
+     * Creates the element indicating the moderator(owner) of the conference.
      *
-     * @param parentElement the parent element where the focus indicator will
+     * @param parentElement the parent element where the owner indicator will
      * be added
      */
-    function createFocusIndicatorElement(parentElement) {
-        var focusIndicator = document.createElement('i');
-        focusIndicator.className = 'fa fa-star';
-        parentElement.appendChild(focusIndicator);
+    function createModeratorIndicatorElement(parentElement) {
+        var moderatorIndicator = document.createElement('i');
+        moderatorIndicator.className = 'fa fa-star';
+        parentElement.appendChild(moderatorIndicator);
 
         Util.setTooltip(parentElement,
                 "The owner of<br/>this conference",
@@ -1604,19 +1614,27 @@ var VideoLayout = (function (my) {
      * On audio muted event.
      */
     $(document).bind('audiomuted.muc', function (event, jid, isMuted) {
-        if (jid === dep.UIActivator().getXMPPActivator().getMyJID()) {
+        /*
+         // FIXME: but focus can not mute in this case ? - check
+         if (jid === dep.UIActivator().getXMPPActivator().getMyJID()) {
+
             // The local mute indicator is controlled locally
             return;
+        }*/
+        var videoSpanId = null;
+        if (jid === connection.emuc.myroomjid) {
+            videoSpanId = 'localVideoContainer';
+        } else {
+            VideoLayout.ensurePeerContainerExists(jid);
+            videoSpanId = 'participant_' + Strophe.getResourceFromJid(jid);
         }
 
-        VideoLayout.ensurePeerContainerExists(jid);
+        mutedAudios[jid] = isMuted;
 
-        if (dep.UIActivator().getXMPPActivator().isFocus()) {
-            mutedAudios[jid] = isMuted;
+        if (Moderator.isModerator()) {
             VideoLayout.updateRemoteVideoMenu(jid, isMuted);
         }
 
-        var videoSpanId = 'participant_' + Strophe.getResourceFromJid(jid);
         if (videoSpanId)
             VideoLayout.showAudioIndicator(videoSpanId, isMuted);
     });
@@ -1910,7 +1928,7 @@ var VideoLayout = (function (my) {
                 VideoLayout.updateLargeVideo(UIUtil.getVideoSrc(videoelem[0]), 1, parentResourceJid);
             }
 
-            VideoLayout.showFocusIndicator();
+            VideoLayout.showModeratorIndicator();
         }
     };
 

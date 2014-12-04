@@ -1,4 +1,4 @@
-/* global $, config, connection, chrome, alert, getUserMediaWithConstraints, changeLocalVideo, getConferenceHandler */
+/* global $, alert, changeLocalVideo, chrome, config, connection, getConferenceHandler, getUserMediaWithConstraints, VideoLayout */
 /**
  * Indicates that desktop stream is currently in use(for toggle purpose).
  * @type {boolean}
