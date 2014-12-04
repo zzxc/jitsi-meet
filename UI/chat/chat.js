@@ -68,7 +68,7 @@ var Chat = (function (my) {
 
         var onTextAreaResize = function () {
             resizeChatConversation();
-            scrollChatToBottom();
+            Chat.scrollChatToBottom();
         };
         $('#usermsg').autosize({callback: onTextAreaResize});
 
@@ -156,26 +156,30 @@ var Chat = (function (my) {
         }
     };
 
-    /**
-     * Opens / closes the chat area.
-     */
-    my.toggleChat = function () {
-
-        var chatspace = $('#chatspace');
-
-        var chatSize = (chatspace.is(":visible")) ? [0, 0] : Chat.getChatSize();
-        dep.VideoLayout().resizeVideoSpace(chatspace, chatSize, chatspace.is(":visible"),
-            function () {
-
-                // Request the focus in the nickname field or the chat input field.
-                if ($('#nickname').css('visibility') === 'visible') {
-                    $('#nickinput').focus();
-                } else {
-                    $('#usermsg').focus();
-                }
-            });
-        Chat.resizeChat();
-    };
+//<<<<<<< HEAD:UI/chat/chat.js
+//    /**
+//     * Opens / closes the chat area.
+//     */
+//    my.toggleChat = function () {
+//
+//        var chatspace = $('#chatspace');
+//
+//        var chatSize = (chatspace.is(":visible")) ? [0, 0] : Chat.getChatSize();
+//        dep.VideoLayout().resizeVideoSpace(chatspace, chatSize, chatspace.is(":visible"),
+//            function () {
+//
+//                // Request the focus in the nickname field or the chat input field.
+//                if ($('#nickname').css('visibility') === 'visible') {
+//                    $('#nickinput').focus();
+//                } else {
+//                    $('#usermsg').focus();
+//                }
+//            });
+//        Chat.resizeChat();
+//    };
+//=======
+//
+//>>>>>>> master:chat.js
 
     /**
      * Sets the chat conversation mode.
@@ -194,26 +198,12 @@ var Chat = (function (my) {
      * Resizes the chat area.
      */
     my.resizeChat = function () {
-        var chatSize = Chat.getChatSize();
+        var chatSize = PanelToggler.getPanelSize();
 
         $('#chatspace').width(chatSize[0]);
         $('#chatspace').height(chatSize[1]);
 
         resizeChatConversation();
-    };
-
-    /**
-     * Returns the size of the chat.
-     */
-    my.getChatSize = function () {
-        var availableHeight = window.innerHeight;
-        var availableWidth = window.innerWidth;
-
-        var chatWidth = 200;
-        if (availableWidth * 0.2 < 200)
-            chatWidth = availableWidth * 0.2;
-
-        return [chatWidth, availableHeight];
     };
 
     /**
@@ -233,6 +223,16 @@ var Chat = (function (my) {
             smileys.hide("slide", { direction: "down", duration: 300});
         }
         $('#usermsg').focus();
+    };
+
+    /**
+     * Scrolls chat to the bottom.
+     */
+    my.scrollChatToBottom = function() {
+        setTimeout(function () {
+            $('#chatconversation').scrollTop(
+                $('#chatconversation')[0].scrollHeight);
+        }, 5);
     };
 
     /**
@@ -352,15 +352,6 @@ var Chat = (function (my) {
         }
     }
 
-    /**
-     * Scrolls chat to the bottom.
-     */
-    function scrollChatToBottom() {
-        setTimeout(function () {
-            $('#chatconversation').scrollTop(
-                    $('#chatconversation')[0].scrollHeight);
-        }, 5);
-    }
 
     /**
      * Returns the current time in the format it is shown to the user

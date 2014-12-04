@@ -23,42 +23,40 @@ var ContactList = (function (my) {
      * Adds a contact for the given peerJid if such doesn't yet exist.
      *
      * @param peerJid the peerJid corresponding to the contact
+     * @param id the user's email or userId used to get the user's avatar
      */
-    my.ensureAddContact = function(peerJid) {
+    my.ensureAddContact = function(peerJid, id) {
         var resourceJid = Strophe.getResourceFromJid(peerJid);
 
         var contact = $('#contactlist>ul>li[id="' + resourceJid + '"]');
 
         if (!contact || contact.length <= 0)
-            ContactList.addContact(peerJid);
+            ContactList.addContact(peerJid,id);
     };
 
     /**
      * Adds a contact for the given peer jid.
      *
      * @param peerJid the jid of the contact to add
+     * @param id the email or userId of the user
      */
-    my.addContact = function(peerJid) {
+    my.addContact = function(peerJid, id) {
         var resourceJid = Strophe.getResourceFromJid(peerJid);
 
         var contactlist = $('#contactlist>ul');
 
         var newContact = document.createElement('li');
+        // XXX(gp) contact click event handling is now in videolayout.js. Is the
+        // following statement (newContact.id = resourceJid) still relevant?
         newContact.id = resourceJid;
         newContact.className = "clickable";
         newContact.onclick = function(event) {
             if(event.currentTarget.className === "clickable") {
-                var jid = event.currentTarget.id;
-                var videoContainer = $("#participant_" + jid);
-                if (videoContainer.length > 0) {
-                    videoContainer.click();
-                } else if (jid == Strophe.getResourceFromJid(XMPPActivator.getMyJID())) {
-                    $("#localVideoContainer").click();
-                }
+                $(ContactList).trigger('contactclicked', [peerJid]);
             }
         };
 
-        newContact.appendChild(createAvatar());
+        newContact.appendChild(createAvatar(id));
         newContact.appendChild(createDisplayNameParagraph("Participant"));
 
         var clElement = contactlist.get(0);
@@ -94,18 +92,42 @@ var ContactList = (function (my) {
         }
     };
 
-    /**
-     * Opens / closes the contact list area.
-     */
-    my.toggleContactList = function () {
-        var contactlist = $('#contactlist');
+//<<<<<<< HEAD:UI/ContactList.js
+//    /**
+//     * Opens / closes the contact list area.
+//     */
+//    my.toggleContactList = function () {
+//        var contactlist = $('#contactlist');
+//
+//        var chatSize = (ContactList.isVisible()) ? [0, 0] : require("./chat/chat").getChatSize();
+//        VideoLayout.resizeVideoSpace(contactlist, chatSize, ContactList.isVisible(), function () {});
+//
+//        if (!ContactList.isVisible()) {
+//            //stop the glowing of the contact list icon
+//            setVisualNotification(false);
+//=======
+    my.setVisualNotification = function(show, stopGlowingIn) {
+        var glower = $('#contactListButton');
+        function stopGlowing() {
+            window.clearInterval(notificationInterval);
+            notificationInterval = false;
+            glower.removeClass('glowing');
+            if(!ContactList.isVisible()) {
+                glower.removeClass('active');
+            }
+        }
 
-        var chatSize = (ContactList.isVisible()) ? [0, 0] : require("./chat/chat").getChatSize();
-        VideoLayout.resizeVideoSpace(contactlist, chatSize, ContactList.isVisible(), function () {});
-
-        if (!ContactList.isVisible()) {
-            //stop the glowing of the contact list icon
-            setVisualNotification(false);
+        if (show && !notificationInterval) {
+            notificationInterval = window.setInterval(function () {
+                glower.toggleClass('active glowing');
+            }, 800);
+        }
+        else if (!show && notificationInterval) {
+            stopGlowing();
+        }
+        if(stopGlowingIn) {
+            setTimeout(stopGlowing, stopGlowingIn);
+//>>>>>>> master:contact_list.js
         }
     };
 
@@ -136,20 +158,21 @@ var ContactList = (function (my) {
             $("#numberOfParticipants").text('');
             numberOfContacts += delta;
         } else if(numberOfContacts !== 0 && !ContactList.isVisible()) {
-            setVisualNotification(true);
+            ContactList.setVisualNotification(true);
             numberOfContacts += delta;
             $("#numberOfParticipants").text(numberOfContacts);
         }
-    };
+    }
 
     /**
      * Creates the avatar element.
      * 
      * @return the newly created avatar element
      */
-    function createAvatar() {
-        var avatar = document.createElement('i');
+    function createAvatar(id) {
+        var avatar = document.createElement('img');
         avatar.className = "icon-avatar avatar";
+        avatar.src = "https://www.gravatar.com/avatar/" + id + "?d=retro&size=30";
 
         return avatar;
     }
@@ -166,33 +189,6 @@ var ContactList = (function (my) {
         return p;
     }
 
-    /**
-     * Shows/hides a visual notification, indicating that a new user has joined
-     * the conference.
-     */
-    function setVisualNotification(show, stopGlowingIn) {
-        var glower = $('#contactListButton');
-        function stopGlowing() {
-            window.clearInterval(notificationInterval);
-            notificationInterval = false;
-            glower.removeClass('glowing');
-            if(!ContactList.isVisible()) {
-                glower.removeClass('active');
-            }
-        }
-
-        if (show && !notificationInterval) {
-            notificationInterval = window.setInterval(function () {
-                glower.toggleClass('active glowing');
-            }, 800);
-        }
-        else if (!show && notificationInterval) {
-            stopGlowing();
-        }
-        if(stopGlowingIn) {
-            setTimeout(stopGlowing, stopGlowingIn);
-        }
-    }
 
     /**
      * Indicates that the display name has changed.

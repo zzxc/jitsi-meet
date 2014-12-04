@@ -21,18 +21,20 @@
     <script src="app_bundle.js?v=7"></script><!-- application logic -->
     <script src="analytics.js?v=1"></script><!-- google analytics plugin -->
     <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
-    <link rel="stylesheet" href="css/font.css?v=5"/>
+    <link rel="stylesheet" href="css/font.css?v=6"/>
     <link rel="stylesheet" href="css/toastr.css?v=1">
-    <link rel="stylesheet" type="text/css" media="screen" href="css/main.css?v=29"/>
-    <link rel="stylesheet" type="text/css" media="screen" href="css/videolayout_default.css?v=13" id="videolayout_default"/>
+    <link rel="stylesheet" type="text/css" media="screen" href="css/main.css?v=30"/>
+    <link rel="stylesheet" type="text/css" media="screen" href="css/videolayout_default.css?v=14" id="videolayout_default"/>
+    <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
     <link rel="stylesheet" href="css/jquery-impromptu.css?v=4">
     <link rel="stylesheet" href="css/modaldialog.css?v=3">
     <link rel="stylesheet" href="css/popup_menu.css?v=4">
     <link rel="stylesheet" href="css/popover.css?v=2">
     <link rel="stylesheet" href="css/jitsi_popover.css?v=2">
-    <link rel="stylesheet" href="css/contact_list.css?v=3">
+    <link rel="stylesheet" href="css/contact_list.css?v=4">
     <link rel="stylesheet" href="css/chat.css?v=5">
     <link rel="stylesheet" href="css/welcome_page.css?v=2">
+    <link rel="stylesheet" href="css/settingsmenu.css?v=1">
     <!--
         Link used for inline installation of chrome desktop streaming extension,
         is updated automatically from the code with the value defined in config.js -->
@@ -184,6 +186,10 @@
                         </a>
                     </span>
                     <div class="header_button_separator"></div>
+                    <a class="button" data-container="body" data-toggle="popover" data-placement="bottom" content="Settings" onclick='PanelToggler.toggleSettingsMenu();'>
+                        <i id="settingsButton" class="icon-settings"></i>
+                    </a>
+                    <div class="header_button_separator"></div>
                     <span id="hangup">
                         <a class="button" data-container="body" data-toggle="popover" id="toolbar_button_hangup" data-placement="bottom" data-content="Hang Up">
                             <i class="icon-hangup" style="color:#ff0000;font-size: 1.4em;"></i>
@@ -210,6 +216,7 @@
                 <a target="_new"><div class="watermark leftwatermark"></div></a>
                 <a target="_new"><div class="watermark rightwatermark"></div></a>
                 <a class="poweredby" href="http://jitsi.org" target="_new" >powered by jitsi.org</a>
+                <img id="activeSpeakerAvatar" src=""/>
                 <video id="largeVideo" autoplay oncontextmenu="return false;"></video>
             </div>
             <div id="remoteVideos">
@@ -251,7 +258,7 @@
                 </span>
             </span>
         </div>
-        <div id="chatspace">
+        <div id="chatspace" class="right-panel">
             <div id="nickname">
                 Enter a nickname in the box below
                 <form>
@@ -269,10 +276,18 @@
                 </div>
             </div>
         </div>
-        <div id="contactlist">
+        <div id="contactlist" class="right-panel">
             <ul>
                 <li class="title"><i class="icon-contact-list"></i> CONTACT LIST</li>
             </ul>
+        </div>
+        <div id="settingsmenu" class="right-panel">
+            <div class="icon-settings"> SETTINGS</div>
+            <img id="avatar" src="https://www.gravatar.com/avatar/87291c37c25be69a072a4514931b1749?d=retro&size=30"/>
+            <div class="arrow-up"></div>
+            <input type="text" id="setDisplayName" placeholder="Name">
+            <input type="text" id="setEmail" placeholder="E-Mail">
+            <button onclick="SettingsMenu.update()" id="updateSettings">Update</button>
         </div>
         <a id="downloadlog" data-container="body" data-toggle="popover" data-placement="right" data-content="Download logs" ><i class="fa fa-cloud-download"></i></a>
     </div>

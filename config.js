@@ -23,6 +23,8 @@ var config = {
     useRtcpMux: true,
     useBundle: true,
     enableRecording: false,
-    enableWelcomePage: false,
-    enableSimulcast: true
+    enableWelcomePage: true,
+    enableSimulcast: false,
+    enableFirefoxSupport: false //firefox support is still experimental, only one-to-one conferences with chrome focus
+    // will work when simulcast, bundle, mux, lastN and SCTP are disabled.
 };

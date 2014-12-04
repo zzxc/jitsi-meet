@@ -95,7 +95,7 @@ SDP.prototype.getMediaSsrcMap = function() {
         });
     }
     return media_ssrcs;
-}
+};
 /**
  * Returns <tt>true</tt> if this SDP contains given SSRC.
  * @param ssrc the ssrc to check.
@@ -112,7 +112,8 @@ SDP.prototype.containsSSRC = function(ssrc) {
         }
     });
     return contains;
-}
+};
+
 /**
  * Returns map of MediaChannel that contains only media not contained in <tt>otherSdp</tt>. Mapped by channel idx.
  * @param otherSdp the other SDP to check ssrc with.
@@ -142,7 +143,7 @@ SDP.prototype.getNewMedia = function(otherSdp) {
             }
         }
         return true;
-    };
+    }
 
     var myMedia = this.getMediaSsrcMap();
     var othersMedia = otherSdp.getMediaSsrcMap();
@@ -164,7 +165,7 @@ SDP.prototype.getNewMedia = function(otherSdp) {
                 }
                 newMedia[channelNum].ssrcs[ssrc] = othersChannel.ssrcs[ssrc];
             }
-        })
+        });
 
         // Look for new ssrc groups across the channels
         othersChannel.ssrcGroups.forEach(function(otherSsrcGroup){
@@ -173,7 +174,7 @@ SDP.prototype.getNewMedia = function(otherSdp) {
             var matched = false;
             for (var i = 0; i < myChannel.ssrcGroups.length; i++) {
                 var mySsrcGroup = myChannel.ssrcGroups[i];
-                if (otherSsrcGroup.semantics == mySsrcGroup
+                if (otherSsrcGroup.semantics == mySsrcGroup.semantics
                     && arrayEquals.apply(otherSsrcGroup.ssrcs, [mySsrcGroup.ssrcs])) {
 
                     matched = true;
@@ -193,7 +194,8 @@ SDP.prototype.getNewMedia = function(otherSdp) {
         });
     });
     return newMedia;
-}
+};
+
 // remove iSAC and CN from SDP
 SDP.prototype.mangle = function () {
     var i, j, mline, lines, rtpmap, newdesc;
@@ -245,7 +247,8 @@ SDP.prototype.removeMediaLines = function(mediaindex, prefix) {
 }
 
 // add content's to a jingle element
-SDP.prototype.toJingle = function (elem, thecreator) {
+SDP.prototype.toJingle = function (elem, thecreator, ssrcs) {
+//    console.log("SSRC" + ssrcs["audio"] + " - " + ssrcs["video"]);
     var i, j, k, mline, ssrc, rtpmap, tmp, line, lines;
     var self = this;
     // new bundle plan
@@ -261,12 +264,6 @@ SDP.prototype.toJingle = function (elem, thecreator) {
             elem.up();
         }
     }
-    // old bundle plan, to be removed
-    var bundle = [];
-    if (SDPUtil.find_line(this.session, 'a=group:BUNDLE')) {
-        bundle = SDPUtil.find_line(this.session, 'a=group:BUNDLE ').split(' ');
-        bundle.shift();
-    }
     for (i = 0; i < this.media.length; i++) {
         mline = SDPUtil.parse_mline(this.media[i].split('\r\n')[0]);
         if (!(mline.media === 'audio' ||
@@ -278,7 +275,12 @@ SDP.prototype.toJingle = function (elem, thecreator) {
         if (SDPUtil.find_line(this.media[i], 'a=ssrc:')) {
             ssrc = SDPUtil.find_line(this.media[i], 'a=ssrc:').substring(7).split(' ')[0]; // take the first
         } else {
-            ssrc = false;
+            if(ssrcs && ssrcs[mline.media])
+            {
+                ssrc = ssrcs[mline.media];
+            }
+            else
+                ssrc = false;
         }
 
         elem.c('content', {creator: thecreator, name: mline.media});
@@ -286,12 +288,6 @@ SDP.prototype.toJingle = function (elem, thecreator) {
             // prefer identifier from a=mid if present
             var mid = SDPUtil.parse_mid(SDPUtil.find_line(this.media[i], 'a=mid:'));
             elem.attrs({ name: mid });
-
-            // old BUNDLE plan, to be removed
-            if (bundle.indexOf(mid) !== -1) {
-                elem.c('bundle', {xmlns: 'http://estos.de/ns/bundle'}).up();
-                bundle.splice(bundle.indexOf(mid), 1);
-            }
         }
 
         if (SDPUtil.find_line(this.media[i], 'a=rtpmap:').length)
@@ -330,31 +326,60 @@ SDP.prototype.toJingle = function (elem, thecreator) {
                 elem.c('source', { ssrc: ssrc, xmlns: 'urn:xmpp:jingle:apps:rtp:ssma:0' });
                 // FIXME: group by ssrc and support multiple different ssrcs
                 var ssrclines = SDPUtil.find_lines(this.media[i], 'a=ssrc:');
-                ssrclines.forEach(function(line) {
-                    idx = line.indexOf(' ');
-                    var linessrc = line.substr(0, idx).substr(7);
-                    if (linessrc != ssrc) {
+                if(ssrclines.length > 0) {
+                    ssrclines.forEach(function (line) {
+                        idx = line.indexOf(' ');
+                        var linessrc = line.substr(0, idx).substr(7);
+                        if (linessrc != ssrc) {
+                            elem.up();
+                            ssrc = linessrc;
+                            elem.c('source', { ssrc: ssrc, xmlns: 'urn:xmpp:jingle:apps:rtp:ssma:0' });
+                        }
+                        var kv = line.substr(idx + 1);
+                        elem.c('parameter');
+                        if (kv.indexOf(':') == -1) {
+                            elem.attrs({ name: kv });
+                        } else {
+                            elem.attrs({ name: kv.split(':', 2)[0] });
+                            elem.attrs({ value: kv.split(':', 2)[1] });
+                        }
                         elem.up();
-                        ssrc = linessrc;
-                        elem.c('source', { ssrc: ssrc, xmlns: 'urn:xmpp:jingle:apps:rtp:ssma:0' });
-                    }
-                    var kv = line.substr(idx + 1);
-                    elem.c('parameter');
-                    if (kv.indexOf(':') == -1) {
-                        elem.attrs({ name: kv });
-                    } else {
-                        elem.attrs({ name: kv.split(':', 2)[0] });
-                        elem.attrs({ value: kv.split(':', 2)[1] });
-                    }
+                    });
                     elem.up();
-                });
-                elem.up();
+                }
+                else
+                {
+                    elem.up();
+                    elem.c('source', { ssrc: ssrc, xmlns: 'urn:xmpp:jingle:apps:rtp:ssma:0' });
+                    elem.c('parameter');
+                    elem.attrs({name: "cname", value:Math.random().toString(36).substring(7)});
+                    elem.up();
+                    var msid = null;
+                    if(mline.media == "audio")
+                    {
+                        msid = connection.jingle.localAudio.getAudioTracks()[0].id;
+                    }
+                    else
+                    {
+                        msid = connection.jingle.localVideo.getVideoTracks()[0].id;
+                    }
+                    if(msid != null)
+                    {
+                        msid = msid.replace(/[\{,\}]/g,"");
+                        elem.c('parameter');
+                        elem.attrs({name: "msid", value:msid});
+                        elem.up();
+                        elem.c('parameter');
+                        elem.attrs({name: "mslabel", value:msid});
+                        elem.up();
+                        elem.c('parameter');
+                        elem.attrs({name: "label", value:msid});
+                        elem.up();
+                        elem.up();
+                    }
 
-                // old proprietary mapping, to be removed at some point
-                tmp = SDPUtil.parse_ssrc(this.media[i]);
-                tmp.xmlns = 'http://estos.de/ns/ssrc';
-                tmp.ssrc = ssrc;
-                elem.c('ssrc', tmp).up(); // ssrc is part of description
+
+                }
 
                 // XEP-0339 handle ssrc-group attributes
                 var ssrc_group_lines = SDPUtil.find_lines(this.media[i], 'a=ssrc-group:');
@@ -545,28 +570,6 @@ SDP.prototype.fromJingle = function (jingle) {
                 self.raw += 'a=group:' + (group.getAttribute('semantics') || group.getAttribute('type')) + ' ' + contents.join(' ') + '\r\n';
             }
         });
-    } else if ($(jingle).find('>group[xmlns="urn:ietf:rfc:5888"]').length) {
-        // temporary namespace, not to be used. to be removed soon.
-        $(jingle).find('>group[xmlns="urn:ietf:rfc:5888"]').each(function (idx, group) {
-            var contents = $(group).find('>content').map(function (idx, content) {
-                return content.getAttribute('name');
-            }).get();
-            if (group.getAttribute('type') !== null && contents.length > 0) {
-                self.raw += 'a=group:' + group.getAttribute('type') + ' ' + contents.join(' ') + '\r\n';
-            }
-        });
-    } else {
-        // for backward compability, to be removed soon
-        // assume all contents are in the same bundle group, can be improved upon later
-        var bundle = $(jingle).find('>content').filter(function (idx, content) {
-            //elem.c('bundle', {xmlns:'http://estos.de/ns/bundle'});
-            return $(content).find('>bundle').length > 0;
-        }).map(function (idx, content) {
-                return content.getAttribute('name');
-            }).get();
-        if (bundle.length) {
-            this.raw += 'a=group:BUNDLE ' + bundle.join(' ') + '\r\n';
-        }
     }
 
     this.session = this.raw;
@@ -688,7 +691,7 @@ SDP.prototype.jingle2media = function (content) {
         media += SDPUtil.build_rtpmap(this) + '\r\n';
         if ($(this).find('>parameter').length) {
             media += 'a=fmtp:' + this.getAttribute('id') + ' ';
-            media += $(this).find('parameter').map(function () { return (this.getAttribute('name') ? (this.getAttribute('name') + '=') : '') + this.getAttribute('value'); }).get().join(';');
+            media += $(this).find('parameter').map(function () { return (this.getAttribute('name') ? (this.getAttribute('name') + '=') : '') + this.getAttribute('value'); }).get().join('; ');
             media += '\r\n';
         }
         // xep-0293
@@ -731,16 +734,6 @@ SDP.prototype.jingle2media = function (content) {
         });
     });
 
-    if (tmp.length === 0) {
-        // fallback to proprietary mapping of a=ssrc lines
-        tmp = content.find('description>ssrc[xmlns="http://estos.de/ns/ssrc"]');
-        if (tmp.length) {
-            media += 'a=ssrc:' + ssrc + ' cname:' + tmp.attr('cname') + '\r\n';
-            media += 'a=ssrc:' + ssrc + ' msid:' + tmp.attr('msid') + '\r\n';
-            media += 'a=ssrc:' + ssrc + ' mslabel:' + tmp.attr('mslabel') + '\r\n';
-            media += 'a=ssrc:' + ssrc + ' label:' + tmp.attr('label') + '\r\n';
-        }
-    }
     return media;
 };
 

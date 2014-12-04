@@ -24,12 +24,12 @@ var commands =
  * Maps the supported events and their status
  * (true it the event is enabled and false if it is disabled)
  * @type {{
-     *              incommingMessage: boolean,
-     *              outgoingMessage: boolean,
-     *              displayNameChange: boolean,
-     *              participantJoined: boolean,
-     *              participantLeft: boolean
-     *      }}
+ *              incomingMessage: boolean,
+ *              outgoingMessage: boolean,
+ *              displayNameChange: boolean,
+ *              participantJoined: boolean,
+ *              participantLeft: boolean
+ *      }}
  */
 var events =
 {

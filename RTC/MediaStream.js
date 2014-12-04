@@ -1,6 +1,7 @@
 var RTC = require("./RTC.js");
 var RTCBrowserType = require("../service/RTC/RTCBrowserType.js");
 var StreamEventTypes = require("../service/RTC/StreamEventTypes.js");
+var MediaStreamTypes = require("../service/RTC/MediaStreamTypes");
 
 /**
  * Provides a wrapper class for the MediaStream.
@@ -21,14 +22,12 @@ var MediaStream = (function() {
      */
     function MediaStreamProto(data, sid, ssrc, eventEmmiter) {
         this.sid = sid;
-        this.VIDEO_TYPE = "Video";
-        this.AUDIO_TYPE = "Audio";
         this.stream = data.stream;
         this.peerjid = data.peerjid;
         this.ssrc = ssrc;
-//        this.session = connection.jingle.sessions[sid];
-        this.type = (this.stream.getVideoTracks().length > 0)
-                    ? this.VIDEO_TYPE : this.AUDIO_TYPE;
+        this.type = (this.stream.getVideoTracks().length > 0)?
+            MediaStreamTypes.VIDEO_TYPE : MediaStreamTypes.AUDIO_TYPE;
+        this.muted = false;
         eventEmmiter.emit(StreamEventTypes.EVENT_TYPE_REMOTE_CREATED, this);
     }
 
@@ -47,8 +46,6 @@ var MediaStream = (function() {
 
     return MediaStreamProto;
 })();
-
-
 
 
 module.exports = MediaStream;

@@ -15,7 +15,6 @@ function init() {
     require("./desktopsharing").init();
 }
 
-
 $(document).ready(function () {
     var APIConnector = require("./api/APIConnector");
     if(APIConnector.isEnabled())
