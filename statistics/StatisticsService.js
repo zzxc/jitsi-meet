@@ -13,7 +13,7 @@ var localStats = null;
 
 var rtpStats = null;
 
-var RTCActivator = null;
+var RTCService = null;
 
 function stopLocal()
 {
@@ -98,18 +98,18 @@ var StatisticsService =
 
 
     start: function () {
-        RTCActivator = require("../RTC/RTCActivator");
-        RTCActivator.addStreamListener(this.onStreamCreated,
+        RTCService = require("../RTC/RTCService");
+        RTCService.addStreamListener(this.onStreamCreated,
             StreamEventTypes.EVENT_TYPE_LOCAL_CREATED);
-        var XMPPActivator = require("../xmpp/XMPPActivator");
-        XMPPActivator.addListener(XMPPEvents.CONFERENCE_CERATED,
+        var XMPPService = require("../xmpp/XMPPService");
+        XMPPService.addListener(XMPPEvents.CONFERENCE_CERATED,
             function (event) {
                 startRemoteStats(event.peerconnection);
             });
-        XMPPActivator.addListener(XMPPEvents.CALL_INCOMING, function (event) {
+        XMPPService.addListener(XMPPEvents.CALL_INCOMING, function (event) {
             startRemoteStats(event.peerconnection);
         });
-        XMPPActivator.addListener(XMPPEvents.DISPOSE_CONFERENCE,
+        XMPPService.addListener(XMPPEvents.DISPOSE_CONFERENCE,
             function (onUnload) {
                 stopRemote();
                 if(onUnload) {
@@ -124,7 +124,7 @@ var StatisticsService =
             return;
 
         localStats = new LocalStats(stream.getOriginalStream(), 100,
-            eventEmitter, RTCActivator);
+            eventEmitter, RTCService);
         localStats.start();
     }
 };

@@ -6,7 +6,7 @@ function getBrowserType()
 {
     if(browserType == null)
     {
-        browserType = require("./UIActivator").getRTCService().getBrowserType();
+        browserType = require("./UIService").getRTCService().getBrowserType();
     }
 
     return browserType;

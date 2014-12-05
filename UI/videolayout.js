@@ -1,6 +1,6 @@
 var dep =
 {
-    "UIActivator": function(){ return require("./UIActivator.js")},
+    "UIService": function(){ return require("./UIService.js")},
     "Chat": function(){ return require("./chat/Chat")},
     "ContactList": function(){ return require("./ContactList")},
     "ToolbarToggler": function(){ return require("./toolbars/toolbartoggler")}
@@ -72,7 +72,7 @@ var VideoLayout = (function (my) {
         // Set default display name.
         setDisplayName('localVideoContainer');
 
-        dep.UIActivator().getUIService().updateAudioLevelCanvas();
+        require("./audiolevels/AudioLevels").updateAudioLevelCanvas();
         if(!VideoLayout.connectionIndicators["localVideoContainer"]) {
             VideoLayout.connectionIndicators["localVideoContainer"]
                 = new ConnectionIndicator($("#localVideoContainer")[0], null);
@@ -84,11 +84,11 @@ var VideoLayout = (function (my) {
         // there's no video.
         localVideoSelector.click(function () {
             VideoLayout.handleVideoThumbClicked(UIUtil.getVideoSrc(localVideo), false,
-                dep.getUIService().getXMPPActivator().getMyJID());
+                dep.getUIService().getXMPPService().getMyJID());
         });
         $('#localVideoContainer').click(function () {
             VideoLayout.handleVideoThumbClicked(UIUtil.getVideoSrc(localVideo), false,
-                dep.getUIService().getXMPPActivator().getMyJID());
+                dep.getUIService().getXMPPService().getMyJID());
         });
 
         // Add hover handler
@@ -189,14 +189,14 @@ var VideoLayout = (function (my) {
     my.getJidFromVideoSrc = function(videoSrc)
     {
         if (videoSrc === localVideoSrc)
-            return dep.UIActivator().getXMPPActivator().getMyJID();
+            return dep.UIService().getXMPPService().getMyJID();
 
         var ssrc = videoSrcToSsrc[videoSrc];
         if (!ssrc)
         {
             return null;
         }
-        return dep.UIActivator().getXMPPActivator().getJIDFromSSRC(ssrc);
+        return dep.UIService().getXMPPService().getJIDFromSSRC(ssrc);
     }
     /**
      * Updates the large video with the given new video source.
@@ -218,11 +218,11 @@ var VideoLayout = (function (my) {
             largeVideoState.newSrc = newSrc;
             largeVideoState.isVisible = $('#largeVideo').is(':visible');
             largeVideoState.isDesktop = isVideoSrcDesktop(jid);
-//            var stream = dep.UIActivator().getRTCService().remoteStreams[largeVideoState.userJid]
+//            var stream = dep.UIService().getRTCService().remoteStreams[largeVideoState.userJid]
             if(jid2Ssrc[largeVideoState.userJid] ||
-                (dep.UIActivator().getXMPPActivator().getMyJID() &&
+                (dep.UIService().getXMPPService().getMyJID() &&
                     largeVideoState.userJid == Strophe.getResourceFromJid(
-                    dep.UIActivator().getXMPPActivator().getMyJID())))
+                    dep.UIService().getXMPPService().getMyJID())))
             {
                 largeVideoState.oldJid = largeVideoState.userJid;
             }
@@ -370,15 +370,15 @@ var VideoLayout = (function (my) {
 
         var isDesktop = false;
 
-        if (dep.getUIService().getXMPPActivator().getMyJID() &&
-            Strophe.getResourceFromJid(dep.getUIService().getXMPPActivator().getMyJID()) === jid) {
+        if (dep.getUIService().getXMPPService().getMyJID() &&
+            Strophe.getResourceFromJid(dep.getUIService().getXMPPService().getMyJID()) === jid) {
             // local video
             isDesktop = require("../desktopsharing").isUsingScreenStream();
         } else {
             // Do we have associations...
             var videoSsrc = jid2Ssrc[jid];
             if (videoSsrc) {
-                var videoType = dep.UIActivator().getXMPPActivator().getVideoTypeFromSSRC(videoSsrc);
+                var videoType = dep.UIService().getXMPPService().getVideoTypeFromSSRC(videoSsrc);
                 if (videoType) {
                     // Finally there...
                     isDesktop = videoType === 'screen';
@@ -583,7 +583,7 @@ var VideoLayout = (function (my) {
             addRemoteVideoMenu(peerJid, container);
 
         remotes.appendChild(container);
-        dep.UIActivator().getUIService().updateAudioLevelCanvas(peerJid);
+        require("./audiolevels/AudioLevels").updateAudioLevelCanvas(peerJid);
 
         return container;
     };
@@ -880,12 +880,12 @@ var VideoLayout = (function (my) {
     }
 
     my.inputDisplayNameHandler = function (name) {
-        var nickname = dep.UIActivator().getUIService().getNickname();
+        var nickname = dep.UIService().getNickname();
         if (nickname !== name) {
-            dep.UIActivator().getUIService().setNickname(name);
+            dep.UIService().setNickname(name);
             nickname  = name;
             window.localStorage.displayname = nickname;
-            dep.UIActivator().getXMPPActivator().addToPresence("displayName", nickname);
+            dep.UIService().getXMPPService().addToPresence("displayName", nickname);
 
             dep.Chat().setChatConversationMode(true);
         }
@@ -958,44 +958,43 @@ var VideoLayout = (function (my) {
         if (Moderator.isModerator()) {
             var indicatorSpan = $('#localVideoContainer .focusindicator');
 
-            if (indicatorSpan.children().length === 0)
-            {
+            if (indicatorSpan.children().length === 0) {
                 createModeratorIndicatorElement(indicatorSpan[0]);
             }
-            else
-            {
-            Object.keys(connection.emuc.members).forEach(function (jid) {
-                var member = connection.emuc.members[jid];
-                if (member.role === 'moderator') {
-                    var moderatorId
-                        = 'participant_' + Strophe.getResourceFromJid(jid);
+            else {
+                Object.keys(connection.emuc.members).forEach(function (jid) {
+                    var member = connection.emuc.members[jid];
+                    if (member.role === 'moderator') {
+                        var moderatorId
+                            = 'participant_' + Strophe.getResourceFromJid(jid);
 
-                    var moderatorContainer
-                        = document.getElementById(moderatorId);
+                        var moderatorContainer
+                            = document.getElementById(moderatorId);
 
-                    if (Strophe.getResourceFromJid(jid) === 'focus') {
-                        // Skip server side focus
-                        return;
+                        if (Strophe.getResourceFromJid(jid) === 'focus') {
+                            // Skip server side focus
+                            return;
+                        }
+                        if (!moderatorContainer) {
+                            console.error("No moderator container for " + jid);
+                            return;
+                        }
+                        var indicatorSpan
+                            = $('#' + moderatorId + ' .focusindicator');
+
+                        if (!indicatorSpan || indicatorSpan.length === 0) {
+                            indicatorSpan = document.createElement('span');
+                            indicatorSpan.className = 'focusindicator';
+
+                            moderatorContainer.appendChild(indicatorSpan);
+
+                            createModeratorIndicatorElement(indicatorSpan);
+                        }
                     }
-                    if (!moderatorContainer) {
-                        console.error("No moderator container for " + jid);
-                        return;
-                    }
-                    var indicatorSpan
-                        = $('#' + moderatorId + ' .focusindicator');
-
-                    if (!indicatorSpan || indicatorSpan.length === 0) {
-                        indicatorSpan = document.createElement('span');
-                        indicatorSpan.className = 'focusindicator';
-
-                        moderatorContainer.appendChild(indicatorSpan);
-
-                        createModeratorIndicatorElement(indicatorSpan);
-                    }
-                }
-            });
+                });
+            }
         }
-    };
+    }
 
     /**
      * Shows video muted indicator over small videos.
@@ -1138,7 +1137,7 @@ var VideoLayout = (function (my) {
         var videoSpanId = null;
         var videoContainerId = null;
         if (resourceJid
-                === Strophe.getResourceFromJid(dep.UIActivator().getXMPPActivator().getMyJID())) {
+                === Strophe.getResourceFromJid(dep.UIService().getXMPPService().getMyJID())) {
             videoSpanId = 'localVideoWrapper';
             videoContainerId = 'localVideoContainer';
         }
@@ -1195,7 +1194,7 @@ var VideoLayout = (function (my) {
         if (!userJid)
             return null;
 
-        if (userJid === dep.UIActivator().getXMPPActivator().getMyJID())
+        if (userJid === dep.UIService().getXMPPService().getMyJID())
             return $("#localVideoContainer");
         else
             return $("#participant_" + Strophe.getResourceFromJid(userJid));
@@ -1534,7 +1533,7 @@ var VideoLayout = (function (my) {
                 event.preventDefault();
             }
             var isMute = !mutedAudios[jid];
-            dep.UIActivator().getXMPPActivator().setMute(jid, isMute);
+            dep.UIService().getXMPPService().setMute(jid, isMute);
             popupmenuElement.setAttribute('style', 'display:none;');
 
             if (isMute) {
@@ -1556,7 +1555,7 @@ var VideoLayout = (function (my) {
         var ejectLinkItem = document.createElement('a');
         ejectLinkItem.innerHTML = ejectIndicator + ' Kick out';
         ejectLinkItem.onclick = function(){
-            dep.UIActivator().getXMPPActivator().eject(jid);
+            dep.UIService().getXMPPService().eject(jid);
             popupmenuElement.setAttribute('style', 'display:none;');
         };
 
@@ -1616,7 +1615,7 @@ var VideoLayout = (function (my) {
     $(document).bind('audiomuted.muc', function (event, jid, isMuted) {
         /*
          // FIXME: but focus can not mute in this case ? - check
-         if (jid === dep.UIActivator().getXMPPActivator().getMyJID()) {
+         if (jid === dep.UIService().getXMPPService().getMyJID()) {
 
             // The local mute indicator is controlled locally
             return;
@@ -1644,7 +1643,7 @@ var VideoLayout = (function (my) {
      */
     $(document).bind('videomuted.muc', function (event, jid, isMuted) {
         var videoSpanId = null;
-        if (jid === dep.UIActivator().getXMPPActivator().getMyJID()) {
+        if (jid === dep.UIService().getXMPPService().getMyJID()) {
             videoSpanId = 'localVideoContainer';
         } else {
             VideoLayout.ensurePeerContainerExists(jid);
@@ -1662,7 +1661,7 @@ var VideoLayout = (function (my) {
                     function (jid, displayName, status) {
         var name = null;
         if (jid === 'localVideoContainer'
-            || jid === dep.UIActivator().getXMPPActivator().getMyJID()) {
+            || jid === dep.UIService().getXMPPService().getMyJID()) {
             name = nickname;
             setDisplayName('localVideoContainer',
                            displayName);
@@ -1679,7 +1678,7 @@ var VideoLayout = (function (my) {
         if(APIConnector.isEnabled() && APIConnector.isEventEnabled("displayNameChange"))
         {
             if(jid === 'localVideoContainer')
-                jid = dep.UIActivator().getXMPPActivator().getMyJID();
+                jid = dep.UIService().getXMPPService().getMyJID();
             if(!name || name != displayName)
                 APIConnector.triggerEvent("displayNameChange",{jid: jid, displayname: displayName});
         }
@@ -1691,7 +1690,7 @@ var VideoLayout = (function (my) {
     $(document).bind('dominantspeakerchanged', function (event, resourceJid) {
         // We ignore local user events.
         if (resourceJid
-                === Strophe.getResourceFromJid(dep.UIActivator().getXMPPActivator().getMyJID()))
+                === Strophe.getResourceFromJid(dep.UIService().getXMPPService().getMyJID()))
             return;
 
         // Update the current dominant speaker.
@@ -1822,8 +1821,8 @@ var VideoLayout = (function (my) {
                 if (!isVisible) {
                     console.log("Add to last N", resourceJid);
 
-                    var jid = dep.getUIService().getXMPPActivator().findJidFromResource(resourceJid);
-                    var mediaStream = dep.UIActivator().getRTCService().remoteStreams[jid][MediaStreamTypes.VIDEO_TYPE];
+                    var jid = dep.getUIService().getXMPPService().findJidFromResource(resourceJid);
+                    var mediaStream = dep.UIService().getRTCService().remoteStreams[jid][MediaStreamTypes.VIDEO_TYPE];
                     var sel = $('#participant_' + resourceJid + '>video');
 
                     var videoStream = simulcast.getReceivingVideoStream(
@@ -2021,7 +2020,7 @@ var VideoLayout = (function (my) {
 
 //    $(document).bind('simulcastlayerstarted', function(event) {
 //        var localVideoSelector = $('#' + 'localVideo_' +
-//            dep.UIActivator().getRTCService().localVideo.getOriginalStream().localVideo.id);
+//            dep.UIService().getRTCService().localVideo.getOriginalStream().localVideo.id);
 //        var simulcast = new Simulcast();
 //        var stream = simulcast.getLocalVideoStream();
 //
@@ -2033,7 +2032,7 @@ var VideoLayout = (function (my) {
 
 //    $(document).bind('simulcastlayerstopped', function(event) {
 //        var localVideoSelector = $('#' + 'localVideo_' +
-//            dep.UIActivator().getRTCService().localVideo.getOriginalStream().localVideo.id);
+//            dep.UIService().getRTCService().localVideo.getOriginalStream().localVideo.id);
 //        var simulcast = new Simulcast();
 //        var stream = simulcast.getLocalVideoStream();
 //
@@ -2078,7 +2077,7 @@ var VideoLayout = (function (my) {
                 var msidParts = msid.split(' ');
 
                 var preload = (Strophe.getResourceFromJid(
-                    dep.UIActivator().getXMPPActivator().getJIDFromSSRC(primarySSRC))
+                    dep.UIService().getXMPPService().getJIDFromSSRC(primarySSRC))
                         == largeVideoState.userJid);
 
                 if (preload) {
@@ -2139,7 +2138,7 @@ var VideoLayout = (function (my) {
                 var selRemoteVideo = $(['#', 'remoteVideo_', sid, '_', msidParts[0]].join(''));
 
                 var updateLargeVideo = (Strophe.getResourceFromJid(
-                    dep.UIActivator().getXMPPActivator().getJIDFromSSRC(primarySSRC))
+                    dep.UIService().getXMPPService().getJIDFromSSRC(primarySSRC))
                     == largeVideoState.userJid);
                 var updateFocusedVideoSrc = (VideoLayout.focusedVideoSrc && VideoLayout.focusedVideoSrc.src &&
                     VideoLayout.focusedVideoSrc.src != '' &&
@@ -2162,7 +2161,7 @@ var VideoLayout = (function (my) {
                     UIUtil.attachMediaStream(selRemoteVideo, electedStream);
                 }
 
-                var jid = dep.UIActivator().getXMPPActivator().getJIDFromSSRC(primarySSRC);
+                var jid = dep.UIService().getXMPPService().getJIDFromSSRC(primarySSRC);
 
                 if (updateLargeVideo) {
                     VideoLayout.updateLargeVideo(UIUtil.getVideoSrc(selRemoteVideo[0]), null,
@@ -2174,7 +2173,7 @@ var VideoLayout = (function (my) {
                 }
 
                 var videoId;
-                if(resource == Strophe.getResourceFromJid(dep.UIActivator().getXMPPActivator().getMyJID()))
+                if(resource == Strophe.getResourceFromJid(dep.UIService().getXMPPService().getMyJID()))
                 {
                     VideoLayout.focusedVideoSrc.src = UIUtil.getVideoSrc(selRemoteVideo[0]);
                     videoId = "localVideoContainer";
@@ -2563,8 +2562,8 @@ var VideoLayout = (function (my) {
         if(object.resolution !== null)
         {
             resolution = object.resolution;
-            object.resolution = resolution[dep.UIActivator().getXMPPActivator().getMyJID()];
-            delete resolution[dep.UIActivator().getXMPPActivator().getMyJID()];
+            object.resolution = resolution[dep.UIService().getXMPPService().getMyJID()];
+            delete resolution[dep.UIService().getXMPPService().getMyJID()];
         }
         updateStatsIndicator("localVideoContainer", percent, object);
         for(var jid in resolution)

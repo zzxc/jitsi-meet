@@ -1,6 +1,5 @@
 var BottomToolbar = require("./toolbars/BottomToolbar");
 var Toolbar = require("./toolbars/Toolbar");
-var RTCActivator = require("../RTC/RTCActivator");
 
 var KeyboardShortcut = (function(my) {
     //maps keycode to character, id of popover for given function and function
@@ -23,7 +22,7 @@ var KeyboardShortcut = (function(my) {
         84: {
             character: "T",
             function: function() {
-                if(!RTCActivator.getRTCService().localAudio.isMuted()) {
+                if(!require("../RTC/RTCService").localAudio.isMuted()) {
                     Toolbar.toggleAudio();
                 }
             }
@@ -56,7 +55,7 @@ var KeyboardShortcut = (function(my) {
     window.onkeydown = function(e) {
         if(!($(":focus").is("input[type=text]") || $(":focus").is("input[type=password]") || $(":focus").is("textarea"))) {
             if(e.which === "T".charCodeAt(0)) {
-                if(RTCActivator.getRTCService().localAudio.isMuted()) {
+                if(require("../RTC/RTCService").localAudio.isMuted()) {
                     Toolbar.toggleAudio();
                 }
             }

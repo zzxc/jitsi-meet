@@ -9,9 +9,9 @@ var Util = require("../../util/util");
 var Toolbar = (function (my) {
     var toolbarTimeout = null;
 
-    var UIActivator = null;
+    var UIService = null;
 
-    var XMPPActivator = null
+    var XMPPService = null
 
     var roomUrl = null;
 
@@ -82,8 +82,8 @@ var Toolbar = (function (my) {
                 if (v) {
                     var numberInput = document.getElementById('sipNumber');
                     if (numberInput.value) {
-                        XMPPActivator.sipDial(
-                            numberInput.value, 'fromnumber', UIActivator.getUIService().getRoomName());
+                        XMPPService.sipDial(
+                            numberInput.value, 'fromnumber', UIService.getRoomName());
                     }
                 }
             },
@@ -96,13 +96,13 @@ var Toolbar = (function (my) {
 
     // Starts or stops the recording for the conference.
     function toggleRecording() {
-        if(!XMPPActivator.isFocus())
+        if(!XMPPService.isFocus())
         {
             console.log('non-focus: not enabling recording');
             return;
         }
 
-        XMPPActivator.setRecording(
+        XMPPService.setRecording(
             recordingToken,
             function (state, oldState) {
                 console.log("New recording state: ", state);
@@ -145,7 +145,7 @@ var Toolbar = (function (my) {
     }
 
     function hangup() {
-        XMPPActivator.disposeConference(false, function () {
+        XMPPService.disposeConference(false, function () {
             var buttons = {};
             if(config.enableWelcomePage)
             {
@@ -193,7 +193,7 @@ var Toolbar = (function (my) {
         if (lock)
             key = Toolbar.sharedKey;
 
-        XMPPActivator.lockRoom(key, function () {
+        XMPPService.lockRoom(key, function () {
             if (Toolbar.sharedKey) {
                 console.log('set room password');
                 Toolbar.lockLockButton();
@@ -210,8 +210,8 @@ var Toolbar = (function (my) {
 
     //sets onclick handlers
     my.init = function (ui, xmpp) {
-        UIActivator = ui;
-        XMPPActivator = xmpp;
+        UIService = ui;
+        XMPPService = xmpp;
         for(var k in buttonHandlers)
             $("#" + k).click(buttonHandlers[k]);
     };
@@ -230,7 +230,7 @@ var Toolbar = (function (my) {
     my.toggleVideo = function () {
         buttonClick("#video", "icon-camera icon-camera-disabled");
 
-        XMPPActivator.toggleVideoMute(
+        XMPPService.toggleVideoMute(
             function (isMuted) {
                 Toolbar.changeToolbarVideoIcon(isMuted);
 
@@ -242,15 +242,14 @@ var Toolbar = (function (my) {
      * Mutes / unmutes audio for the local participant.
      */
     my.toggleAudio = function () {
-        var RTCActivator = require("../../RTC/RTCActivator");
-        if (!(RTCActivator.getRTCService().localAudio)) {
+        if (!(require("../../RTC/RTCService").localAudio)) {
             Toolbar.preMuted = true;
             // We still click the button.
             buttonClick("#mute", "icon-microphone icon-mic-disabled");
             return;
         }
 
-        XMPPActivator.toggleAudioMute(function () {
+        XMPPService.toggleAudioMute(function () {
             buttonClick("#mute", "icon-microphone icon-mic-disabled");
         });
 
@@ -272,7 +271,7 @@ var Toolbar = (function (my) {
      */
     my.openLockDialog = function () {
         // Only the focus is able to set a shared key.
-        if (!XMPPActivator.isFocus()) {
+        if (!XMPPService.isFocus()) {
             if (Toolbar.sharedKey) {
                 messageHandler.openMessageDialog(null,
                         "This conversation is currently protected by" +

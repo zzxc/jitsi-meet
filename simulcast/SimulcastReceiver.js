@@ -152,7 +152,7 @@ SimulcastReceiver.prototype.getReceivingSSRC = function (jid) {
     if (!ssrc) {
         var j, k;
 
-        var remoteStreams = require("../RTC/RTCActivator").getRTCService().remoteStreams;
+        var remoteStreams = require("../RTC/RTCService").remoteStreams;
         if (remoteStreams) {
             for (j = 0; j < remoteStreams.length; j++) {
                 var remoteStream = remoteStreams[j].getOriginalStream();
@@ -167,7 +167,7 @@ SimulcastReceiver.prototype.getReceivingSSRC = function (jid) {
                         var track = tracks[k];
                         var msid = [remoteStream.id, track.id].join(' ');
                         var _ssrc = this._remoteMaps.msid2ssrc[msid];
-                        var _jid = require("../xmpp/XMPPActivator").getJIDFromSSRC(_ssrc);
+                        var _jid = require("../xmpp/XMPPService").getJIDFromSSRC(_ssrc);
                         var quality = this._remoteMaps.msid2Quality[msid];
                         if (jid == _jid && quality == 0) {
                             ssrc = _ssrc;
@@ -188,7 +188,7 @@ SimulcastReceiver.prototype.getReceivingVideoStreamBySSRC = function (ssrc)
     var electedStream;
     var j, k, remoteStream, mediaStream;
 
-    var remoteStreams = require("../RTC/RTCActivator").getRTCService().remoteStreams;
+    var remoteStreams = require("../RTC/RTCService").remoteStreams;
     if (remoteStreams) {
         for (j = 0; j < remoteStreams.length; j++) {
             if (electedStream) {

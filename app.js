@@ -1,16 +1,16 @@
 /* jshint -W117 */
 /* application specific logic */
-var UIActivator = require("./UI/UIActivator");
+var UIService = require("./UI/UIService");
 function init() {
     var StatisticsService = require("./statistics/StatisticsService");
     StatisticsService.start();
-    require("./RTC/RTCActivator").start();
-    var uiCredentials = UIActivator.getUIService().getCredentials();
-    var XMPPActivator = require("./xmpp/XMPPActivator");
-    XMPPActivator.start(null, null, uiCredentials);
-    require("./connectionquality")(UIActivator,
-        XMPPActivator,
-        XMPPActivator,
+    require("./RTC/RTCService").start();
+    var uiCredentials = UIService.getCredentials();
+    var XMPPService = require("./xmpp/XMPPService");
+    XMPPService.start(null, null, uiCredentials);
+    require("./connectionquality")(UIService,
+        XMPPService,
+        XMPPService,
         StatisticsService);
     require("./desktopsharing").init();
 }
@@ -19,7 +19,7 @@ $(document).ready(function () {
     var APIConnector = require("./api/APIConnector");
     if(APIConnector.isEnabled())
         APIConnector.init();
-    UIActivator.start(init);
+    UIService.start(init);
 });
 
 $(window).on("beforeunload", function () {

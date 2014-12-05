@@ -5,10 +5,10 @@
 
 var ColibriFocus = require("./colibri/colibri.focus");
 var XMPPEvents = require("../service/xmpp/XMPPEvents");
-var UIActivator = require("../UI/UIActivator");
+var UIService = require("../UI/UIService");
 var APIConnector = require("../api/APIConnector");
 
-module.exports = function(eventEmitter, XMPPActivator) {
+module.exports = function(eventEmitter, XMPPService) {
     Strophe.addConnectionPlugin('emuc', {
         connection: null,
         roomjid: null,
@@ -145,14 +145,14 @@ module.exports = function(eventEmitter, XMPPActivator) {
                         this.focus = new ColibriFocus(this.connection, config.hosts.bridge, eventEmitter);
                         this.setOwnNickname();
                     }
-                    UIActivator.getUIService().onMucJoined(from, member, noMembers);
+                    UIService.onMucJoined(from, member, noMembers);
                     this.list_members.push(from);
                 }
             } else if (this.members[from] === undefined) {
                 // new participant
                 this.members[from] = member;
                 this.list_members.push(from);
-                UIActivator.getUIService().onMucEntered(from, member, pres,
+                UIService.onMucEntered(from, member, pres,
                     (this.focus !==null && this.focus.confid === null));
                 if (this.focus !== null) {
                     // FIXME: this should prepare the video
@@ -171,7 +171,7 @@ module.exports = function(eventEmitter, XMPPActivator) {
 
             // Trigger status message update
             if (member.status) {
-                UIActivator.getUIService().onMucPresenceStatus(from, member, pres);
+                UIService.onMucPresenceStatus(from, member, pres);
             }
 
             return true;
@@ -198,7 +198,7 @@ module.exports = function(eventEmitter, XMPPActivator) {
         },
         leftMuc: function (jid) {
             console.log('left.muc', jid);
-            UIActivator.getUIService().onMucLeft(jid);
+            UIService.onMucLeft(jid);
             this.connection.jingle.terminateByJid(jid);
 
             if (this.focus == null
@@ -212,11 +212,11 @@ module.exports = function(eventEmitter, XMPPActivator) {
                 this.focus = new ColibriFocus(this.connection, config.hosts.bridge, eventEmitter);
                 this.setOwnNickname();
 
-                UIActivator.getUIService().updateButtons(null, true);
+                UIService.updateButtons(null, true);
 
                 if (Object.keys(this.members).length > 0) {
                     this.focus.makeConference(Object.keys(this.members));
-                    UIActivator.getUIService().updateButtons(true, null);
+                    UIService.updateButtons(true, null);
                 }
                 $(document).trigger('focusechanged.muc', [this.focus]);
             }
@@ -224,10 +224,10 @@ module.exports = function(eventEmitter, XMPPActivator) {
                 console.log('everyone left');
                 // FIXME: closing the connection is a hack to avoid some
                 // problems with reinit
-                XMPPActivator.disposeConference(false,null,false);
+                XMPPService.disposeConference(false,null,false);
                 this.focus = new ColibriFocus(this.connection, config.hosts.bridge, eventEmitter);
                 this.setOwnNickname();
-                UIActivator.getUIService().updateButtons(true, false);
+                UIService.updateButtons(true, false);
             }
 
             if (this.connection.emuc.getPrezi(jid)) {
@@ -237,23 +237,23 @@ module.exports = function(eventEmitter, XMPPActivator) {
         },
         setOwnNickname: function () {
 
-            if (XMPPActivator.getNickname() !== null) {
+            if (XMPPService.getNickname() !== null) {
                 this.focus.setEndpointDisplayName(this.connection.emuc.myroomjid,
-                    XMPPActivator.getNickname());
+                    XMPPService.getNickname());
             }
 
         },
         onPresenceError: function (pres) {
             var from = pres.getAttribute('from');
             if ($(pres).find('>error[type="auth"]>not-authorized[xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"]').length) {
-                UIActivator.getUIService().showLockPopup(from, this.doJoin);
+                UIService.showLockPopup(from, this.doJoin);
             } else if ($(pres).find(
                 '>error[type="cancel"]>not-allowed[xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"]').length) {
                 var toDomain = Strophe.getDomainFromJid(pres.getAttribute('to'));
                 if (toDomain === config.hosts.anonymousdomain) {
                     // we are connected with anonymous domain and only non anonymous users can create rooms
                     // we must authorize the user
-                    XMPPActivator.promptLogin();
+                    XMPPService.promptLogin();
                 } else {
                     console.warn('onPresError ', pres);
                     messageHandler.openReportDialog(null,
@@ -293,7 +293,7 @@ module.exports = function(eventEmitter, XMPPActivator) {
             var txt = $(msg).find('>body').text();
             var type = msg.getAttribute("type");
             if (type == "error") {
-                UIActivator.chatAddError($(msg).find('>text').text(), txt);
+                UIService.chatAddError($(msg).find('>text').text(), txt);
                 return true;
             }
 
@@ -301,7 +301,7 @@ module.exports = function(eventEmitter, XMPPActivator) {
             if (subject.length) {
                 var subjectText = subject.text();
                 if (subjectText || subjectText == "") {
-                    UIActivator.chatSetSubject(subjectText);
+                    UIService.chatSetSubject(subjectText);
                     console.log("Subject is changed to " + subjectText);
                 }
             }
@@ -309,7 +309,7 @@ module.exports = function(eventEmitter, XMPPActivator) {
 
             if (txt) {
                 console.log('chat', nick, txt);
-                UIActivator.updateChatConversation(from, nick, txt);
+                UIService.updateChatConversation(from, nick, txt);
                 if (APIConnector.isEnabled() && APIConnector.isEventEnabled("incommingMessage"))
                 {
                     if (from != this.myroomjid)
@@ -557,10 +557,10 @@ module.exports = function(eventEmitter, XMPPActivator) {
                 if (type === 'video' || type === 'screen') {
                     switch (ssrc.getAttribute('direction')) {
                         case 'sendrecv':
-                            UIActivator.showVideoForJID(Strophe.getResourceFromJid(jid));
+                            UIService.showVideoForJID(Strophe.getResourceFromJid(jid));
                             break;
                         case 'recvonly':
-                            UIActivator.hideVideoForJID(Strophe.getResourceFromJid(jid));
+                            UIService.hideVideoForJID(Strophe.getResourceFromJid(jid));
                             break;
                     }
                 }

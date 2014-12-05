@@ -1,6 +1,6 @@
 var SDP = require("./strophe.jingle.sdp");
-var RTCActivator = require("../RTC/RTCActivator");
-var XMPPActivator = require("./XMPPActivator");
+var RTCService = require("../RTC/RTCService");
+var XMPPService = require("./XMPPService");
 
 /**
  * Base class for ColibriFocus and JingleSession.
@@ -264,7 +264,7 @@ SessionBase.prototype.sendSSRCUpdateIq = function(sdpMediaSsrcs, sid, initiator,
 // SDP-based mute by going recvonly/sendrecv
 // FIXME: should probably black out the screen as well
 SessionBase.prototype.toggleVideoMute = function (callback) {
-    var stream = RTCActivator.getRTCService().localAudio;
+    var stream = RTCService.localAudio;
     if (!stream)
         return;
     var ismuted = stream.mute();
@@ -279,7 +279,7 @@ SessionBase.prototype.toggleVideoMute = function (callback) {
 };
 
 SessionBase.prototype.toggleAudioMute = function (callback) {
-    var stream = RTCActivator.getRTCService().localAudio;
+    var stream = RTCService.localAudio;
     if (!stream)
         return;
     var audioEnabled = stream.mute();
@@ -384,7 +384,7 @@ SessionBase.prototype.waitForPresence = function (data, sid) {
             // presence to arrive.
 
             var self = this;
-            if (!XMPPActivator.getJIDFromSSRC(thessrc)) {
+            if (!XMPPService.getJIDFromSSRC(thessrc)) {
                 // TODO(gp) limit wait duration to 1 sec.
                 setTimeout(function(d, s) {
                     return function() {
@@ -395,9 +395,9 @@ SessionBase.prototype.waitForPresence = function (data, sid) {
             }
 
             // ok to overwrite the one from focus? might save work in colibri.js
-            console.log('associated jid', XMPPActivator.getJIDFromSSRC(thessrc), data.peerjid);
-            if (XMPPActivator.getJIDFromSSRC(thessrc)) {
-                data.peerjid = XMPPActivator.getJIDFromSSRC(thessrc);
+            console.log('associated jid', XMPPService.getJIDFromSSRC(thessrc), data.peerjid);
+            if (XMPPService.getJIDFromSSRC(thessrc)) {
+                data.peerjid = XMPPService.getJIDFromSSRC(thessrc);
             }
         }
     }
@@ -406,13 +406,13 @@ SessionBase.prototype.waitForPresence = function (data, sid) {
 
 
     // TODO this must be done with listeners
-    RTCActivator.getRTCService().createRemoteStream(data, sid, thessrc);
+    RTCService.createRemoteStream(data, sid, thessrc);
 
     // an attempt to work around https://github.com/jitsi/jitmeet/issues/32
     if (isVideo &&
         data.peerjid && sess.peerjid === data.peerjid &&
         data.stream.getVideoTracks().length === 0 &&
-        RTCActivator.getRTCService().localVideo.getVideoTracks().length > 0) {
+        RTCService.localVideo.getVideoTracks().length > 0) {
         //
         window.setTimeout(function () {
             sendKeyframe(sess.peerconnection);

@@ -1,5 +1,5 @@
 var VideoLayout = require("./VideoLayout.js");
-var XMPPActivator = require("../xmpp/XMPPActivator");
+var XMPPService = require("../xmpp/XMPPService");
 
 /**
  * Contact list.
@@ -61,7 +61,7 @@ var ContactList = (function (my) {
 
         var clElement = contactlist.get(0);
 
-        if (resourceJid === Strophe.getResourceFromJid(XMPPActivator.getMyJID())
+        if (resourceJid === Strophe.getResourceFromJid(XMPPService.getMyJID())
             && $('#contactlist>ul .title')[0].nextSibling.nextSibling)
         {
             clElement.insertBefore(newContact,
@@ -196,7 +196,7 @@ var ContactList = (function (my) {
     my.onDisplayNameChanged =
         function (peerJid, displayName) {
             if (peerJid === 'localVideoContainer')
-                peerJid = XMPPActivator.getMyJID();
+                peerJid = XMPPService.getMyJID();
 
             var resourceJid = Strophe.getResourceFromJid(peerJid);
 

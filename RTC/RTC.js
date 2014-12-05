@@ -1,5 +1,3 @@
-var RTCActivator = require("./RTCActivator");
-
 var RTCBrowserTypes = require("../service/RTC/RTCBrowserType.js");
 
 function RTC(RTCService)

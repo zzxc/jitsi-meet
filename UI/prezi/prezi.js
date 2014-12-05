@@ -1,7 +1,7 @@
 var PreziPlayer = require("./PreziPlayer.js");
 var UIUtil = require("../UIUtil.js");
 var ToolbarToggler = require("../toolbars/toolbartoggler");
-var XMPPActivator = require("../../xmpp/XMPPActivator");
+var XMPPService = require("../../xmpp/XMPPService");
 
 var Prezi = (function (my) {
     var preziPlayer = null;
@@ -59,7 +59,7 @@ var Prezi = (function (my) {
      * to load.
      */
     my.openPreziDialog = function() {
-        var myprezi = XMPPActivator.getPrezi();
+        var myprezi = XMPPService.getPrezi();
         if (myprezi) {
             messageHandler.openTwoButtonDialog("Remove Prezi",
                 "Are you sure you would like to remove your Prezi?",
@@ -67,7 +67,7 @@ var Prezi = (function (my) {
                 "Remove",
                 function(e,v,m,f) {
                     if(v) {
-                        XMPPActivator.removeFromPresence("prezi");
+                        XMPPService.removeFromPresence("prezi");
                     }
                 }
             );
@@ -120,7 +120,7 @@ var Prezi = (function (my) {
                                     }
                                     else {
 
-                                        XMPPActivator.addToPresence("prezi", urlValue);
+                                        XMPPService.addToPresence("prezi", urlValue);
                                         $.prompt.close();
                                     }
                                 }
@@ -176,7 +176,7 @@ var Prezi = (function (my) {
         VideoLayout.resizeThumbnails();
 
         var controlsEnabled = false;
-        if (jid === XMPPActivator.getMyJID())
+        if (jid === XMPPService.getMyJID())
             controlsEnabled = true;
 
         Prezi.setPresentationVisible(true);
@@ -216,14 +216,14 @@ var Prezi = (function (my) {
         preziPlayer.on(PreziPlayer.EVENT_STATUS, function(event) {
             console.log("prezi status", event.value);
             if (event.value == PreziPlayer.STATUS_CONTENT_READY) {
-                if (jid != XMPPActivator.getMyJID())
+                if (jid != XMPPService.getMyJID())
                     preziPlayer.flyToStep(currentSlide);
             }
         });
 
         preziPlayer.on(PreziPlayer.EVENT_CURRENT_STEP, function(event) {
             console.log("event value", event.value);
-            XMPPActivator.addToPresence("preziSlide", event.value);
+            XMPPService.addToPresence("preziSlide", event.value);
         });
 
         $("#" + elementId).css( 'background-image',

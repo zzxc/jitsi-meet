@@ -390,7 +390,7 @@ StatsCollector.prototype.processStatsReport = function () {
         return;
     }
 
-    var XMPPActivator = require("../xmpp/XMPPActivator");
+    var XMPPService = require("../xmpp/XMPPService");
     for (var idx in this.currentStatsReport) {
         var now = this.currentStatsReport[idx];
         try {
@@ -457,18 +457,11 @@ StatsCollector.prototype.processStatsReport = function () {
             continue;
         }
 
-<<<<<<< HEAD:statistics/RTPStatsCollector.js
-        var ssrc = now.stat('ssrc');
-        var jid = XMPPActivator.getJIDFromSSRC(ssrc);
-        if (!jid)
-        {
-=======
         var ssrc = getStatValue(now, 'ssrc');
         if(!ssrc)
             continue;
-        var jid = ssrc2jid[ssrc];
+        var jid = XMPPService.getJIDFromSSRC(ssrc);
         if (!jid) {
->>>>>>> master:rtp_sts.js
             console.warn("No jid for ssrc: " + ssrc);
             continue;
         }
@@ -666,13 +659,9 @@ StatsCollector.prototype.processAudioLevelReport = function ()
             continue;
         }
 
-<<<<<<< HEAD:statistics/RTPStatsCollector.js
-        var ssrc = now.stat('ssrc');
-        var jid = require("../xmpp/XMPPActivator").getJIDFromSSRC(ssrc);
-=======
+
         var ssrc = getStatValue(now, 'ssrc');
-        var jid = ssrc2jid[ssrc];
->>>>>>> master:rtp_sts.js
+        var jid = require("../xmpp/XMPPService").getJIDFromSSRC(ssrc);
         if (!jid)
         {
             console.warn("No jid for ssrc: " + ssrc);
@@ -706,7 +695,7 @@ StatsCollector.prototype.processAudioLevelReport = function ()
             // but it seems to vary between 0 and around 32k.
             audioLevel = audioLevel / 32767;
             jidStats.setSsrcAudioLevel(ssrc, audioLevel);
-            if(jid != require("../xmpp/XMPPActivator").getMyJID())
+            if(jid != require("../xmpp/XMPPService").getMyJID())
                 this.eventEmitter.emit("statistics.audioLevel",
                     Strophe.getResourceFromJid(jid), audioLevel);
         }

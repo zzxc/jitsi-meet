@@ -2,7 +2,7 @@
 
 var JingleSession = require("./strophe.jingle.session");
 var XMPPEvents = require("../service/xmpp/XMPPEvents");
-module.exports = function(eventEmitter, RTCActivator, XMPPActivator) {
+module.exports = function(eventEmitter, RTCService, XMPPService) {
     Strophe.addConnectionPlugin('jingle', {
         connection: null,
         sessions: {},
@@ -88,11 +88,11 @@ module.exports = function(eventEmitter, RTCActivator, XMPPActivator) {
                 case 'session-initiate':
                     sess = new JingleSession($(iq).attr('to'), $(iq).find('jingle').attr('sid'), this.connection);
                     // configure session
-                    if (RTCActivator.getRTCService().localAudio != RTCActivator.getRTCService().localVideo) {
-                        sess.localStreams.push(RTCActivator.getRTCService().localAudio);
+                    if (RTCService.localAudio != RTCService.localVideo) {
+                        sess.localStreams.push(RTCService.localAudio);
                     }
-                    if (RTCActivator.getRTCService().localVideo) {
-                        sess.localStreams.push(RTCActivator.getRTCService().localVideo);
+                    if (RTCService.localVideo) {
+                        sess.localStreams.push(RTCService.localVideo);
                     }
                     sess.media_constraints = this.media_constraints;
                     sess.pc_constraints = this.pc_constraints;
@@ -108,7 +108,7 @@ module.exports = function(eventEmitter, RTCActivator, XMPPActivator) {
                     // the callback should either
                     // .sendAnswer and .accept
                     // or .sendTerminate -- not necessarily synchronus
-                    XMPPActivator.setActiveCall(sess);
+                    XMPPService.setActiveCall(sess);
                     eventEmitter.emit(XMPPEvents.CALL_INCOMING, sess);
                     // TODO: check affiliation and/or role
                     console.log('emuc data for', sess.peerjid, this.connection.emuc.members[sess.peerjid]);
@@ -173,11 +173,11 @@ module.exports = function(eventEmitter, RTCActivator, XMPPActivator) {
                 Math.random().toString(36).substr(2, 12), // random string
                 this.connection);
             // configure session
-            if (RTCActivator.getRTCService().localAudio  != RTCActivator.getRTCService().localVideo) {
-                sess.localStreams.push(RTCActivator.getRTCService().localAudio);
+            if (RTCService.localAudio  != RTCService.localVideo) {
+                sess.localStreams.push(RTCService.localAudio);
             }
-            if (RTCActivator.getRTCService().localVideo) {
-                sess.localStreams.push(RTCActivator.getRTCService().localVideo);
+            if (RTCService.localVideo) {
+                sess.localStreams.push(RTCService.localVideo);
             }
             sess.media_constraints = this.media_constraints;
             sess.pc_constraints = this.pc_constraints;

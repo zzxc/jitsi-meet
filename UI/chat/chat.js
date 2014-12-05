@@ -2,8 +2,8 @@
 var Replacement = require("./Replacement.js");
 var dep = {
     "VideoLayout": function(){ return require("../VideoLayout")},
-    "UIActivator": function () {
-        return require("../UIActivator");
+    "UIService": function () {
+        return require("../UIService");
     }
 };
 
@@ -24,7 +24,7 @@ var Chat = (function (my) {
         var storedDisplayName = window.localStorage.displayname;
         var nickname = null;
         if (storedDisplayName) {
-            dep.UIActivator().getUIService().setNickname(storedDisplayName);
+            dep.UIService().setNickname(storedDisplayName);
             nickname = storedDisplayName;
             Chat.setChatConversationMode(true);
         }
@@ -34,11 +34,11 @@ var Chat = (function (my) {
                 event.preventDefault();
                 var val = Util.escapeHtml(this.value);
                 this.value = '';
-                if (!dep.UIActivator().getUIService().getNickname()) {
-                    dep.UIActivator().getUIService().setNickname(val);
+                if (!dep.UIService().getNickname()) {
+                    dep.UIService().setNickname(val);
                     window.localStorage.displayname = val;
                     //this should be changed
-                    dep.UIActivator().getXMPPActivator().addToPresence("displayName", val);
+                    dep.UIService().getXMPPService().addToPresence("displayName", val);
                     Chat.setChatConversationMode(true);
 
                     return;
@@ -61,7 +61,7 @@ var Chat = (function (my) {
                 {
                     //this should be changed
                     var message = Util.escapeHtml(value);
-                    dep.UIActivator().getXMPPActivator().sendMessage(message, dep.UIActivator().getUIService().getNickname());
+                    dep.UIService().getXMPPService().sendMessage(message, dep.UIService().getNickname());
                 }
             }
         });
@@ -88,7 +88,7 @@ var Chat = (function (my) {
     my.updateChatConversation = function (from, displayName, message) {
         var divClassName = '';
 
-        if (dep.UIActivator().getXMPPActivator().getMyJID() === from) {
+        if (dep.UIService().getXMPPService().getMyJID() === from) {
             divClassName = "localuser";
         }
         else {

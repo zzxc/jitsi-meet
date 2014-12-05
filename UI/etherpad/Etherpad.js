@@ -95,7 +95,7 @@ var Etherpad = (function (my) {
      * Shares the Etherpad name with other participants.
      */
     function shareEtherpad() {
-        require("../../xmpp/XMPPActivator").addToPresence("etherpad", etherpadName);
+        require("../../xmpp/XMPPService").addToPresence("etherpad", etherpadName);
     }
 
     /**

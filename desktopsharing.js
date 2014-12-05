@@ -23,13 +23,13 @@ var obtainDesktopStream = null;
  */
 var _desktopSharingEnabled = null;
 
-var RTCActivator = null;
+var RTCService = null;
 /**
  * Method obtains desktop stream from WebRTC 'screen' source.
  * Flag 'chrome://flags/#enable-usermedia-screen-capture' must be enabled.
  */
 function obtainWebRTCScreen(streamCallback, failCallback) {
-    RTCActivator.getRTCService().getUserMediaWithConstraints(
+    RTCService.getUserMediaWithConstraints(
         ['screen'],
         streamCallback,
         failCallback
@@ -136,7 +136,7 @@ function doGetStreamFromExtension(streamCallback, failCallback) {
             }
             console.log("Response from extension: " + response);
             if (response.streamId) {
-                RTCActivator.getRTCService().getUserMediaWithConstraints(
+                RTCService.getUserMediaWithConstraints(
                     ['desktop'],
                     function (stream) {
                         streamCallback(stream);
@@ -203,12 +203,12 @@ function streamSwitchDone() {
 
 function newStreamCreated(stream) {
 
-    var oldStream = RTCActivator.getRTCService().localVideo.getOriginalStream();
+    var oldStream = RTCService.localVideo.getOriginalStream();
 
-    RTCActivator.getRTCService().createLocalStream(stream, "desktop");
-    RTCActivator.getRTCService().removeLocalStream(oldStream);
+    RTCService.createLocalStream(stream, "desktop");
+    RTCService.removeLocalStream(oldStream);
 
-    require("./xmpp/XMPPActivator").switchStreams(stream, oldStream, streamSwitchDone);
+    require("./xmpp/XMPPService").switchStreams(stream, oldStream, streamSwitchDone);
 }
 
 /**
@@ -233,7 +233,7 @@ function setDesktopSharing(method) {
     // Reset enabled cache
     _desktopSharingEnabled = null;
 
-    require("./UI/UIActivator").showDesktopSharingButton();
+    require("./UI/UIService").showDesktopSharingButton();
 }
 
 
@@ -268,7 +268,7 @@ module.exports = {
                 getSwitchStreamFailed);
         } else {
             // Disable screen stream
-            RTCActivator.getRTCService().getUserMediaWithConstraints(
+            RTCService.getUserMediaWithConstraints(
                 ['video'],
                 function (stream) {
                     // We are now using camera stream
@@ -298,7 +298,7 @@ module.exports = {
         return _desktopSharingEnabled;
     },
     init: function () {
-        RTCActivator = require("./RTC/RTCActivator");
+        RTCService = require("./RTC/RTCService");
         // Set default desktop sharing method
         setDesktopSharing(config.desktopSharing);
         // Initialize Chrome extension inline installs

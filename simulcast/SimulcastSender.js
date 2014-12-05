@@ -90,7 +90,7 @@ SimulcastSender.prototype.getLocalVideoStream = function () {
     return (this.displayedLocalVideoStream != null)
         ? this.displayedLocalVideoStream
         // in case we have no simulcast at all, i.e. we didn't perform the GUM
-        : require("../RTC/RTCActivator").getRTCService().localVideo.getOriginalStream();
+        : require("../RTC/RTCService").localVideo.getOriginalStream();
 };
 
 function NativeSimulcastSender() {

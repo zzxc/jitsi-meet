@@ -1,4 +1,4 @@
-var uiService = require("../UI/UIActivator");
+var uiService = require("../UI/UIService");
 
 /**
  * List of the available commands.

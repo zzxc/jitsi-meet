@@ -1,6 +1,5 @@
 var DesktopSharing = require("../../desktopsharing");
 
-var ToolbarToggler = (function(my) {
 /* global $, interfaceConfig, Moderator, showDesktopSharingButton */
 var ToolbarToggler = (function (my) {
     var toolbarTimeoutObject,

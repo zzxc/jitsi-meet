@@ -32,7 +32,7 @@ var DataChannels =
             // selections so that it can do adaptive simulcast,
             // we want the notification to trigger even if userJid is undefined,
             // or null.
-            onSelectedEndpointChanged(require("../UI/UIActivator").getUIService().getSelectedJID());
+            onSelectedEndpointChanged(require("../UI/UIService").getSelectedJID());
         };
 
         dataChannel.onerror = function (error) {

@@ -40,7 +40,7 @@ var TraceablePeerConnection = require("../strophe.jingle.adapter");
 var SDP = require("../strophe.jingle.sdp");
 var SDPUtil = require("../strophe.jingle.sdp.util");
 var XMPPEvents = require("../../service/xmpp/XMPPEvents");
-var RTCActivator = require("../../RTC/RTCActivator");
+
 ColibriFocus.prototype = Object.create(SessionBase.prototype);
 function ColibriFocus(connection, bridgejid, eventEmitter) {
 
@@ -119,11 +119,11 @@ ColibriFocus.prototype.makeConference = function (peers, errorCallback) {
             this.connection.jingle.ice_config,
             this.connection.jingle.pc_constraints );
 
-    if(RTCActivator.getRTCService().localAudio) {
-        this.peerconnection.addStream(RTCActivator.getRTCService().localAudio);
+    if(require("../../RTC/RTCService").localAudio) {
+        this.peerconnection.addStream(require("../../RTC/RTCService").localAudio);
     }
-    if(RTCActivator.getRTCService().localVideo) {
-        this.peerconnection.addStream(RTCActivator.getRTCService().localVideo);
+    if(require("../../RTC/RTCService").localVideo) {
+        this.peerconnection.addStream(require("../../RTC/RTCService").localVideo);
     }
     this.peerconnection.oniceconnectionstatechange = function (event) {
         console.warn('ice connection state changed to', self.peerconnection.iceConnectionState);
@@ -804,7 +804,7 @@ ColibriFocus.prototype.initiate = function (peer, isInitiator) {
     sess.initiate(peer);
     sess.colibri = this;
     // We do not announce our audio per conference peer, so only video is set here
-    sess.localVideo = RTCActivator.getRTCService().localVideo;
+    sess.localVideo = require("../../RTC/RTCService").localVideo;
     sess.media_constraints = this.connection.jingle.media_constraints;
     sess.pc_constraints = this.connection.jingle.pc_constraints;
     sess.ice_config = this.connection.jingle.ice_config;
