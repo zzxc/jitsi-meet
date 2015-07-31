@@ -38,7 +38,8 @@ var RTCBrowserType = {
         return currentBrowser === RTCBrowserType.RTC_BROWSER_SAFARI;
     },
     isTemasysPluginUsed: function () {
-        return RTCBrowserType.isIExplorer() || RTCBrowserType.isSafari();
+        return !RTCBrowserType.usesOrtc() &&
+            (RTCBrowserType.isIExplorer() || RTCBrowserType.isSafari());
     },
     getFirefoxVersion: function () {
         return RTCBrowserType.isFirefox() ? browserVersion : null;
@@ -55,6 +56,11 @@ var RTCBrowserType = {
 
     usesUnifiedPlan: function() {
         return RTCBrowserType.isFirefox();
+    },
+
+    usesOrtc: function() {
+        return RTCBrowserType.isIExplorer() && browserVersion >= 12 &&
+                RTCIceGatherer;
     }
 
     // Add version getters for other browsers when needed
