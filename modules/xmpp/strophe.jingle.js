@@ -1,6 +1,6 @@
 /* jshint -W117 */
 
-var JingleSession = require("./JingleSession");
+var JingleSession = require("./JingleSessionPC");
 var XMPPEvents = require("../../service/xmpp/XMPPEvents");
 var RTCBrowserType = require("../RTC/RTCBrowserType");
 
@@ -137,7 +137,7 @@ module.exports = function(XMPP, eventEmitter) {
                     sess.accept();
                     break;
                 case 'session-accept':
-                    sess.setRemoteDescription($(iq).find('>jingle'), 'answer');
+                    sess.setAnswer($(iq).find('>jingle'), 'answer');
                     sess.accept();
                     $(document).trigger('callaccepted.jingle', [sess.sid]);
                     break;
