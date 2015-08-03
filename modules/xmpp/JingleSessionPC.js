@@ -7,17 +7,14 @@ var SDP = require("./SDP");
 var async = require("async");
 var transform = require("sdp-transform");
 var XMPPEvents = require("../../service/xmpp/XMPPEvents");
+var Constants = require("../../service/xmpp/JingleConstants");
 var RTCBrowserType = require("../RTC/RTCBrowserType");
 
 // Jingle stuff
 function JingleSessionPC(me, sid, connection, service, eventEmitter) {
-    this.me = me;
-    this.sid = sid;
-    this.connection = connection;
-    this.initiator = null;
-    this.responder = null;
+    JingleSession.call(this, me, sid, connection, service, eventEmitter);
+
     this.isInitiator = null;
-    this.peerjid = null;
     this.state = null;
     this.localSDP = null;
     this.remoteSDP = null;
@@ -28,10 +25,7 @@ function JingleSessionPC(me, sid, connection, service, eventEmitter) {
     this.pc_constraints = null;
     this.ice_config = {};
     this.drip_container = [];
-    this.service = service;
-    this.eventEmitter = eventEmitter;
 
-    this.usetrickle = true;
     this.usepranswer = false; // early transport warmup -- mind you, this might fail. depends on webrtc issue 1718
 
     this.hadstuncandidate = false;
@@ -52,7 +46,6 @@ function JingleSessionPC(me, sid, connection, service, eventEmitter) {
     this.localStreamsSSRC = null;
     this.ssrcOwners = {};
     this.ssrcVideoTypes = {};
-    this.eventEmitter = eventEmitter;
 
     /**
      * The indicator which determines whether the (local) video has been muted
@@ -66,6 +59,7 @@ function JingleSessionPC(me, sid, connection, service, eventEmitter) {
     this.modifySourcesQueue.pause();
 }
 JingleSessionPC.prototype = JingleSession.prototype;
+JingleSessionPC.prototype.constructor = JingleSessionPC;
 
 JingleSessionPC.prototype.setOffer = function(offer) {
     this.setRemoteDescription(offer, 'offer');
@@ -244,7 +238,7 @@ JingleSessionPC.prototype.accept = function () {
     var prsdp = new SDP(pranswer.sdp);
     var accept = $iq({to: this.peerjid,
         type: 'set'})
-        .c('jingle', {xmlns: 'urn:xmpp:jingle:1',
+        .c('jingle', {xmlns: Constants.XMLNS_JINGLE,
             action: 'session-accept',
             initiator: this.initiator,
             responder: this.responder,
@@ -303,6 +297,7 @@ JingleSessionPC.prototype.active = function () {
     return this.state == 'active';
 };
 
+//XXX: this doesn't seem to work with usedrip=false
 JingleSessionPC.prototype.sendIceCandidate = function (candidate) {
     var self = this;
     if (candidate && !this.lasticecandidate) {
@@ -344,7 +339,7 @@ JingleSessionPC.prototype.sendIceCandidate = function (candidate) {
             //FIXME why do we generate session-accept in 3 different places ?
             var init = $iq({to: this.peerjid,
                 type: 'set'})
-                .c('jingle', {xmlns: 'urn:xmpp:jingle:1',
+                .c('jingle', {xmlns: Constants.XMLNS_JINGLE,
                     action: this.peerconnection.localDescription.type == 'offer' ? 'session-initiate' : 'session-accept',
                     initiator: this.initiator,
                     sid: this.sid});
@@ -391,7 +386,7 @@ JingleSessionPC.prototype.sendIceCandidate = function (candidate) {
 JingleSessionPC.prototype.sendIceCandidates = function (candidates) {
     console.log('sendIceCandidates', candidates);
     var cand = $iq({to: this.peerjid, type: 'set'})
-        .c('jingle', {xmlns: 'urn:xmpp:jingle:1',
+        .c('jingle', {xmlns: Constants.XMLNS_JINGLE,
             action: 'transport-info',
             initiator: this.initiator,
             sid: this.sid});
@@ -465,7 +460,7 @@ JingleSessionPC.prototype.createdOffer = function (sdp) {
     var sendJingle = function () {
         var init = $iq({to: this.peerjid,
             type: 'set'})
-            .c('jingle', {xmlns: 'urn:xmpp:jingle:1',
+            .c('jingle', {xmlns: Constants.XMLNS_JINGLE,
                 action: 'session-initiate',
                 initiator: this.initiator,
                 sid: this.sid});
@@ -730,7 +725,7 @@ JingleSessionPC.prototype.createdAnswer = function (sdp, provisional) {
                 // FIXME why do we generate session-accept in 3 different places ?
                 var accept = $iq({to: self.peerjid,
                     type: 'set'})
-                    .c('jingle', {xmlns: 'urn:xmpp:jingle:1',
+                    .c('jingle', {xmlns: Constants.XMLNS_JINGLE,
                         action: 'session-accept',
                         initiator: self.initiator,
                         responder: self.responder,
@@ -786,7 +781,7 @@ JingleSessionPC.prototype.sendTerminate = function (reason, text) {
     var self = this,
         term = $iq({to: this.peerjid,
             type: 'set'})
-            .c('jingle', {xmlns: 'urn:xmpp:jingle:1',
+            .c('jingle', {xmlns: Constants.XMLNS_JINGLE,
                 action: 'session-terminate',
                 initiator: this.initiator,
                 sid: this.sid})
@@ -1129,7 +1124,7 @@ JingleSessionPC.prototype.notifyMySSRCUpdate = function (old_sdp, new_sdp) {
     sdpDiffer = new SDPDiffer(new_sdp, old_sdp);
     var remove = $iq({to: this.peerjid, type: 'set'})
         .c('jingle', {
-            xmlns: 'urn:xmpp:jingle:1',
+            xmlns: Constants.XMLNS_JINGLE,
             action: 'source-remove',
             initiator: this.initiator,
             sid: this.sid
@@ -1153,7 +1148,7 @@ JingleSessionPC.prototype.notifyMySSRCUpdate = function (old_sdp, new_sdp) {
     var sdpDiffer = new SDPDiffer(old_sdp, new_sdp);
     var add = $iq({to: this.peerjid, type: 'set'})
         .c('jingle', {
-            xmlns: 'urn:xmpp:jingle:1',
+            xmlns: Constants.XMLNS_JINGLE,
             action: 'source-add',
             initiator: this.initiator,
             sid: this.sid
@@ -1232,31 +1227,6 @@ JingleSessionPC.prototype.hardMuteVideo = function (muted) {
     this.pendingop = muted ? 'mute' : 'unmute';
 };
 
-JingleSessionPC.prototype.sendMute = function (muted, content) {
-    var info = $iq({to: this.peerjid,
-        type: 'set'})
-        .c('jingle', {xmlns: 'urn:xmpp:jingle:1',
-            action: 'session-info',
-            initiator: this.initiator,
-            sid: this.sid });
-    info.c(muted ? 'mute' : 'unmute', {xmlns: 'urn:xmpp:jingle:apps:rtp:info:1'});
-    info.attrs({'creator': this.me == this.initiator ? 'creator' : 'responder'});
-    if (content) {
-        info.attrs({'name': content});
-    }
-    this.connection.send(info);
-};
-
-JingleSessionPC.prototype.sendRinging = function () {
-    var info = $iq({to: this.peerjid,
-        type: 'set'})
-        .c('jingle', {xmlns: 'urn:xmpp:jingle:1',
-            action: 'session-info',
-            initiator: this.initiator,
-            sid: this.sid });
-    info.c('ringing', {xmlns: 'urn:xmpp:jingle:apps:rtp:info:1'});
-    this.connection.send(info);
-};
 
 JingleSessionPC.prototype.getStats = function (interval) {
     var self = this;

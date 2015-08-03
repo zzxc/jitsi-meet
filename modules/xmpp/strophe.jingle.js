@@ -3,6 +3,7 @@
 var JingleSession = require("./JingleSessionPC");
 var XMPPEvents = require("../../service/xmpp/XMPPEvents");
 var RTCBrowserType = require("../RTC/RTCBrowserType");
+var Constants = require("../../service/xmpp/JingleConstants");
 
 
 module.exports = function(XMPP, eventEmitter) {
@@ -25,7 +26,7 @@ module.exports = function(XMPP, eventEmitter) {
             if (this.connection.disco) {
                 // http://xmpp.org/extensions/xep-0167.html#support
                 // http://xmpp.org/extensions/xep-0176.html#support
-                this.connection.disco.addFeature('urn:xmpp:jingle:1');
+                this.connection.disco.addFeature(Constants.XMLNS_JINGLE);
                 this.connection.disco.addFeature('urn:xmpp:jingle:apps:rtp:1');
                 this.connection.disco.addFeature('urn:xmpp:jingle:transports:ice-udp:1');
                 this.connection.disco.addFeature('urn:xmpp:jingle:apps:dtls:0');
@@ -47,7 +48,8 @@ module.exports = function(XMPP, eventEmitter) {
 
                 //this.connection.disco.addFeature('urn:ietf:rfc:5576'); // a=ssrc
             }
-            this.connection.addHandler(this.onJingle.bind(this), 'urn:xmpp:jingle:1', 'iq', 'set', null, null);
+            this.connection.addHandler(this.onJingle.bind(this),
+                Constants.XMLNS_JINGLE, 'iq', 'set', null, null);
         },
         onJingle: function (iq) {
             var sid = $(iq).find('jingle').attr('sid');
