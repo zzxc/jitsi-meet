@@ -288,7 +288,8 @@ function createLargeVideoHTML()
                 '<img id="activeSpeakerAvatar" src=""/>' +
                 '<canvas id="activeSpeakerAudioLevel"></canvas>' +
             '</div>' +
-            '<video id="largeVideo" autoplay oncontextmenu="return false;"></video>';
+            '<video id="largeVideo" autoplay oncontextmenu="return false;"></video>' +
+            '<span id="videoConnectionMessage"></span>';
     html += '</div>';
     $(html).prependTo("#videospace");
 
@@ -654,14 +655,23 @@ var LargeVideo = {
     },
     /**
      * Sets hover handlers for the large video container div.
+     *
      * @param inHandler
      * @param outHandler
      */
     setHover: function(inHandler, outHandler)
     {
         $('#largeVideoContainer').hover(inHandler, outHandler);
+    },
+
+    /**
+     * Enables/disables the filter indicating a video problem to the user.
+     *
+     * @param enable <tt>true</tt> to enable, <tt>false</tt> to disable
+     */
+    enableVideoProblemFilter: function (enable) {
+        $("#largeVideo").toggleClass("videoProblemFilter", enable);
     }
 };
-
 
 module.exports = LargeVideo;

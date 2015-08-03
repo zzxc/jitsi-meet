@@ -38,15 +38,13 @@ module.exports = function(XMPP, eventEmitter) {
                     this.connection.disco.addFeature('urn:ietf:rfc:4588');
                 }
 
-                // this is dealt with by SDP O/A so we don't need to annouce this
+                // this is dealt with by SDP O/A so we don't need to announce this
                 //this.connection.disco.addFeature('urn:xmpp:jingle:apps:rtp:rtcp-fb:0'); // XEP-0293
                 //this.connection.disco.addFeature('urn:xmpp:jingle:apps:rtp:rtp-hdrext:0'); // XEP-0294
-                if (config.useRtcpMux) {
-                    this.connection.disco.addFeature('urn:ietf:rfc:5761'); // rtcp-mux
-                }
-                if (config.useBundle) {
-                    this.connection.disco.addFeature('urn:ietf:rfc:5888'); // a=group, e.g. bundle
-                }
+
+                this.connection.disco.addFeature('urn:ietf:rfc:5761'); // rtcp-mux
+                this.connection.disco.addFeature('urn:ietf:rfc:5888'); // a=group, e.g. bundle
+
                 //this.connection.disco.addFeature('urn:ietf:rfc:5576'); // a=ssrc
             }
             this.connection.addHandler(this.onJingle.bind(this), 'urn:xmpp:jingle:1', 'iq', 'set', null, null);
@@ -71,9 +69,8 @@ module.exports = function(XMPP, eventEmitter) {
                     this.connection.send(ack);
                     return true;
                 }
-                // compare from to sess.peerjid (bare jid comparison for later compat with message-mode)
                 // local jid is not checked
-                if (Strophe.getBareJidFromJid(fromJid) != Strophe.getBareJidFromJid(sess.peerjid)) {
+                if (fromJid != sess.peerjid) {
                     console.warn('jid mismatch for session id', sid, fromJid, sess.peerjid);
                     ack.type = 'error';
                     ack.c('error', {type: 'cancel'})

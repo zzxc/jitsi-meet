@@ -37,6 +37,7 @@ function JingleSessionPC(me, sid, connection, service, eventEmitter) {
     this.hadstuncandidate = false;
     this.hadturncandidate = false;
     this.lasticecandidate = false;
+    this.isreconnect = false;
 
     this.statsinterval = null;
 
@@ -130,15 +131,31 @@ JingleSessionPC.prototype.initiate = function (peerjid, isInitiator) {
         if (!(self && self.peerconnection)) return;
         self.updateModifySourcesQueue();
     };
+    /**
+     * The oniceconnectionstatechange event handler contains the code to execute when the iceconnectionstatechange event,
+     * of type Event, is received by this RTCPeerConnection. Such an event is sent when the value of
+     * RTCPeerConnection.iceConnectionState changes.
+     *
+     * @param event the event containing information about the change
+     */
     this.peerconnection.oniceconnectionstatechange = function (event) {
         if (!(self && self.peerconnection)) return;
         self.updateModifySourcesQueue();
         switch (self.peerconnection.iceConnectionState) {
             case 'connected':
-                this.startTime = new Date();
+                self.startTime = new Date();
+
+                // Informs interested parties that the connection has been restored.
+                if (self.peerconnection.signalingState === 'stable' && self.isreconnect)
+                    self.eventEmitter.emit(XMPPEvents.CONNECTION_RESTORED);
+                self.isreconnect = false;
                 break;
             case 'disconnected':
-                this.stopTime = new Date();
+                self.isreconnect = true;
+                self.stopTime = new Date();
+                // Informs interested parties that the connection has been interrupted.
+                if (self.peerconnection.signalingState === 'stable')
+                    self.eventEmitter.emit(XMPPEvents.CONNECTION_INTERRUPTED);
                 break;
             case 'failed':
                 self.eventEmitter.emit(XMPPEvents.CONFERENCE_SETUP_FAILED);

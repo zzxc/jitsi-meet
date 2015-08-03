@@ -113,9 +113,6 @@ function getConstraints(um, resolution, bandwidth, fps, desktopStream, isAndroid
         );
     }
     if (constraints.video) {
-        constraints.video.optional.push(
-            {googNoiseReduction: false} // chrome 37 workaround for issue 3807, reenable in M38
-        );
         if (um.indexOf('video') >= 0) {
             constraints.video.optional.push(
                 {googLeakyBucket: true}
@@ -154,7 +151,7 @@ function RTCUtils(RTCService, onTemasysPluginReady)
     this.service = RTCService;
     if (RTCBrowserType.isFirefox()) {
         var FFversion = RTCBrowserType.getFirefoxVersion();
-        if (FFversion >= 40 && config.useBundle && config.useRtcpMux) {
+        if (FFversion >= 40) {
             this.peerconnection = mozRTCPeerConnection;
             this.getUserMedia = navigator.mozGetUserMedia.bind(navigator);
             this.pc_constraints = {};
@@ -195,9 +192,7 @@ function RTCUtils(RTCService, onTemasysPluginReady)
             RTCIceCandidate = mozRTCIceCandidate;
         } else {
             console.error(
-                "Firefox requirements not met, ver: " + FFversion +
-                ", bundle: " + config.useBundle +
-                ", rtcp-mux: " + config.useRtcpMux);
+                "Firefox version too old: " + FFversion + ". Required >= 40.");
             window.location.href = 'unsupported_browser.html';
             return;
         }
