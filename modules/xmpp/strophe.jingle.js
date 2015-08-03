@@ -115,7 +115,7 @@ module.exports = function(XMPP, eventEmitter) {
 
                     sess.initiate(fromJid, false);
                     // FIXME: setRemoteDescription should only be done when this call is to be accepted
-                    sess.setRemoteDescription($(iq).find('>jingle'), 'offer');
+                    sess.setOffer($(iq).find('>jingle'));
 
                     this.sessions[sess.sid] = sess;
                     this.jid2session[sess.peerjid] = sess;
@@ -132,13 +132,12 @@ module.exports = function(XMPP, eventEmitter) {
                     // TODO: check affiliation and/or role
                     console.log('emuc data for', sess.peerjid,
                         this.connection.emuc.members[sess.peerjid]);
-                    sess.usedrip = true; // not-so-naive trickle ice
                     sess.sendAnswer();
                     sess.accept();
                     break;
                 case 'session-accept':
-                    sess.setAnswer($(iq).find('>jingle'), 'answer');
                     sess.accept();
+                    sess.setAnswer($(iq).find('>jingle'));
                     $(document).trigger('callaccepted.jingle', [sess.sid]);
                     break;
                 case 'session-terminate':

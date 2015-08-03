@@ -33,7 +33,6 @@ function JingleSessionPC(me, sid, connection, service, eventEmitter) {
 
     this.usetrickle = true;
     this.usepranswer = false; // early transport warmup -- mind you, this might fail. depends on webrtc issue 1718
-    this.usedrip = false; // dripping is sending trickle candidates not one-by-one
 
     this.hadstuncandidate = false;
     this.hadturncandidate = false;
@@ -66,6 +65,14 @@ function JingleSessionPC(me, sid, connection, service, eventEmitter) {
     this.modifySourcesQueue.pause();
 }
 JingleSessionPC.prototype = JingleSession.prototype;
+
+JingleSessionPC.prototype.setOffer = function(offer) {
+    this.setRemoteDescription(offer, 'offer');
+};
+
+JingleSessionPC.prototype.setAnswer = function(answer) {
+    this.setRemoteDescription(answer, 'answer');
+};
 
 JingleSessionPC.prototype.updateModifySourcesQueue = function() {
     var signalingState = this.peerconnection.signalingState;
@@ -230,7 +237,7 @@ JingleSessionPC.prototype.accept = function () {
         accept,
         this.initiator == this.me ? 'initiator' : 'responder',
         this.localStreamsSSRC,
-        self.getVideoType());
+        this.getVideoType());
     var sdp = this.peerconnection.localDescription.sdp;
     while (SDPUtil.find_line(sdp, 'a=inactive')) {
         // FIXME: change any inactive to sendrecv or whatever they were originally
@@ -325,7 +332,6 @@ JingleSessionPC.prototype.sendIceCandidate = function (candidate) {
                     initiator: this.initiator,
                     sid: this.sid});
             this.localSDP = new SDP(this.peerconnection.localDescription.sdp);
-            var self = this;
             var sendJingle = function (ssrc) {
                 if(!ssrc)
                     ssrc = {};
@@ -352,7 +358,7 @@ JingleSessionPC.prototype.sendIceCandidate = function (candidate) {
                         JingleSessionPC.onJingleError(self.sid, error);
                     },
                     10000);
-            }
+            };
             sendJingle();
         }
         this.lasticecandidate = true;
