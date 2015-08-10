@@ -38,7 +38,7 @@ var RTCBrowserType = {
         return currentBrowser === RTCBrowserType.RTC_BROWSER_SAFARI;
     },
     isTemasysPluginUsed: function () {
-        return !RTCBrowserType.usesOrtc() &&
+        return false&&!RTCBrowserType.usesOrtc() &&
             (RTCBrowserType.isIExplorer() || RTCBrowserType.isSafari());
     },
     getFirefoxVersion: function () {

@@ -65,12 +65,12 @@ AdapterJS.WebRTCPlugin.pluginInfo = {
   downloadLink : null, //set below
   companyName: 'Temasys'
 };
-if(!!navigator.platform.match(/^Mac/i)) {
-  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'http://bit.ly/1n77hco';
-}
-else if(!!navigator.platform.match(/^Win/i)) {
-  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'http://bit.ly/1kkS4FN';
-}
+//if(!!navigator.platform.match(/^Mac/i)) {
+//  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'http://bit.ly/1n77hco';
+//}
+//else if(!!navigator.platform.match(/^Win/i)) {
+//  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'http://bit.ly/1kkS4FN';
+//}
 
 // Unique identifier of each opened page
 AdapterJS.WebRTCPlugin.pageId = Math.random().toString(36).slice(2);
@@ -520,7 +520,7 @@ webrtcDetectedBrowser = null;
 webrtcDetectedVersion = null;
 
 // Check for browser types and react accordingly
-if (navigator.mozGetUserMedia) {
+if (false && navigator.mozGetUserMedia) {
   webrtcDetectedBrowser = 'firefox';
   webrtcDetectedVersion = parseInt(navigator
     .userAgent.match(/Firefox\/([0-9]+)\./)[1], 10);
@@ -627,7 +627,7 @@ if (navigator.mozGetUserMedia) {
   }
 
   AdapterJS.maybeThroughWebRTCReady();
-} else if (navigator.webkitGetUserMedia) {
+} else if (false && navigator.webkitGetUserMedia) {
   webrtcDetectedBrowser = 'chrome';
   webrtcDetectedType = 'webkit';
   webrtcDetectedVersion = parseInt(navigator
@@ -712,7 +712,7 @@ if (navigator.mozGetUserMedia) {
   };
 
   AdapterJS.maybeThroughWebRTCReady();
-} else { // TRY TO USE PLUGIN
+} else if (false) { // TRY TO USE PLUGIN
   // IE 9 is not offering an implementation of console.log until you open a console
   if (typeof console !== 'object' || typeof console.log !== 'function') {
     /* jshint -W020 */
@@ -1105,6 +1105,7 @@ if (navigator.mozGetUserMedia) {
 
 (function () {
 
+  return;
   'use strict';
 
   var baseGetUserMedia = null;

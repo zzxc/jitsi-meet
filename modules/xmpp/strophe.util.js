@@ -10,7 +10,7 @@ module.exports = function () {
                 break;
             case Strophe.LogLevel.ERROR:
             case Strophe.LogLevel.FATAL:
-                console.error("Strophe: " + msg);
+                console.error("Strophe: " + msg + (new Error().stack));
                 break;
         }
     };

@@ -117,7 +117,7 @@ var statistics = {
         APP.xmpp.addListener(XMPPEvents.DISPOSE_CONFERENCE, onDisposeConference);
         //FIXME: we may want to change CALL INCOMING event to onnegotiationneeded
         APP.xmpp.addListener(XMPPEvents.CALL_INCOMING, function (event) {
-            startRemoteStats(event.peerconnection);
+            //startRemoteStats(event.peerconnection);
 //            CallStats.init(event);
         });
         APP.xmpp.addListener(XMPPEvents.PEERCONNECTION_READY, function (session) {

@@ -69,7 +69,7 @@ var RTC = {
 
         var localStream =  new LocalStream(stream, type, eventEmitter, videoType, isGUMStream);
         //in firefox we have only one stream object
-        if(this.localStreams.length == 0 ||
+        if (this.localStreams.length == 0 ||
             this.localStreams[0].getOriginalStream() != stream)
             this.localStreams.push(localStream);
         if(isMuted === true)
@@ -84,6 +84,7 @@ var RTC = {
         if(change)
             eventType = StreamEventTypes.EVENT_TYPE_LOCAL_CHANGED;
 
+        console.log("ortc emit local stream event: "+eventType);
         eventEmitter.emit(eventType, localStream, isMuted);
         return localStream;
     },
@@ -146,7 +147,7 @@ var RTC = {
                 self.changeLocalVideo(stream, isUsingScreenStream, callback);
             }, DesktopSharingEventTypes.NEW_STREAM_CREATED);
         APP.xmpp.addListener(XMPPEvents.CALL_INCOMING, function(event) {
-            DataChannels.init(event.peerconnection, eventEmitter);
+            //DataChannels.init(event.peerconnection, eventEmitter);
         });
         APP.UI.addListener(UIEvents.SELECTED_ENDPOINT,
             DataChannels.handleSelectedEndpointEvent);
@@ -214,7 +215,7 @@ var RTC = {
             stream = stream.videoStream;
         }
         var videoStream = this.rtcUtils.createStream(stream, true);
-        this.localVideo = this.createLocalStream(videoStream, "video", true, type);
+        this.localVideo = this.createLocalStream(videoStream, "video", false, "video");
         // Stop the stream to trigger onended event for old stream
         oldStream.stop();
 

@@ -1,6 +1,6 @@
 /* jshint -W117 */
 
-var JingleSession = require("./JingleSessionPC");
+var JingleSession = require("./JingleSessionORTC");
 var XMPPEvents = require("../../service/xmpp/XMPPEvents");
 var RTCBrowserType = require("../RTC/RTCBrowserType");
 var Constants = require("../../service/xmpp/JingleConstants");
@@ -96,6 +96,7 @@ module.exports = function(XMPP, eventEmitter) {
             // see http://xmpp.org/extensions/xep-0166.html#concepts-session
             switch (action) {
                 case 'session-initiate':
+                    console.log("on session-initiate");
                     var startMuted = $(iq).find('jingle>startmuted');
                     if (startMuted && startMuted.length > 0) {
                         var audioMuted = startMuted.attr("audio");
@@ -103,6 +104,7 @@ module.exports = function(XMPP, eventEmitter) {
                         eventEmitter.emit(XMPPEvents.START_MUTED_FROM_FOCUS,
                                 audioMuted === "true", videoMuted === "true");
                     }
+                    blabla=JingleSession;
                     sess = new JingleSession(
                         $(iq).attr('to'), $(iq).find('jingle').attr('sid'),
                         this.connection, XMPP, eventEmitter);
@@ -115,6 +117,7 @@ module.exports = function(XMPP, eventEmitter) {
                     sess.initiate(fromJid, false);
                     // FIXME: setRemoteDescription should only be done when this call is to be accepted
                     sess.setOffer($(iq).find('>jingle'));
+                    console.log('after setOffer');
 
                     this.sessions[sess.sid] = sess;
                     this.jid2session[sess.peerjid] = sess;
@@ -125,6 +128,7 @@ module.exports = function(XMPP, eventEmitter) {
 
                     // TODO: do we check activecall == null?
                     this.connection.jingle.activecall = sess;
+                    console.log('after set activecall');
 
                     eventEmitter.emit(XMPPEvents.CALL_INCOMING, sess);
 
@@ -132,7 +136,7 @@ module.exports = function(XMPP, eventEmitter) {
                     console.log('emuc data for', sess.peerjid,
                         this.connection.emuc.members[sess.peerjid]);
                     sess.sendAnswer();
-                    sess.accept();
+                    //sess.accept();
                     break;
                 case 'session-accept':
                     sess.accept();

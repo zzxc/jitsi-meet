@@ -387,7 +387,7 @@ RemoteVideo.prototype.removeRemoteVideoMenu = function() {
 
 RemoteVideo.prototype.getResourceJid = function () {
     if (!this.resourceJid) {
-        console.error("Undefined resource jid");
+        console.error("Undefined resource jid", new Error().stack);
     }
     return this.resourceJid;
 };
