@@ -175,8 +175,10 @@ function RTCUtils(RTCService, eventEmitter, onTemasysPluginReady)
                 // https://github.com/webrtc/samples/issues/302
                 if(!element[0])
                     return;
-                element[0].mozSrcObject = stream;
-                element[0].play();
+                if (stream.id !== "dummyAudio" && stream.id !== "dummyVideo") {
+                    element[0].mozSrcObject = stream;
+                    element[0].play();
+                }
             };
             this.getStreamID =  function (stream) {
                 var id = stream.id;

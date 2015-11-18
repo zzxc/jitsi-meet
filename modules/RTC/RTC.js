@@ -308,9 +308,12 @@ var RTC = {
                 mediaStream.onended = handler;
         } else {
             // themasys
-            mediaStream.attachEvent('ended', function () {
-                handler(mediaStream);
-            });
+            if (mediaStream.id !== "dummyAudio" &&
+                    mediaStream.id !== "dummyVideo") {
+                mediaStream.attachEvent('ended', function () {
+                    handler(mediaStream);
+                });
+            }
         }
     },
     /**
